@@ -1,0 +1,53 @@
+"use client";
+
+import type { ReactNode } from "react";
+import { Select as SelectPrimitive, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/shadcn/select";
+
+export interface SelectFieldOption {
+  value: string;
+  label: ReactNode;
+}
+
+/** Form-participating select styled with the app's theme, replacing the
+ * browser's native <select> popup (which renders with OS chrome and
+ * ignores the app's CSS entirely). Base UI's Select.Root renders a hidden
+ * input synced to the selected value, so this drops into the existing
+ * `new FormData(form)` server-action pattern unchanged: `name`, `required`
+ * and `defaultValue` behave exactly like a native select.
+ *
+ * Leave `defaultValue` unset for a "must actively choose" field (shows
+ * `placeholder` until picked); pass `defaultValue=""` with a `""`-valued
+ * option in `options` for a real "no selection" choice — matches the two
+ * patterns the native selects used across the app. */
+export function SelectField({
+  name,
+  defaultValue,
+  required,
+  disabled,
+  placeholder,
+  options,
+  className = "w-full",
+}: {
+  name: string;
+  defaultValue?: string;
+  required?: boolean;
+  disabled?: boolean;
+  placeholder?: string;
+  options: SelectFieldOption[];
+  className?: string;
+}) {
+  return (
+    <SelectPrimitive name={name} defaultValue={defaultValue} required={required} disabled={disabled}>
+      <SelectTrigger className={className}>
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((o) => (
+          <SelectItem key={o.value} value={o.value}>
+            {o.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </SelectPrimitive>
+  );
+}

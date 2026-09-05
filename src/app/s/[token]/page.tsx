@@ -1,0 +1,155 @@
+import Image from "next/image";
+import { Card, StatTile, HeroPanel, Eyebrow } from "@/components/ui/Card";
+import { PhaseSpine, type PhaseSpineSegment } from "@/components/ui/PhaseSpine";
+import { Pill } from "@/components/ui/Pill";
+import { getPublicShareView } from "@/lib/data/public-share";
+
+export default async function PublicShareViewPage({ params }: { params: Promise<{ token: string }> }) {
+  const { token } = await params;
+  const result = await getPublicShareView(token);
+
+  return (
+    <div className="min-h-dvh bg-paper flex flex-col">
+      <header className="flex items-center gap-3 px-4 sm:px-6 py-3.5 border-b border-line bg-white">
+        <Image src="/greydigi-logo.png" alt="greydigi" width={22} height={22} className="rounded-[6px]" />
+        <span className="font-display font-extrabold text-[14px]">greydigi</span>
+        <span className="flex-1" />
+        {result.state === "valid" ? (
+          <>
+            <Pill tone="idle" className="hidden sm:inline-flex">
+              SHARED VIEW · NO LOGIN REQUIRED
+            </Pill>
+            <span className="font-mono text-[9.5px] text-muted">
+              {result.data.project.go_live_target ? `GO LIVE ${result.data.project.go_live_target}` : ""}
+            </span>
+          </>
+        ) : null}
+      </header>
+
+      <main className="flex-1 px-4 sm:px-6 py-7 sm:py-9 max-w-[820px] w-full mx-auto flex flex-col gap-5">
+        {result.state === "valid" ? <ValidView snapshot={result.data} publishedAt={result.published_at} /> : null}
+        {result.state === "revoked" ? (
+          <StateCard
+            title="Share link revoked"
+            body="This link has been revoked by its owner. If you still need access, ask your greydigi contact for a new one."
+          />
+        ) : null}
+        {result.state === "expired" ? (
+          <StateCard title="Share link expired" body="This link's expiry date has passed. Ask your greydigi contact for a new one." />
+        ) : null}
+        {result.state === "invalid" ? (
+          <StateCard title="Link not found" body="This link doesn't exist, or was never created. Check the URL and try again." />
+        ) : null}
+        {result.state === "error" ? (
+          <StateCard title="This view isn't ready yet" body="The project this link points to hasn't been published for client viewing." />
+        ) : null}
+      </main>
+
+      <footer className="text-center py-6">
+        <span className="font-mono text-[9.5px] text-muted">
+          Shared by greydigi · not affiliated with your account · this link can be revoked at any time by its owner
+        </span>
+      </footer>
+    </div>
+  );
+}
+
+function StateCard({ title, body }: { title: string; body: string }) {
+  return (
+    <Card className="p-8 flex flex-col items-center gap-2 text-center">
+      <span className="font-display font-extrabold text-[16px] text-ink">{title}</span>
+      <span className="text-[11.5px] text-muted max-w-[46ch]">{body}</span>
+    </Card>
+  );
+}
+
+function ValidView({
+  snapshot,
+  publishedAt,
+}: {
+  snapshot: import("@/lib/data/public-share").PublishedSnapshot;
+  publishedAt: string | null;
+}) {
+  const segments: PhaseSpineSegment[] | null = snapshot.phases
+    ? snapshot.phases.map((p) => ({
+        code: p.code,
+        state: p.completed_at ? "done" : snapshot.phase?.code === p.code ? "current" : "future",
+      }))
+    : null;
+
+  return (
+    <>
+      <div className="flex flex-col gap-1.5">
+        <span className="w-[34px] h-[3px] bg-coral rounded-[2px]" />
+        <h1 className="m-0 font-display font-extrabold text-[22px] text-ink">{snapshot.project.name}</h1>
+        {snapshot.project.description ? <p className="m-0 text-[12.5px] text-muted max-w-[64ch]">{snapshot.project.description}</p> : null}
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <StatTile label="STATUS" value={snapshot.health.replace("_", " ")} accent={snapshot.health !== "on_plan"} />
+        <StatTile label="PROGRESS" value={`${snapshot.progress_pct}%`} note={snapshot.gate ? `Held at ${snapshot.gate.code}` : undefined} />
+      </div>
+
+      {segments ? (
+        <HeroPanel>
+          <Eyebrow className="text-muted-2">WHERE THINGS STAND</Eyebrow>
+          <span className="font-display font-extrabold text-[19px] leading-[1.2]">
+            {snapshot.phase ? `${snapshot.phase.code} ${snapshot.phase.name}` : "Not started"}
+          </span>
+          <PhaseSpine segments={segments} dark />
+        </HeroPanel>
+      ) : null}
+
+      {snapshot.milestones && snapshot.milestones.length > 0 ? (
+        <Card>
+          <div className="px-4 py-3.5 border-b border-line font-display font-extrabold text-[13.5px]">Milestones</div>
+          <div className="px-4 py-3.5 flex flex-col gap-2.5">
+            {snapshot.milestones.map((m) => (
+              <div key={m.ref} className="flex justify-between text-[12.5px]">
+                <span className="font-semibold text-ink">{m.title}</span>
+                <span className="font-mono text-[9.5px] text-muted">{m.date ?? "—"}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      ) : null}
+
+      {snapshot.updates && snapshot.updates.length > 0 ? (
+        <Card>
+          <div className="px-4 py-3.5 border-b border-line font-display font-extrabold text-[13.5px]">Published updates</div>
+          <div className="px-4 py-3.5 flex flex-col gap-3.5">
+            {snapshot.updates.map((u, i) => (
+              <div key={i} className="flex flex-col gap-1">
+                <div className="flex justify-between">
+                  <span className="text-[12.5px] font-semibold text-ink">{u.title}</span>
+                  <span className="font-mono text-[9.5px] text-muted">{u.published_at?.slice(0, 10) ?? ""}</span>
+                </div>
+                <span className="text-[12px] text-muted leading-[1.6]">{u.body}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      ) : null}
+
+      {snapshot.documents && snapshot.documents.length > 0 ? (
+        <Card>
+          <div className="px-4 py-3.5 border-b border-line font-display font-extrabold text-[13.5px]">Published documents</div>
+          <div className="px-4 py-3.5 flex flex-col gap-2.5">
+            {snapshot.documents.map((d, i) => (
+              <div key={i} className="flex justify-between text-[12.5px]">
+                <span className="font-semibold text-ink">{d.name}</span>
+                <span className="font-mono text-[9.5px] text-muted">{d.version}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      ) : null}
+
+      <div className="text-center pt-1.5">
+        <span className="font-mono text-[9.5px] text-muted">
+          {publishedAt ? `Last updated ${new Date(publishedAt).toLocaleDateString()}` : ""}
+        </span>
+      </div>
+    </>
+  );
+}
