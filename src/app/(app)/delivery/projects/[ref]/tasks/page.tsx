@@ -10,10 +10,12 @@ import {
   getTaskCustomFields,
   getTaskCustomFieldValues,
   getWorkspaceInternalPeople,
+  getProjectChangeRequests,
 } from "@/lib/data/project";
 import { TaskPhaseGroup } from "./TaskPhaseGroup";
 import { InlineAddTaskRow } from "./InlineAddTaskRow";
 import { AddColumnButton } from "./AddColumnButton";
+import { CustomFieldColumnHeader } from "./CustomFieldColumnHeader";
 import { TaskDrawer } from "./TaskDrawer";
 
 const BASE_COLS = ["20px", "1fr", "116px", "96px", "116px"];
@@ -90,9 +92,7 @@ export default async function ProjectTasksPage({
               <span>DUE</span>
               <span>STATUS</span>
               {customFields.map((f) => (
-                <span key={f.id} className="truncate">
-                  {f.name.toUpperCase()}
-                </span>
+                <CustomFieldColumnHeader key={f.id} fieldId={f.id} name={f.name} projectId={project.id} projectRef={project.ref} />
               ))}
               <AddColumnButton projectId={project.id} projectRef={project.ref} />
             </TableHead>
@@ -108,6 +108,7 @@ export default async function ProjectTasksPage({
                 customFields={customFields}
                 customValues={customValues}
                 cols={cols}
+                people={people}
               />
             ))}
           </>
@@ -121,6 +122,9 @@ export default async function ProjectTasksPage({
           activity={drawerData.activity}
           people={people}
           projectRef={project.ref}
+          customFields={customFields}
+          customValues={customValues.get(drawerData.task.id) ?? new Map()}
+          approvedChangeRequests={drawerData.approvedChangeRequests}
         />
       ) : null}
     </div>
@@ -131,6 +135,11 @@ async function loadDrawerData(taskId: string, projectId: string) {
   const task = await getTaskById(taskId);
   if (!task || task.projectId !== projectId) return null;
 
-  const [comments, activity] = await Promise.all([getTaskComments(taskId), getTaskActivity(taskId)]);
-  return { task, comments, activity };
+  const [comments, activity, changeRequests] = await Promise.all([
+    getTaskComments(taskId),
+    getTaskActivity(taskId),
+    getProjectChangeRequests(projectId),
+  ]);
+  const approvedChangeRequests = changeRequests.filter((cr) => cr.status === "approved");
+  return { task, comments, activity, approvedChangeRequests };
 }

@@ -8,6 +8,7 @@ import { getSelectedClientId } from "@/lib/data/client-scope";
 import { getCreateProjectOptions } from "./create-project-data";
 import { CreateProjectButton } from "./CreateProjectButton";
 import { ExportProjectsButton } from "./ExportProjectsButton";
+import { ExportPdfButton } from "@/components/pdf/ExportPdfButton";
 
 const COLS = "74px 1fr 132px 92px 132px 104px";
 
@@ -22,7 +23,7 @@ export default async function ProjectsListPage() {
   const watchCount = projects.filter((p) => p.health === "watch").length;
 
   return (
-    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px]">
+    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px] mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-5">
         <PageHeading
           title="Projects"
@@ -30,6 +31,7 @@ export default async function ProjectsListPage() {
         />
         <div className="flex gap-1.5 flex-none">
           <ExportProjectsButton projects={projects} />
+          <ExportPdfButton href="/delivery/projects/pdf" fallbackFilename={`projects-${new Date().toISOString().slice(0, 10)}.pdf`} />
           <CreateProjectButton options={createOptions} />
         </div>
       </div>

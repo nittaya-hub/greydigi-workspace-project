@@ -67,6 +67,53 @@ export async function unpublishClientView(projectId: string, projectRef: string)
   revalidatePath(`/delivery/projects/${projectRef.toLowerCase()}/client-view-config`);
 }
 
+/** Upserts this project's logo/accent color/welcome headline override.
+ * Unlike the section toggles, this takes effect immediately (no publish
+ * step) -- it's purely cosmetic, never a data-visibility decision, so
+ * there's nothing to gate. */
+export async function updateProjectBranding(
+  projectId: string,
+  projectRef: string,
+  branding: {
+    logoDataUrl?: string | null;
+    logoFilename?: string | null;
+    accentColor?: string | null;
+    welcomeHeadline?: string | null;
+    clientDisplayName?: string | null;
+    showClientName?: boolean;
+  }
+) {
+  const supabase = await createClient();
+  const person = await getCurrentPerson();
+  if (!person) throw new Error("Not signed in.");
+
+  const { data: existing } = await supabase
+    .from("project_branding")
+    .select("logo_data_url, logo_filename, accent_color, welcome_headline, client_display_name, show_client_name")
+    .eq("project_id", projectId)
+    .maybeSingle();
+
+  const { error } = await supabase.from("project_branding").upsert(
+    {
+      project_id: projectId,
+      logo_data_url: branding.logoDataUrl !== undefined ? branding.logoDataUrl : existing?.logo_data_url ?? null,
+      logo_filename: branding.logoFilename !== undefined ? branding.logoFilename : existing?.logo_filename ?? null,
+      accent_color: branding.accentColor !== undefined ? branding.accentColor : existing?.accent_color ?? null,
+      welcome_headline: branding.welcomeHeadline !== undefined ? branding.welcomeHeadline : existing?.welcome_headline ?? null,
+      client_display_name:
+        branding.clientDisplayName !== undefined ? branding.clientDisplayName : existing?.client_display_name ?? null,
+      show_client_name: branding.showClientName !== undefined ? branding.showClientName : existing?.show_client_name ?? true,
+      updated_by: person.id,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "project_id" }
+  );
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/delivery/projects/${projectRef.toLowerCase()}/client-view-config`);
+  revalidatePath(`/portal/${projectRef.toLowerCase()}`);
+}
+
 /** Toggles one section of what the client-facing view can show. Changes
  * only take effect on the next Publish (see publishClientView above) — this
  * only edits the draft `fields`, never the published_snapshot. */

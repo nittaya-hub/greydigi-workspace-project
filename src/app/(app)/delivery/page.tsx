@@ -26,7 +26,7 @@ export default async function DeliveryOverviewPage() {
   const maxPhaseCount = Math.max(1, ...overview.phaseDistribution.map((p) => p.count));
 
   return (
-    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px]">
+    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px] mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-5">
         <PageHeading
           title="Delivery"
@@ -87,23 +87,35 @@ export default async function DeliveryOverviewPage() {
           <Card className="p-4 flex flex-col gap-2.5">
             <Eyebrow>PHASE DISTRIBUTION</Eyebrow>
             <div className="flex gap-1 items-end h-14">
-              {overview.phaseDistribution.map((p) => (
-                <span
-                  key={p.code}
-                  style={{ height: `${Math.max(12, (p.count / maxPhaseCount) * 56)}px` }}
-                  className={`flex-1 rounded-[3px] ${
-                    p.count === 0
-                      ? "bg-[#DCD8CE]"
-                      : p.count === maxPhaseCount
-                        ? "bg-coral"
-                        : "bg-ink"
-                  }`}
-                />
-              ))}
+              {/* Green means every project that ever sat in this phase has
+                  already moved past it (passedCount > 0, nobody's there
+                  now); orange means at least one project is in it today;
+                  everything else hasn't been reached by any project yet.
+                  The last phase (06) getting passed means a project has
+                  fully gone live, not just "moved on" — its tick label
+                  below swaps to "บินแล้ว" for that reason. */}
+              {overview.phaseDistribution.map((p) => {
+                const isCurrent = p.count > 0;
+                const isPassed = !isCurrent && p.passedCount > 0;
+                const height = isCurrent
+                  ? Math.max(12, (p.count / maxPhaseCount) * 56)
+                  : isPassed
+                    ? 12
+                    : 8;
+                return (
+                  <span
+                    key={p.code}
+                    style={{ height: `${height}px` }}
+                    className={`flex-1 rounded-[3px] ${
+                      isCurrent ? "bg-coral" : isPassed ? "bg-ok-fg" : "bg-[#DCD8CE]"
+                    }`}
+                  />
+                );
+              })}
             </div>
             <div className="flex justify-between font-mono text-[9px] text-muted">
               {overview.phaseDistribution.map((p) => (
-                <span key={p.code}>{p.code}</span>
+                <span key={p.code}>{p.code === "06" && p.count === 0 && p.passedCount > 0 ? "บินแล้ว" : p.code}</span>
               ))}
             </div>
             <span className="text-[11.5px] text-muted leading-[1.5]">
@@ -137,7 +149,7 @@ export default async function DeliveryOverviewPage() {
 
 function NotConnected() {
   return (
-    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px]">
+    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px] mx-auto">
       <PageHeading title="Delivery" description="Client engagements under the locked methodology." />
       <Card className="p-5">
         <p className="text-[12.5px] text-muted max-w-[60ch]">

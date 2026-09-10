@@ -12,6 +12,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/shadcn/tabs";
 import { Input } from "@/components/shadcn/input";
 import { Textarea } from "@/components/shadcn/textarea";
+import { DatePicker } from "@/components/ui/DatePicker";
 import { Label } from "@/components/shadcn/label";
 import {
   Select,
@@ -25,10 +26,11 @@ import { Badge } from "@/components/shadcn/badge";
 import { Separator } from "@/components/shadcn/separator";
 import { ScrollArea } from "@/components/shadcn/scroll-area";
 import { Button } from "@/components/shadcn/button";
-import type { TaskActivityRow, TaskCommentRow, TaskDetail, WorkspacePersonOption } from "@/lib/data/project";
+import type { TaskActivityRow, TaskCommentRow, TaskCustomFieldColumn, TaskDetail, WorkspacePersonOption } from "@/lib/data/project";
 import type { TaskStatus, TaskVisibility } from "@/lib/supabase/database.types";
 import { useAutosaveField, type SaveStatus } from "./useAutosaveField";
-import { addTaskComment, updateTaskAssignee, updateTaskField } from "./task-drawer-actions";
+import { addTaskComment, deleteTask, updateTaskAssignee, updateTaskField, updateTaskScope } from "./task-drawer-actions";
+import { CustomFieldDrawerField } from "./CustomFieldDrawerField";
 
 const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
   { value: "idle", label: "Idle" },
@@ -46,7 +48,7 @@ const VISIBILITY_OPTIONS: { value: TaskVisibility; label: string }[] = [
 
 const UNASSIGNED = "__unassigned__";
 
-function SaveIndicator({ status }: { status: SaveStatus }) {
+export function SaveIndicator({ status }: { status: SaveStatus }) {
   if (status === "idle") return null;
   const label = status === "pending" ? "Unsaved…" : status === "saving" ? "Saving…" : status === "saved" ? "Saved" : "Couldn't save";
   return (
@@ -76,12 +78,20 @@ export function TaskDrawer({
   activity,
   people,
   projectRef,
+  customFields = [],
+  customValues = new Map(),
+  approvedChangeRequests = [],
 }: {
   task: TaskDetail;
   comments: TaskCommentRow[];
   activity: TaskActivityRow[];
   people: WorkspacePersonOption[];
   projectRef: string;
+  /** This task's configurable columns (task_custom_fields), editable
+   * inline below — same fields CustomFieldCell edits in the table row. */
+  customFields?: TaskCustomFieldColumn[];
+  customValues?: Map<string, string>;
+  approvedChangeRequests?: { id: string; ref: string; title: string }[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -96,7 +106,18 @@ export function TaskDrawer({
       }}
     >
       <SheetContent side="right" className="w-full sm:max-w-[480px] gap-0 p-0">
-        <TaskDrawerBody key={task.id} task={task} comments={comments} activity={activity} people={people} projectRef={projectRef} />
+        <TaskDrawerBody
+          key={task.id}
+          task={task}
+          comments={comments}
+          activity={activity}
+          people={people}
+          projectRef={projectRef}
+          customFields={customFields}
+          customValues={customValues}
+          onDeleted={close}
+          approvedChangeRequests={approvedChangeRequests}
+        />
       </SheetContent>
     </Sheet>
   );
@@ -108,16 +129,50 @@ function TaskDrawerBody({
   activity,
   people,
   projectRef,
+  customFields,
+  customValues,
+  onDeleted,
+  approvedChangeRequests,
 }: {
   task: TaskDetail;
   comments: TaskCommentRow[];
   activity: TaskActivityRow[];
   people: WorkspacePersonOption[];
   projectRef: string;
+  customFields: TaskCustomFieldColumn[];
+  customValues: Map<string, string>;
+  onDeleted: () => void;
+  /** Approved change requests for this task's project only — the scope
+   * picker below can only ever link to one of these, so an unapproved
+   * or draft CR is never even offered as an option (the DB trigger
+   * would reject it anyway, but there's no reason to let someone pick
+   * it and then show them the rejection). */
+  approvedChangeRequests: { id: string; ref: string; title: string }[];
 }) {
   const [commentBody, setCommentBody] = useState("");
   const [commentError, setCommentError] = useState<string | null>(null);
   const [isPosting, startPosting] = useTransition();
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isDeleting, startDeleting] = useTransition();
+
+  const [isOutOfScope, setIsOutOfScope] = useState(task.isOutOfScope);
+  const [changeRequestId, setChangeRequestId] = useState(task.changeRequestId ?? "");
+  const [scopeError, setScopeError] = useState<string | null>(null);
+  const [isSavingScope, startSavingScope] = useTransition();
+
+  function saveScope(nextIsOutOfScope: boolean, nextChangeRequestId: string) {
+    setScopeError(null);
+    startSavingScope(async () => {
+      try {
+        await updateTaskScope(task.id, projectRef, nextIsOutOfScope, nextIsOutOfScope ? nextChangeRequestId || null : null);
+        setIsOutOfScope(nextIsOutOfScope);
+        setChangeRequestId(nextChangeRequestId);
+      } catch (err) {
+        setScopeError(err instanceof Error ? err.message : "Could not update scope.");
+      }
+    });
+  }
 
   const titleField = useAutosaveField(task.title, (value) =>
     updateTaskField(task.id, projectRef, { field: "title", value })
@@ -148,6 +203,18 @@ function TaskDrawerBody({
   // stored value (a person id, here).
   const assigneeItems = [{ value: UNASSIGNED, label: "Unassigned" }, ...people.map((p) => ({ value: p.id, label: p.fullName }))];
 
+  function handleDelete() {
+    setDeleteError(null);
+    startDeleting(async () => {
+      try {
+        await deleteTask(task.id, projectRef);
+        onDeleted();
+      } catch (err) {
+        setDeleteError(err instanceof Error ? err.message : "Could not delete.");
+      }
+    });
+  }
+
   function submitComment(e: FormEvent) {
     e.preventDefault();
     setCommentError(null);
@@ -177,9 +244,25 @@ function TaskDrawerBody({
             aria-label="Task title"
           />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-2">
           <SaveIndicator status={titleField.status} />
+          {confirmingDelete ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Delete this task?</span>
+              <Button type="button" size="sm" variant="destructive" disabled={isDeleting} onClick={handleDelete}>
+                {isDeleting ? "Deleting…" : "Confirm"}
+              </Button>
+              <Button type="button" size="sm" variant="ghost" disabled={isDeleting} onClick={() => setConfirmingDelete(false)}>
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <Button type="button" size="sm" variant="ghost" className="text-destructive" onClick={() => setConfirmingDelete(true)}>
+              Delete task
+            </Button>
+          )}
         </div>
+        {deleteError ? <p className="text-xs text-destructive">{deleteError}</p> : null}
         <SheetTitle className="sr-only">{task.title}</SheetTitle>
         <SheetDescription className="sr-only">Task details for {task.ref}</SheetDescription>
       </SheetHeader>
@@ -255,12 +338,7 @@ function TaskDrawerBody({
                 <Label htmlFor="task-due-date">Due date</Label>
                 <SaveIndicator status={dueDateField.status} />
               </div>
-              <Input
-                id="task-due-date"
-                type="date"
-                value={dueDateField.value}
-                onChange={(e) => dueDateField.saveNow(e.target.value)}
-              />
+              <DatePicker id="task-due-date" value={dueDateField.value} onChange={(value) => dueDateField.saveNow(value)} />
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -268,11 +346,10 @@ function TaskDrawerBody({
                 <Label htmlFor="task-milestone-date">Client-visible date</Label>
                 <SaveIndicator status={clientVisibleDateField.status} />
               </div>
-              <Input
+              <DatePicker
                 id="task-milestone-date"
-                type="date"
                 value={clientVisibleDateField.value}
-                onChange={(e) => clientVisibleDateField.saveNow(e.target.value)}
+                onChange={(value) => clientVisibleDateField.saveNow(value)}
               />
             </div>
 
@@ -312,12 +389,72 @@ function TaskDrawerBody({
                 {criticalPathField.value ? "On the critical path" : "Not on the critical path"}
               </label>
             </div>
+
+            <div className="flex flex-col gap-1.5 col-span-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="task-out-of-scope">Scope</Label>
+                {isSavingScope ? <span className="text-[10.5px] font-mono tracking-[.04em] text-muted-foreground">Saving…</span> : null}
+              </div>
+              <label className="flex h-8 items-center gap-2 text-sm">
+                <input
+                  id="task-out-of-scope"
+                  type="checkbox"
+                  className="size-3.5"
+                  checked={isOutOfScope}
+                  disabled={isSavingScope}
+                  onChange={(e) => saveScope(e.target.checked, changeRequestId)}
+                />
+                {isOutOfScope ? "Out of Phase-1 scope" : "In Phase-1 scope"}
+              </label>
+              {isOutOfScope ? (
+                <Select
+                  items={approvedChangeRequests.map((cr) => ({ value: cr.id, label: `${cr.ref} — ${cr.title}` }))}
+                  value={changeRequestId}
+                  disabled={isSavingScope}
+                  onValueChange={(value) => saveScope(true, value as string)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Link an approved change request…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {approvedChangeRequests.length === 0 ? (
+                      <div className="px-2 py-1.5 text-xs text-muted-foreground">No approved change requests on this project yet.</div>
+                    ) : (
+                      approvedChangeRequests.map((cr) => (
+                        <SelectItem key={cr.id} value={cr.id}>
+                          {cr.ref} — {cr.title}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              ) : null}
+              {scopeError ? <span className="text-xs text-destructive">{scopeError}</span> : null}
+            </div>
           </div>
 
           {task.clientVisibleDate ? (
             <Badge variant="secondary" className="w-fit">
               Milestone
             </Badge>
+          ) : null}
+
+          {customFields.length > 0 ? (
+            <>
+              <Separator />
+              <div className="grid grid-cols-2 gap-3">
+                {customFields.map((f) => (
+                  <CustomFieldDrawerField
+                    key={f.id}
+                    taskId={task.id}
+                    projectRef={projectRef}
+                    fieldId={f.id}
+                    fieldName={f.name}
+                    initialValue={customValues.get(f.id) ?? ""}
+                  />
+                ))}
+              </div>
+            </>
           ) : null}
 
           <Separator />

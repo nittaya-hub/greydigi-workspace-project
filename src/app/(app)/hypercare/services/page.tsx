@@ -20,7 +20,7 @@ export default async function ServicesListPage() {
   const services = workspaceId ? await listServices(workspaceId, clientId) : [];
 
   return (
-    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px]">
+    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px] mx-auto">
       <PageHeading
         title="Services"
         description="Created at G5 from the delivery project. Never created by hand for a live client system."

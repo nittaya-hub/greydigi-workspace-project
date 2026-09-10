@@ -63,7 +63,7 @@ export default async function FlightPlansPage() {
   }));
 
   return (
-    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px]">
+    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px] mx-auto">
       <PageHeading
         title="Flight plans"
         description="Every active project's phase spine, cloned from a template version at kickoff. Editing a template never moves work already in flight."

@@ -1,13 +1,9 @@
 import { notFound } from "next/navigation";
-import { Card, EmptyState } from "@/components/ui/Card";
-import { Pill } from "@/components/ui/Pill";
+import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { TableHead, TableRow, CellStack } from "@/components/ui/Table";
 import { getProjectByRef, getProjectShareLinks } from "@/lib/data/project";
 import { createShareLink } from "./actions";
-import { ShareLinkActions } from "./ShareLinkActions";
-
-const COLS = "1fr 84px 66px 78px 280px";
+import { ShareLinksTable } from "./ShareLinksTable";
 
 export default async function ShareLinksPage({ params }: { params: Promise<{ ref: string }> }) {
   const { ref } = await params;
@@ -34,35 +30,7 @@ export default async function ShareLinksPage({ params }: { params: Promise<{ ref
         </form>
       </div>
 
-      <Card>
-        {links.length === 0 ? (
-          <EmptyState
-            title="No links created."
-            description="Use a link for a stakeholder who should not have a portal account, like a board member or a site manager."
-          />
-        ) : (
-          <>
-            <TableHead cols={COLS}>
-              <span>LINK</span>
-              <span>EXPIRES</span>
-              <span>VIEWS</span>
-              <span>STATUS</span>
-              <span>ACTIONS</span>
-            </TableHead>
-            {links.map((l, i) => (
-              <TableRow cols={COLS} key={l.id} last={i === links.length - 1}>
-                <CellStack primary={`/s/${l.token}`} secondary={`CREATED BY ${l.createdByName.toUpperCase()}`} />
-                <span className="font-mono text-[9.5px] text-muted">{l.expiresAt?.slice(0, 10) ?? "—"}</span>
-                <span className="font-mono text-[9.5px] text-muted">{l.viewCount}</span>
-                <Pill tone={l.status === "active" ? "done" : "idle"} className="justify-self-start">
-                  {l.status.toUpperCase()}
-                </Pill>
-                <ShareLinkActions linkId={l.id} token={l.token} projectRef={project.ref} status={l.status} />
-              </TableRow>
-            ))}
-          </>
-        )}
-      </Card>
+      <ShareLinksTable links={links} projectRef={project.ref} />
 
       <Card className="p-4 flex flex-col gap-1.5">
         <span className="font-mono text-[9px] tracking-[.09em] text-muted">LINK RULES</span>

@@ -134,7 +134,11 @@ export async function listFeatures(workspaceId: string): Promise<FeatureRow[]> {
     .from("roadmap_items")
     .select("id, ref, title, kind, status, product_id, release_id, client_visible")
     .in("product_id", productIds)
-    .order("ref");
+    // Newest first -- this used to order by ref (alphabetical), which
+    // buries a feature just added under every earlier-refd one instead
+    // of surfacing it. created_at is the same "just typed in" signal
+    // every other list in the app sorts by.
+    .order("created_at", { ascending: false });
 
   const releaseIds = [...new Set((items ?? []).map((i) => i.release_id).filter((x): x is string => !!x))];
   const { data: releases } = releaseIds.length
@@ -342,9 +346,17 @@ export async function getEngineeringLoad(workspaceId: string): Promise<Engineeri
   if (!people || people.length === 0) return [];
   const personIds = people.map((p) => p.id);
 
-  const [{ data: deliveryTasks }, { data: engTasks }] = await Promise.all([
+  // Hypercare has no "assignee" column on incidents (only created_by,
+  // who logged it, not necessarily who's working it) and none at all on
+  // support_requests -- escalated_to_person_id on escalations is the one
+  // real per-person assignment in this space. This mirrors delivery/
+  // product's "count of open items tied to this person" shape as closely
+  // as the schema allows, rather than fabricating an assignee field.
+  const [{ data: deliveryTasks }, { data: engTasks }, { data: openIncidents }, { data: openEscalations }] = await Promise.all([
     supabase.from("project_tasks").select("assignee_person_id").in("assignee_person_id", personIds).neq("status", "done"),
     supabase.from("engineering_tasks").select("person_id, status").in("person_id", personIds).neq("status", "done"),
+    supabase.from("incidents").select("created_by").in("created_by", personIds).neq("status", "resolved"),
+    supabase.from("escalations").select("escalated_to_person_id").in("escalated_to_person_id", personIds).eq("status", "open"),
   ]);
 
   const deliveryCount = new Map<string, number>();
@@ -354,12 +366,22 @@ export async function getEngineeringLoad(workspaceId: string): Promise<Engineeri
   }
   const productCount = new Map<string, number>();
   for (const t of engTasks ?? []) productCount.set(t.person_id, (productCount.get(t.person_id) ?? 0) + 1);
+  const hypercareCount = new Map<string, number>();
+  for (const i of openIncidents ?? []) {
+    if (!i.created_by) continue;
+    hypercareCount.set(i.created_by, (hypercareCount.get(i.created_by) ?? 0) + 1);
+  }
+  for (const e of openEscalations ?? []) {
+    if (!e.escalated_to_person_id) continue;
+    hypercareCount.set(e.escalated_to_person_id, (hypercareCount.get(e.escalated_to_person_id) ?? 0) + 1);
+  }
 
   return people
     .map((p) => {
       const del = deliveryCount.get(p.id) ?? 0;
       const prod = productCount.get(p.id) ?? 0;
-      return { personId: p.id, personName: p.full_name, deliveryDays: del, productDays: prod, hypercareDays: 0, totalDays: del + prod };
+      const hyp = hypercareCount.get(p.id) ?? 0;
+      return { personId: p.id, personName: p.full_name, deliveryDays: del, productDays: prod, hypercareDays: hyp, totalDays: del + prod + hyp };
     })
     .filter((r) => r.totalDays > 0)
     .sort((a, b) => b.totalDays - a.totalDays);

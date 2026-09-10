@@ -1,11 +1,16 @@
 import { PageHeading, Card, CardHeader } from "@/components/ui/Card";
 import { Pill } from "@/components/ui/Pill";
 import { Button } from "@/components/ui/Button";
+import { AdminOnlyNotice } from "@/components/ui/AdminOnlyNotice";
 import { getCurrentWorkspaceId } from "@/lib/data/workspace";
+import { getCurrentPerson } from "@/lib/data/auth-guard";
 import { createClient } from "@/lib/supabase/server";
 import { saveGeneralSettings } from "./actions";
 
 export default async function SettingsPage() {
+  const viewer = await getCurrentPerson();
+  if (viewer?.workspace_role !== "workspace_admin") return <AdminOnlyNotice title="Settings" />;
+
   const workspaceId = await getCurrentWorkspaceId();
   let workspaceName = "";
   let businessHours = "";

@@ -2,9 +2,17 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
-import { createBaselineV1 } from "./actions";
+import { createNextBaseline } from "./actions";
 
-export function CreateBaselineButton({ projectId, projectRef }: { projectId: string; projectRef: string }) {
+export function CreateBaselineButton({
+  projectId,
+  projectRef,
+  label = "Create baseline v1",
+}: {
+  projectId: string;
+  projectRef: string;
+  label?: string;
+}) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -17,14 +25,14 @@ export function CreateBaselineButton({ projectId, projectRef }: { projectId: str
           setError(null);
           startTransition(async () => {
             try {
-              await createBaselineV1(projectId, projectRef);
+              await createNextBaseline(projectId, projectRef);
             } catch (err) {
               setError(err instanceof Error ? err.message : "Could not create baseline.");
             }
           });
         }}
       >
-        {isPending ? "Creating..." : "Create baseline v1"}
+        {isPending ? "Creating..." : label}
       </Button>
       {error ? <p className="text-[11px] text-block-fg leading-[1.4]">{error}</p> : null}
     </div>

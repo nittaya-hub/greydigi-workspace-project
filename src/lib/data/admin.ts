@@ -6,6 +6,7 @@ export interface NotificationRow {
   title: string;
   body: string | null;
   relatedUrl: string | null;
+  actorLabel: string | null;
   isRead: boolean;
   createdAt: string;
 }
@@ -20,22 +21,32 @@ async function currentPersonId() {
   return person?.id ?? null;
 }
 
-export async function listNotifications(): Promise<NotificationRow[]> {
+/** Newest 20, unarchived only — archiving (separate from is_read, see
+ * ArchiveNotificationButton.tsx) is how the list stays from growing
+ * without bound rather than a hard delete. */
+/** `limit` defaults to a generous cap for the full /notifications page,
+ * which paginates 20 at a time client-side (NotificationsBoard.tsx) —
+ * this just bounds how much it ever has to page through. The header
+ * bell's own preview (getRecentNotificationsForBell, notifications/
+ * actions.ts) calls this with a small limit instead. */
+export async function listNotifications(limit = 200): Promise<NotificationRow[]> {
   const supabase = await createClient();
   const personId = await currentPersonId();
   if (!personId) return [];
   const { data } = await supabase
     .from("notifications")
-    .select("id, kind, title, body, related_url, is_read, created_at")
+    .select("id, kind, title, body, related_url, actor_label, is_read, created_at")
     .eq("person_id", personId)
+    .eq("is_archived", false)
     .order("created_at", { ascending: false })
-    .limit(50);
+    .limit(limit);
   return (data ?? []).map((n) => ({
     id: n.id,
     kind: n.kind,
     title: n.title,
     body: n.body,
     relatedUrl: n.related_url,
+    actorLabel: n.actor_label,
     isRead: n.is_read,
     createdAt: n.created_at,
   }));
@@ -44,10 +55,12 @@ export async function listNotifications(): Promise<NotificationRow[]> {
 export interface MemberRow {
   id: string;
   fullName: string;
+  email: string | null;
   kind: string;
   workspaceRole: string;
   clientName: string | null;
   hasPortalAccess: boolean;
+  isActive: boolean;
   spaceRoles: Record<string, string>;
 }
 
@@ -55,7 +68,7 @@ export async function listMembers(workspaceId: string): Promise<MemberRow[]> {
   const supabase = await createClient();
   const { data: people } = await supabase
     .from("people")
-    .select("id, full_name, kind, workspace_role, auth_user_id")
+    .select("id, full_name, email, kind, workspace_role, auth_user_id, is_active")
     .eq("workspace_id", workspaceId)
     .order("full_name");
   if (!people || people.length === 0) return [];
@@ -85,10 +98,12 @@ export async function listMembers(workspaceId: string): Promise<MemberRow[]> {
     return {
       id: p.id,
       fullName: p.full_name,
+      email: p.email,
       kind: p.kind,
       workspaceRole: p.workspace_role,
       clientName: clientRole ? (clientNameById.get(clientRole.client_id) ?? null) : null,
       hasPortalAccess: !!p.auth_user_id,
+      isActive: p.is_active,
       spaceRoles: spaceRolesByPerson.get(p.id) ?? {},
     };
   });
@@ -103,6 +118,11 @@ export interface AuditRow {
   createdAt: string;
 }
 
+/** Fetches up to 500 rows, newest first — the audit page paginates this
+ * client-side at 20/page (AuditLogTable.tsx) rather than a DB-level
+ * LIMIT/OFFSET per page, since a workspace-admin-only, append-only log is
+ * small enough for this scale and it keeps the filter dropdown instant
+ * (no round trip per filter change). */
 export async function listAuditLog(workspaceId: string): Promise<AuditRow[]> {
   const supabase = await createClient();
   const { data } = await supabase
@@ -110,7 +130,7 @@ export async function listAuditLog(workspaceId: string): Promise<AuditRow[]> {
     .select("id, action, entity_type, summary, actor_person_id, created_at")
     .eq("workspace_id", workspaceId)
     .order("created_at", { ascending: false })
-    .limit(50);
+    .limit(500);
   if (!data || data.length === 0) return [];
 
   const actorIds = [...new Set(data.map((a) => a.actor_person_id).filter((x): x is string => !!x))];

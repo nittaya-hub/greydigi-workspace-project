@@ -45,7 +45,11 @@ export function ShellChrome({ shell, children }: { shell: ShellData; children: R
       </div>
 
       <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
-        <Header unreadNotifications={shell.counts.unreadNotifications} onMenuClick={() => setDrawerOpen(true)} />
+        <Header
+          unreadNotifications={shell.counts.unreadNotifications}
+          selectedClientName={shell.selectedClient?.name ?? null}
+          onMenuClick={() => setDrawerOpen(true)}
+        />
         <main className="flex-1 min-h-0 overflow-y-auto">{children}</main>
       </div>
     </div>

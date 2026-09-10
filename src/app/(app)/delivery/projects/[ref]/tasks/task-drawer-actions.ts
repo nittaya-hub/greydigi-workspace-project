@@ -8,6 +8,15 @@ import type { TaskStatus, TaskVisibility } from "@/lib/supabase/database.types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
+/** Every task mutation is visible from two routes — the per-project tasks
+ * tab and the workspace-wide /delivery/tasks view — so both need
+ * revalidating together or one of them serves stale data after an edit
+ * made from the other. */
+function revalidateTaskViews(projectRef: string) {
+  revalidatePath(`/delivery/projects/${projectRef.toLowerCase()}/tasks`);
+  revalidatePath("/delivery/tasks");
+}
+
 /** Every inline-editable field on the task drawer, keyed by its
  * `project_tasks` column name. `updateTaskField` is the one generic
  * writer used by every field except assignee (which has its own
@@ -95,7 +104,44 @@ export async function updateTaskField(taskId: string, projectRef: string, update
     });
   }
 
-  revalidatePath(`/delivery/projects/${projectRef.toLowerCase()}/tasks`);
+  revalidateTaskViews(projectRef);
+}
+
+/** Deletes a task outright — e.g. a stray manual test entry ("test",
+ * "edit") left behind while trying out the Tasks tab, which today has no
+ * way to be removed once created. Any project member may (project_tasks_
+ * internal is `for all`, 0023_emergency_rollback_rls_rewrite.sql) — this
+ * is a single row, not the cascading blast radius deleteProject has, so
+ * it doesn't need that same workspace-admin gate or type-to-confirm. */
+export async function deleteTask(taskId: string, projectRef: string) {
+  const supabase = await createClient();
+
+  const { data: task, error: fetchError } = await supabase
+    .from("project_tasks")
+    .select("title")
+    .eq("id", taskId)
+    .maybeSingle();
+  if (fetchError) throw new Error(fetchError.message);
+  if (!task) throw new Error("Task not found.");
+
+  const { error } = await supabase.from("project_tasks").delete().eq("id", taskId);
+  if (error) throw new Error(error.message);
+
+  const actor = await getCurrentPerson();
+  if (actor) {
+    await supabase.rpc("fn_log_activity", {
+      p_workspace_id: actor.workspace_id,
+      p_actor_person_id: actor.id,
+      p_space: "delivery",
+      p_action: "delete",
+      p_entity_type: "project_tasks",
+      p_entity_id: taskId,
+      p_summary: `Deleted task "${task.title}"`,
+      p_metadata: {},
+    });
+  }
+
+  revalidateTaskViews(projectRef);
 }
 
 /** Reassigns a task, logs it, and notifies the newly-assigned person
@@ -145,7 +191,50 @@ export async function updateTaskAssignee(taskId: string, projectRef: string, ass
     }
   }
 
-  revalidatePath(`/delivery/projects/${projectRef.toLowerCase()}/tasks`);
+  revalidateTaskViews(projectRef);
+}
+
+/** Flags a task in or out of Phase-1 scope and, when flagging it out of
+ * scope, links the change request it rides on. The actual enforcement
+ * is a DB trigger (fn_enforce_task_scope_boundary, migration 0058) that
+ * refuses this write outright unless change_request_id points at an
+ * *approved* change request for this same project -- this action just
+ * surfaces that rejection as a normal thrown Error, the same way every
+ * other `if (error) throw` here does, so the drawer can show it inline. */
+export async function updateTaskScope(taskId: string, projectRef: string, isOutOfScope: boolean, changeRequestId: string | null) {
+  const supabase = await createClient();
+
+  const { data: task, error: fetchError } = await supabase
+    .from("project_tasks")
+    .select("title")
+    .eq("id", taskId)
+    .maybeSingle();
+  if (fetchError) throw new Error(fetchError.message);
+  if (!task) throw new Error("Task not found.");
+
+  const { error } = await supabase
+    .from("project_tasks")
+    .update({ is_out_of_scope: isOutOfScope, change_request_id: changeRequestId })
+    .eq("id", taskId);
+  if (error) throw new Error(error.message);
+
+  const actor = await getCurrentPerson();
+  if (actor) {
+    await supabase.rpc("fn_log_activity", {
+      p_workspace_id: actor.workspace_id,
+      p_actor_person_id: actor.id,
+      p_space: "delivery",
+      p_action: "update",
+      p_entity_type: "project_tasks",
+      p_entity_id: taskId,
+      p_summary: isOutOfScope
+        ? `Flagged "${task.title}" out of scope, linked to a change request`
+        : `Marked "${task.title}" back in scope`,
+      p_metadata: { is_out_of_scope: isOutOfScope, change_request_id: changeRequestId },
+    });
+  }
+
+  revalidateTaskViews(projectRef);
 }
 
 /** Posts a comment, logs it to the activity feed, and notifies every
@@ -190,7 +279,7 @@ export async function addTaskComment(taskId: string, projectRef: string, body: s
     { excludePersonId: actor.id }
   );
 
-  revalidatePath(`/delivery/projects/${projectRef.toLowerCase()}/tasks`);
+  revalidateTaskViews(projectRef);
 }
 
 /** Asana-style inline task creation: one title field, Enter to create,
@@ -249,7 +338,7 @@ export async function createTaskInline(
     p_metadata: {},
   });
 
-  revalidatePath(`/delivery/projects/${projectRef.toLowerCase()}/tasks`);
+  revalidateTaskViews(projectRef);
   return created.id;
 }
 
@@ -274,8 +363,22 @@ export async function addTaskCustomField(projectId: string, projectRef: string, 
     .single();
   if (error || !created) throw new Error(error?.message ?? "Could not add column.");
 
-  revalidatePath(`/delivery/projects/${projectRef.toLowerCase()}/tasks`);
+  revalidateTaskViews(projectRef);
   return created.id;
+}
+
+/** Removes a configurable column from this project's tasks table,
+ * along with every task's value in it (task_custom_field_values.field_id
+ * is `on delete cascade`, 0017_task_custom_fields.sql) — there's no
+ * "empty the column instead" option, since a column with no values left
+ * is just a column, not a meaningfully different state. */
+export async function deleteTaskCustomField(fieldId: string, projectId: string, projectRef: string) {
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("task_custom_fields").delete().eq("id", fieldId).eq("project_id", projectId);
+  if (error) throw new Error(error.message);
+
+  revalidateTaskViews(projectRef);
 }
 
 /** Sets one cell's value for a custom column, upserting since the first
@@ -289,7 +392,7 @@ export async function setTaskCustomFieldValue(taskId: string, projectRef: string
     .upsert({ task_id: taskId, field_id: fieldId, value: trimmed || null, updated_at: new Date().toISOString() }, { onConflict: "task_id,field_id" });
   if (error) throw new Error(error.message);
 
-  revalidatePath(`/delivery/projects/${projectRef.toLowerCase()}/tasks`);
+  revalidateTaskViews(projectRef);
 }
 
 /** Persists the full drop order for one phase group. Every existing row
@@ -313,5 +416,5 @@ export async function reorderProjectTasks(projectId: string, projectRef: string,
   const failed = results.find((r) => r.error);
   if (failed?.error) throw new Error(failed.error.message);
 
-  revalidatePath(`/delivery/projects/${projectRef.toLowerCase()}/tasks`);
+  revalidateTaskViews(projectRef);
 }

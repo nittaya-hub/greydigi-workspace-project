@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { Plus } from "lucide-react";
+import { withTimeout } from "@/lib/withTimeout";
 import { createTaskInline } from "./task-drawer-actions";
 
 /** Asana-style "+ Add task" row at the bottom of a phase group — click
@@ -22,7 +23,7 @@ export function InlineAddTaskRow({
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
 
   function submit() {
@@ -32,12 +33,16 @@ export function InlineAddTaskRow({
       return;
     }
     setError(null);
+    // Clears immediately (optimistic) so typing the next task never
+    // waits on the round trip — restores the text if the write fails or
+    // hangs past 10s (withTimeout).
+    setValue("");
+    inputRef.current?.focus();
     startTransition(async () => {
       try {
-        await createTaskInline(projectId, projectRef, phaseId, trimmed);
-        setValue("");
-        inputRef.current?.focus();
+        await withTimeout(createTaskInline(projectId, projectRef, phaseId, trimmed));
       } catch (err) {
+        setValue(trimmed);
         setError(err instanceof Error ? err.message : "Could not add task.");
       }
     });
@@ -63,7 +68,6 @@ export function InlineAddTaskRow({
         ref={inputRef}
         autoFocus
         value={value}
-        disabled={isPending}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter") {

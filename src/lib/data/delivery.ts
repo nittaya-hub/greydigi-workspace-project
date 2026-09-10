@@ -30,7 +30,7 @@ export interface DeliveryOverview {
     ownerName: string;
     status: string;
   }[];
-  phaseDistribution: { code: string; count: number }[];
+  phaseDistribution: { code: string; count: number; passedCount: number }[];
   clientActionQueue: { kind: string; label: string; ageDays: number }[];
 }
 
@@ -65,7 +65,13 @@ export async function listProjects(workspaceId: string, clientId?: string | null
 
   const [{ data: clients }, { data: phases }, { data: gates }, { data: tasks }, healthMap] = await Promise.all([
     supabase.from("clients").select("id, name").in("id", clientIds),
-    supabase.from("project_phases").select("project_id, code, name, index, completed_at").in("project_id", projectIds),
+    // .order("index") matters here: currentPhaseByProject below keeps
+    // the FIRST not-yet-completed phase it sees per project, so without
+    // an explicit order a project sitting incomplete across two phases
+    // at once (e.g. after a reverted gate re-opened an earlier one, see
+    // 0050/0052) could show whichever of them the database happened to
+    // return first as "current" instead of the earliest one.
+    supabase.from("project_phases").select("project_id, code, name, index, completed_at").in("project_id", projectIds).order("index"),
     supabase
       .from("project_gates")
       .select("id, project_id, code, status, target_date, sequence")
@@ -139,7 +145,7 @@ export async function getDeliveryOverview(workspaceId: string, clientId?: string
   const projects = await listProjects(workspaceId, clientId);
   const projectIds = projects.map((p) => p.id);
 
-  const [{ data: allGates }, { data: changeRequests }, { data: signatures }, { data: milestoneTasks }] =
+  const [{ data: allGates }, { data: changeRequests }, { data: signatures }, { data: milestoneTasks }, { data: allPhases }] =
     await Promise.all([
       projectIds.length
         ? supabase.from("project_gates").select("id, project_id, code, status, target_date, sequence").in("project_id", projectIds)
@@ -157,6 +163,15 @@ export async function getDeliveryOverview(workspaceId: string, clientId?: string
             .in("project_id", projectIds)
             .not("client_visible_date", "is", null)
         : Promise.resolve({ data: [] as { id: string; client_visible_date: string | null }[] }),
+      // Distinct from currentPhaseByProject inside listProjects (which only
+      // keeps each project's first still-open phase): phaseDistribution
+      // below needs to know, per code, how many phases have ALREADY been
+      // completed across the portfolio — not just who's there right now —
+      // so a phase nobody is currently sitting in can still show as
+      // "passed" (green) instead of "not started yet" (beige).
+      projectIds.length
+        ? supabase.from("project_phases").select("code, completed_at").in("project_id", projectIds)
+        : Promise.resolve({ data: [] as { code: string; completed_at: string | null }[] }),
     ]);
 
   const heldGates = (allGates ?? []).filter((g) => g.status === "held");
@@ -177,25 +192,32 @@ export async function getDeliveryOverview(workspaceId: string, clientId?: string
 
   const projectById = new Map(projects.map((p) => [p.id, p]));
 
-  const gatePipeline = heldGates
-    .slice()
-    .sort((a, b) => (a.target_date ?? "").localeCompare(b.target_date ?? ""))
-    .map((g) => {
-      const project = projectById.get(g.project_id);
-      const open = openByGate.get(g.id);
-      return {
-        code: g.code,
-        projectRef: project?.ref ?? "",
-        projectName: project?.name ?? "",
-        detail: open ? `${open.count} condition${open.count === 1 ? "" : "s"} open` : "Held",
-        ownerName: project?.clientName ?? "",
-        status: project?.health === "blocked" ? "BLOCKED" : project?.health === "watch" ? "WATCH" : "ON PLAN",
-      };
-    });
+  // Sorted once and reused for both the pipeline list and `nextGate`
+  // below -- those used to sort independently (gatePipeline sorted,
+  // nextGate's targetDate read off the unsorted `heldGates[0]`), so with
+  // two or more held gates across different projects, the code/ref
+  // shown as "next" and the date shown next to it could silently belong
+  // to two different gates. Only ever looked right with a single held
+  // gate in the data, which is all this project has had so far.
+  const sortedHeldGates = heldGates.slice().sort((a, b) => (a.target_date ?? "").localeCompare(b.target_date ?? ""));
+
+  const gatePipeline = sortedHeldGates.map((g) => {
+    const project = projectById.get(g.project_id);
+    const open = openByGate.get(g.id);
+    return {
+      code: g.code,
+      projectRef: project?.ref ?? "",
+      projectName: project?.name ?? "",
+      detail: open ? `${open.count} condition${open.count === 1 ? "" : "s"} open` : "Held",
+      ownerName: project?.clientName ?? "",
+      status: project?.health === "blocked" ? "BLOCKED" : project?.health === "watch" ? "WATCH" : "ON PLAN",
+    };
+  });
 
   const phaseDistribution = ["00", "01", "02", "03", "04", "05", "06"].map((code) => ({
     code,
     count: projects.filter((p) => p.phaseCode === code).length,
+    passedCount: (allPhases ?? []).filter((ph) => ph.code === code && ph.completed_at !== null).length,
   }));
 
   const now = Date.now();
@@ -211,10 +233,15 @@ export async function getDeliveryOverview(workspaceId: string, clientId?: string
     blockedCount: projects.filter((p) => p.health === "blocked").length,
     watchCount: projects.filter((p) => p.health === "watch").length,
     nextGate: gatePipeline.length
-      ? { code: gatePipeline[0].code, ref: gatePipeline[0].projectRef, targetDate: heldGates[0]?.target_date ?? null }
+      ? { code: gatePipeline[0].code, ref: gatePipeline[0].projectRef, targetDate: sortedHeldGates[0]?.target_date ?? null }
       : null,
     openChangeRequests: (changeRequests ?? []).filter((c) => c.status !== "approved" && c.status !== "rejected").length,
-    awaitingSignatureCount: (signatures ?? []).filter((s) => s.status === "pending").length,
+    // client_action_status is pending|in_progress|completed|overdue
+    // (0001_extensions_enums.sql) -- an overdue signature is still
+    // unsigned, so it belongs in this count as much as a pending one
+    // does; excluding it undercounted exactly the signatures most worth
+    // surfacing.
+    awaitingSignatureCount: (signatures ?? []).filter((s) => s.status === "pending" || s.status === "overdue").length,
     milestonesNext14,
     gatePipeline,
     phaseDistribution,

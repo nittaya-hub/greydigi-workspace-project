@@ -15,7 +15,7 @@ export default async function EngineeringPage() {
   const maxTotal = Math.max(1, ...rows.map((r) => r.totalDays));
 
   return (
-    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px]">
+    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px] mx-auto">
       <PageHeading
         title="Engineering"
         description="One person can carry delivery tasks, product features and hypercare incidents at once. This is the only screen that shows all three together."

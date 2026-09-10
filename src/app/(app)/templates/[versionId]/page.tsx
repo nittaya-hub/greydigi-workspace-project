@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Pill } from "@/components/ui/Pill";
 import { Tabs, Tab } from "@/components/ui/Tabs";
+import { AdminOnlyNotice } from "@/components/ui/AdminOnlyNotice";
+import { getCurrentPerson } from "@/lib/data/auth-guard";
 import { getTemplateVersion } from "@/lib/data/templates";
 import { DuplicateButton } from "./DuplicateButton";
 import { listGateConditionsWithIds } from "./data";
@@ -15,6 +17,9 @@ export default async function TemplateDetailPage({
   params: Promise<{ versionId: string }>;
   searchParams: Promise<{ tab?: string }>;
 }) {
+  const viewer = await getCurrentPerson();
+  if (viewer?.workspace_role !== "workspace_admin") return <AdminOnlyNotice title="Template" />;
+
   const { versionId } = await params;
   const { tab } = await searchParams;
   const template = await getTemplateVersion(versionId);
@@ -35,7 +40,7 @@ export default async function TemplateDetailPage({
   }
 
   return (
-    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-5 max-w-[900px]">
+    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-5 max-w-[900px] mx-auto">
       <div className="flex items-end justify-between gap-4">
         <div className="flex flex-col gap-1.5">
           <span className="w-[34px] h-[3px] bg-coral rounded-[2px]" />

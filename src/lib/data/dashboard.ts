@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
+import type { DashboardBlockRow } from "@/lib/dashboard/service";
+import type { DashboardData } from "@/lib/dashboard/types";
 
 export interface CrossSpaceDashboard {
   deliveryInFlight: number;
@@ -61,4 +63,76 @@ export async function getCrossSpaceDashboard(workspaceId: string): Promise<Cross
     hypercareToChangeRequest: (links ?? []).filter((l) => l.relationship === "hypercare_to_delivery_change_request").length,
     hypercareToProductFeature: (links ?? []).filter((l) => l.relationship === "hypercare_to_product_feature").length,
   };
+}
+
+/**
+ * Client-facing block dashboards (Delivery/Hypercare/Product) --
+ * unrelated to the CrossSpaceDashboard above, which is the internal
+ * workspace overview page's own data. Kept in this same file since both
+ * are "dashboard" reads through fn_* RPCs; renamed nothing on either
+ * side to avoid touching the existing CrossSpaceDashboard callers.
+ */
+export interface DashboardRpcResult {
+  state: "ok" | "not_found";
+  published?: boolean;
+  blocks?: {
+    id: string;
+    block_type: DashboardBlockRow["blockType"];
+    config: Record<string, unknown>;
+    grid_x: number;
+    grid_y: number;
+    grid_w: number;
+    grid_h: number;
+  }[];
+  flight_plan?: DashboardData["flightPlan"];
+  documents?: DashboardData["documents"];
+  roadmap?: DashboardData["roadmap"];
+  metrics?: Record<string, number | null>;
+  charts?: Record<string, { label: string; value: number }[]>;
+}
+
+function toBlocks(raw: DashboardRpcResult["blocks"]): DashboardBlockRow[] {
+  return (raw ?? []).map((b) => ({
+    id: b.id,
+    blockType: b.block_type,
+    config: b.config ?? {},
+    gridX: b.grid_x,
+    gridY: b.grid_y,
+    gridW: b.grid_w,
+    gridH: b.grid_h,
+  }));
+}
+
+function toData(raw: DashboardRpcResult): DashboardData {
+  return {
+    flightPlan: raw.flight_plan as DashboardData["flightPlan"],
+    documents: raw.documents,
+    roadmap: raw.roadmap,
+    metrics: raw.metrics,
+    charts: raw.charts,
+  };
+}
+
+export async function getDeliveryDashboard(projectId: string): Promise<{ blocks: DashboardBlockRow[]; data: DashboardData; published: boolean }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("fn_client_dashboard_delivery", { p_project_id: projectId });
+  if (error || !data) return { blocks: [], data: {}, published: false };
+  const result = data as unknown as DashboardRpcResult;
+  return { blocks: toBlocks(result.blocks), data: toData(result), published: result.published ?? false };
+}
+
+export async function getHypercareDashboard(clientId: string): Promise<{ blocks: DashboardBlockRow[]; data: DashboardData; published: boolean }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("fn_client_dashboard_hypercare", { p_client_id: clientId });
+  if (error || !data) return { blocks: [], data: {}, published: false };
+  const result = data as unknown as DashboardRpcResult;
+  return { blocks: toBlocks(result.blocks), data: toData(result), published: result.published ?? false };
+}
+
+export async function getProductDashboardData(): Promise<{ blocks: DashboardBlockRow[]; data: DashboardData; published: boolean }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("fn_client_dashboard_product");
+  if (error || !data) return { blocks: [], data: {}, published: false };
+  const result = data as unknown as DashboardRpcResult;
+  return { blocks: toBlocks(result.blocks), data: toData(result), published: result.published ?? false };
 }

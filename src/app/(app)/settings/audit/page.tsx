@@ -1,38 +1,36 @@
-import { PageHeading, Card } from "@/components/ui/Card";
+import { PageHeading } from "@/components/ui/Card";
+import { AdminOnlyNotice } from "@/components/ui/AdminOnlyNotice";
 import { getCurrentWorkspaceId } from "@/lib/data/workspace";
+import { getCurrentPerson } from "@/lib/data/auth-guard";
 import { listAuditLog } from "@/lib/data/admin";
 import { ExportAuditCsvButton } from "./ExportAuditCsvButton";
+import { ExportPdfButton } from "@/components/pdf/ExportPdfButton";
+import { AuditLogTable } from "./AuditLogTable";
 
 export default async function AuditLogPage() {
+  const viewer = await getCurrentPerson();
+  if (viewer?.workspace_role !== "workspace_admin") return <AdminOnlyNotice title="Audit log" />;
+
   const workspaceId = await getCurrentWorkspaceId();
   const rows = workspaceId ? await listAuditLog(workspaceId) : [];
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-5">
-        <PageHeading title="Audit log" description="Append only. Actor, time, record and reason on every row." />
-        <ExportAuditCsvButton rows={rows} />
+        <PageHeading title="Audit log" description="Append only. Actor, time, record and reason on every row. Newest first." />
+        <div className="flex gap-1.5 flex-none">
+          <ExportAuditCsvButton rows={rows} />
+          <ExportPdfButton href="/settings/audit/pdf" fallbackFilename={`audit-log-${new Date().toISOString().slice(0, 10)}.pdf`} />
+        </div>
       </div>
 
-      <Card>
-        {rows.length === 0 ? (
-          <div className="py-10 px-4 text-center text-[12.5px] text-muted">No activity recorded yet.</div>
-        ) : (
-          rows.map((r, i) => (
-            <div key={r.id} className={`grid grid-cols-[110px_1fr] gap-2.5 px-4 py-[11px] text-[12px] ${i < rows.length - 1 ? "border-b border-line-soft" : ""}`}>
-              <span className="font-mono text-[9.5px] text-muted">
-                {new Date(r.createdAt).toLocaleDateString()} {new Date(r.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-              </span>
-              <span className="flex flex-col gap-0.5">
-                <span className="text-[12.5px] font-semibold text-ink">{r.summary}</span>
-                <span className="font-mono text-[9.5px] text-muted">
-                  {r.actorName.toUpperCase()} · {r.entityType.toUpperCase()}
-                </span>
-              </span>
-            </div>
-          ))
-        )}
-      </Card>
+      {rows.length === 0 ? (
+        <div className="bg-white border border-line rounded-[12px] py-10 px-4 text-center text-[12.5px] text-muted">
+          No activity recorded yet.
+        </div>
+      ) : (
+        <AuditLogTable rows={rows} />
+      )}
     </div>
   );
 }

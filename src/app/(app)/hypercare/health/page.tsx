@@ -8,7 +8,7 @@ export default async function HealthPage() {
   const patterns = workspaceId ? await listRepeatPatterns(workspaceId) : [];
 
   return (
-    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px]">
+    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px] mx-auto">
       <PageHeading
         title="Health"
         description="Derived from open severity, SLA position and repeat rate. A service is never marked healthy by hand."

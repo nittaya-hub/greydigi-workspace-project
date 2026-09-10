@@ -70,10 +70,22 @@ export function ProjectMiniNav() {
   if (!ref || !project || project.ref.toLowerCase() !== ref.toLowerCase()) return null;
 
   const base = `/delivery/projects/${project.ref.toLowerCase()}`;
+  // Mirrors ProjectLayout's own `tabs` array exactly (delivery/projects/
+  // [ref]/layout.tsx) — this used to list only 3 of the project's 10
+  // pages, so clicking any of the other 7 tabs left the sidebar showing
+  // no matching entry at all, which read as "the sidebar didn't follow
+  // me here."
   const items: { label: string; href: string; note?: string }[] = [
     { label: "Overview", href: base },
     { label: "Tasks and milestones", href: `${base}/tasks`, note: String(project.taskCount) },
+    { label: "Flight plan check", href: `${base}/flight-plan-check` },
+    { label: "Documents", href: `${base}/documents` },
+    { label: "Baselines", href: `${base}/baselines` },
+    { label: "Change requests", href: `${base}/change-requests` },
+    { label: "Client updates", href: `${base}/client-updates` },
     { label: "Client view config", href: `${base}/client-view-config` },
+    { label: "Share links", href: `${base}/share-links` },
+    { label: "Members", href: `${base}/members` },
   ];
   if (project.linkedServiceRef) {
     items.push({
@@ -93,7 +105,12 @@ export function ProjectMiniNav() {
         {project.clientName ? <span className="font-mono text-[9px] tracking-[.04em] text-muted-2 normal-case">{project.clientName}</span> : null}
       </div>
       {items.map((item) => {
-        const active = pathname === item.href;
+        // Exact match for "Overview" (item.href === base, and every other
+        // item's href also starts with base — startsWith alone would
+        // make Overview stay lit on every tab). Every other tab's own
+        // href is unique enough that startsWith safely also covers its
+        // nested detail routes (e.g. tasks/[taskRef]).
+        const active = item.href === base ? pathname === base : pathname === item.href || pathname.startsWith(`${item.href}/`);
         return (
           <Link
             key={item.href}

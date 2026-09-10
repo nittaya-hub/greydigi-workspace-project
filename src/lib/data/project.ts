@@ -14,6 +14,7 @@ export interface ProjectContext {
   health: HealthStatus;
   progressPct: number;
   phases: {
+    id: string;
     code: string;
     name: string;
     index: number;
@@ -51,7 +52,7 @@ export async function getProjectByRef(ref: string): Promise<ProjectContext | nul
         : Promise.resolve({ data: null as { full_name: string } | null }),
       supabase
         .from("project_phases")
-        .select("code, name, index, started_at, completed_at, duration_label, show_duration_label")
+        .select("id, code, name, index, started_at, completed_at, duration_label, show_duration_label")
         .eq("project_id", project.id)
         .order("index"),
       supabase
@@ -79,6 +80,7 @@ export async function getProjectByRef(ref: string): Promise<ProjectContext | nul
     health: (health as HealthStatus) ?? "on_plan",
     progressPct: (progress as number) ?? 0,
     phases: (phases ?? []).map((p) => ({
+      id: p.id,
       code: p.code,
       name: p.name,
       index: p.index,
@@ -99,6 +101,16 @@ export async function getProjectByRef(ref: string): Promise<ProjectContext | nul
     })),
     heldGate: heldGate ? { id: heldGate.id, code: heldGate.code, name: heldGate.name, heldSince: heldGate.held_since } : null,
   };
+}
+
+/** Reverse of getProjectByRef's id lookup — needed by cross-project views
+ * (e.g. the workspace-wide Tasks page) that only have a task's project id
+ * on hand and need the ref to route drawer actions back to the right
+ * revalidatePath. */
+export async function getProjectRefById(projectId: string): Promise<string | null> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("projects").select("ref").eq("id", projectId).maybeSingle();
+  return data?.ref ?? null;
 }
 
 export interface GateConditionRow {
@@ -134,11 +146,13 @@ export interface TaskRow {
   clientVisibleDate: string | null;
   dueDate: string | null;
   assigneeName: string;
+  assigneePersonId: string | null;
   phaseCode: string | null;
   phaseName: string | null;
   projectPhaseId: string | null;
   sortOrder: number;
   visibility: TaskVisibility;
+  isOutOfScope: boolean;
 }
 
 /** Tasks for the list view, ordered so each phase group renders by its
@@ -151,7 +165,7 @@ export async function getProjectTasks(projectId: string): Promise<TaskRow[]> {
   const { data: tasks } = await supabase
     .from("project_tasks")
     .select(
-      "id, ref, title, status, is_critical_path, client_visible_date, due_date, assignee_person_id, project_phase_id, sort_order, visibility, created_at"
+      "id, ref, title, status, is_critical_path, client_visible_date, due_date, assignee_person_id, project_phase_id, sort_order, visibility, created_at, is_out_of_scope"
     )
     .eq("project_id", projectId)
     .order("sort_order", { ascending: true })
@@ -180,11 +194,13 @@ export async function getProjectTasks(projectId: string): Promise<TaskRow[]> {
       clientVisibleDate: t.client_visible_date,
       dueDate: t.due_date,
       assigneeName: t.assignee_person_id ? (personById.get(t.assignee_person_id) ?? "—") : "—",
+      assigneePersonId: t.assignee_person_id,
       phaseCode: phase?.code ?? null,
       phaseName: phase?.name ?? null,
       projectPhaseId: t.project_phase_id,
       sortOrder: t.sort_order,
       visibility: t.visibility,
+      isOutOfScope: t.is_out_of_scope,
     };
   });
 }
@@ -247,6 +263,9 @@ export interface TaskDetail {
   phaseCode: string | null;
   phaseName: string | null;
   sortOrder: number;
+  isOutOfScope: boolean;
+  changeRequestId: string | null;
+  changeRequestRef: string | null;
 }
 
 /** Full detail for the task drawer, fetched by id (the drawer is opened
@@ -256,19 +275,22 @@ export async function getTaskById(taskId: string): Promise<TaskDetail | null> {
   const { data: task } = await supabase
     .from("project_tasks")
     .select(
-      "id, project_id, ref, title, description, status, is_critical_path, client_visible_date, due_date, assignee_person_id, visibility, sort_order, project_phase_id"
+      "id, project_id, ref, title, description, status, is_critical_path, client_visible_date, due_date, assignee_person_id, visibility, sort_order, project_phase_id, is_out_of_scope, change_request_id"
     )
     .eq("id", taskId)
     .maybeSingle();
   if (!task) return null;
 
-  const [{ data: assignee }, { data: phase }] = await Promise.all([
+  const [{ data: assignee }, { data: phase }, { data: changeRequest }] = await Promise.all([
     task.assignee_person_id
       ? supabase.from("people").select("full_name").eq("id", task.assignee_person_id).maybeSingle()
       : Promise.resolve({ data: null as { full_name: string } | null }),
     task.project_phase_id
       ? supabase.from("project_phases").select("code, name").eq("id", task.project_phase_id).maybeSingle()
       : Promise.resolve({ data: null as { code: string; name: string } | null }),
+    task.change_request_id
+      ? supabase.from("change_requests").select("ref").eq("id", task.change_request_id).maybeSingle()
+      : Promise.resolve({ data: null as { ref: string } | null }),
   ]);
 
   return {
@@ -287,6 +309,9 @@ export async function getTaskById(taskId: string): Promise<TaskDetail | null> {
     phaseCode: phase?.code ?? null,
     phaseName: phase?.name ?? null,
     sortOrder: task.sort_order,
+    isOutOfScope: task.is_out_of_scope,
+    changeRequestId: task.change_request_id,
+    changeRequestRef: changeRequest?.ref ?? null,
   };
 }
 
@@ -419,13 +444,15 @@ export interface DocumentRow {
   visibility: string;
   requiresSignature: boolean;
   signedAt: string | null;
+  storagePath: string | null;
+  createdAt: string;
 }
 
 export async function getProjectDocuments(projectId: string): Promise<DocumentRow[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("documents")
-    .select("id, name, kind, version, visibility, requires_signature, signed_at")
+    .select("id, name, kind, version, visibility, requires_signature, signed_at, created_at, file_assets(storage_path)")
     .eq("project_id", projectId)
     .order("created_at", { ascending: false });
   return (data ?? []).map((d) => ({
@@ -436,6 +463,8 @@ export async function getProjectDocuments(projectId: string): Promise<DocumentRo
     visibility: d.visibility,
     requiresSignature: d.requires_signature,
     signedAt: d.signed_at,
+    storagePath: (Array.isArray(d.file_assets) ? d.file_assets[0] : d.file_assets)?.storage_path ?? null,
+    createdAt: d.created_at,
   }));
 }
 
@@ -502,6 +531,147 @@ export async function getProjectChangeRequests(projectId: string): Promise<Chang
   }));
 }
 
+// Every row below carries reviewedAt/reviewedByName so the Checkpoint tab
+// can show "NEEDS REVIEW" vs "REVIEWED · by X on Y" — the client-facing
+// RPCs (fn_client_portal_project, fn_publish_client_view) only select rows
+// where reviewed_at is not null, so a freshly typed-in number sits here,
+// visible to the team, until someone reviews it. lastUpdatedAt is the most
+// recent created_at across a section's rows, for the "last updated" note
+// on each card (there's no live upstream system to refresh these from —
+// see 0054_checkpoint_sections.sql — so "last updated" means "last time
+// someone on the team typed a fresh number in").
+
+export interface ProgressStatRow {
+  id: string;
+  label: string;
+  value: string;
+  note: string | null;
+  reviewedAt: string | null;
+  reviewedByName: string | null;
+}
+
+async function withReviewerNames<T extends { reviewed_by: string | null }>(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  rows: T[]
+) {
+  const reviewerIds = [...new Set(rows.map((r) => r.reviewed_by).filter((x): x is string => !!x))];
+  const { data: people } = reviewerIds.length
+    ? await supabase.from("people").select("id, full_name").in("id", reviewerIds)
+    : { data: [] as { id: string; full_name: string }[] };
+  return new Map((people ?? []).map((p) => [p.id, p.full_name]));
+}
+
+export async function getProjectProgressStats(projectId: string): Promise<ProgressStatRow[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("project_progress_stats")
+    .select("id, label, value, note, reviewed_at, reviewed_by")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: false });
+  const rows = data ?? [];
+  const nameById = await withReviewerNames(supabase, rows);
+  return rows.map((r) => ({
+    id: r.id,
+    label: r.label,
+    value: r.value,
+    note: r.note,
+    reviewedAt: r.reviewed_at,
+    reviewedByName: r.reviewed_by ? (nameById.get(r.reviewed_by) ?? "—") : null,
+  }));
+}
+
+export interface DecisionRow {
+  id: string;
+  title: string;
+  detail: string | null;
+  owner: string | null;
+  dueLabel: string | null;
+  status: "open" | "closed";
+  reviewedAt: string | null;
+  reviewedByName: string | null;
+}
+
+export async function getProjectDecisions(projectId: string): Promise<DecisionRow[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("project_decisions")
+    .select("id, title, detail, owner, due_label, status, reviewed_at, reviewed_by")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: false });
+  const rows = data ?? [];
+  const nameById = await withReviewerNames(supabase, rows);
+  return rows.map((d) => ({
+    id: d.id,
+    title: d.title,
+    detail: d.detail,
+    owner: d.owner,
+    dueLabel: d.due_label,
+    status: d.status,
+    reviewedAt: d.reviewed_at,
+    reviewedByName: d.reviewed_by ? (nameById.get(d.reviewed_by) ?? "—") : null,
+  }));
+}
+
+export interface WeeklyCommitmentRow {
+  id: string;
+  periodLabel: string;
+  ownerLabel: string;
+  items: string[];
+  accent: boolean;
+  reviewedAt: string | null;
+  reviewedByName: string | null;
+}
+
+export async function getProjectWeeklyCommitments(projectId: string): Promise<WeeklyCommitmentRow[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("project_weekly_commitments")
+    .select("id, period_label, owner_label, items, accent, reviewed_at, reviewed_by")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: false });
+  const rows = data ?? [];
+  const nameById = await withReviewerNames(supabase, rows);
+  return rows.map((c) => ({
+    id: c.id,
+    periodLabel: c.period_label,
+    ownerLabel: c.owner_label,
+    items: Array.isArray(c.items) ? (c.items as string[]) : [],
+    accent: c.accent,
+    reviewedAt: c.reviewed_at,
+    reviewedByName: c.reviewed_by ? (nameById.get(c.reviewed_by) ?? "—") : null,
+  }));
+}
+
+export interface BaselineMeasureRow {
+  id: string;
+  measureName: string;
+  todayValue: string;
+  afterValue: string;
+  baselinedWhen: string | null;
+  reviewedAt: string | null;
+  reviewedByName: string | null;
+}
+
+export async function getProjectBaselineMeasures(projectId: string): Promise<BaselineMeasureRow[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("project_baseline_measures")
+    .select("id, measure_name, today_value, after_value, baselined_when, reviewed_at, reviewed_by")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: false });
+  const rows = data ?? [];
+  const nameById = await withReviewerNames(supabase, rows);
+  return rows.map((m) => ({
+    id: m.id,
+    measureName: m.measure_name,
+    todayValue: m.today_value,
+    afterValue: m.after_value,
+    baselinedWhen: m.baselined_when,
+    reviewedAt: m.reviewed_at,
+    reviewedByName: m.reviewed_by ? (nameById.get(m.reviewed_by) ?? "—") : null,
+  }));
+}
+
 export interface ClientUpdateRow {
   id: string;
   title: string;
@@ -548,6 +718,56 @@ export async function getClientViewConfig(projectId: string): Promise<ClientView
     .maybeSingle();
   if (!data) return null;
   return { id: data.id, fields: (data.fields as Record<string, boolean>) ?? {}, publishedAt: data.published_at };
+}
+
+export interface ProjectBranding {
+  logoDataUrl: string | null;
+  logoFilename: string | null;
+  accentColor: string | null;
+  welcomeHeadline: string | null;
+  /** Overrides the client name shown next to the client logo in the
+   * portal header — null means the caller should fall back to the
+   * client's real name (this function has no client_name to fall back
+   * to itself, only the override row). */
+  clientDisplayName: string | null;
+  /** Whether the portal header shows that name at all, or just the
+   * logo. Defaults true (matches the column's own DB default) so an
+   * existing project with no branding row keeps showing the name it
+   * always has. */
+  showClientName: boolean;
+}
+
+const EMPTY_PROJECT_BRANDING: ProjectBranding = {
+  logoDataUrl: null,
+  logoFilename: null,
+  accentColor: null,
+  welcomeHeadline: null,
+  clientDisplayName: null,
+  showClientName: true,
+};
+
+/** A project's own logo/accent color/welcome headline/display-name
+ * override, shown instead of greydigi's defaults on its client portal.
+ * Unset (the common case) means the portal renders exactly as it always
+ * has -- nothing here ever changes the app's own default look, only an
+ * explicit per-project override applied inline on the portal page's own
+ * root element (see ClientPortalView.tsx). */
+export async function getProjectBranding(projectId: string): Promise<ProjectBranding> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("project_branding")
+    .select("logo_data_url, logo_filename, accent_color, welcome_headline, client_display_name, show_client_name")
+    .eq("project_id", projectId)
+    .maybeSingle();
+  if (!data) return EMPTY_PROJECT_BRANDING;
+  return {
+    logoDataUrl: data.logo_data_url,
+    logoFilename: data.logo_filename,
+    accentColor: data.accent_color,
+    welcomeHeadline: data.welcome_headline,
+    clientDisplayName: data.client_display_name,
+    showClientName: data.show_client_name,
+  };
 }
 
 export interface ShareLinkRow {

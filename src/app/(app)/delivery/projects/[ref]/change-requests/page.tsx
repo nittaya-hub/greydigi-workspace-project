@@ -1,19 +1,7 @@
 import { notFound } from "next/navigation";
-import { Card, EmptyState } from "@/components/ui/Card";
-import { Pill } from "@/components/ui/Pill";
-import { TableHead, TableRow, CellStack } from "@/components/ui/Table";
 import { getProjectByRef, getProjectChangeRequests } from "@/lib/data/project";
 import { RaiseChangeRequestButton } from "./RaiseChangeRequestButton";
-
-const COLS = "66px 1fr 76px 108px";
-
-const STATUS_TONE: Record<string, "in_progress" | "waiting_on_client" | "done" | "idle"> = {
-  draft: "idle",
-  raised: "in_progress",
-  awaiting_signature: "waiting_on_client",
-  approved: "done",
-  rejected: "idle",
-};
+import { ChangeRequestsTable } from "./ChangeRequestsTable";
 
 export default async function ProjectChangeRequestsPage({ params }: { params: Promise<{ ref: string }> }) {
   const { ref } = await params;
@@ -31,38 +19,7 @@ export default async function ProjectChangeRequestsPage({ params }: { params: Pr
         <RaiseChangeRequestButton projectId={project.id} projectRef={project.ref} />
       </div>
 
-      <Card>
-        {crs.length === 0 ? (
-          <EmptyState
-            title="No change requests raised."
-            description="Scope is exactly as agreed in the current baseline. Anything outside that needs a CR before work starts."
-          />
-        ) : (
-          <>
-            <TableHead cols={COLS}>
-              <span>REF</span>
-              <span>REQUEST AND ORIGIN</span>
-              <span>IMPACT</span>
-              <span>STATUS</span>
-            </TableHead>
-            {crs.map((c, i) => (
-              <TableRow cols={COLS} key={c.id} last={i === crs.length - 1}>
-                <span className="font-mono text-[9.5px] text-muted">{c.ref}</span>
-                <CellStack
-                  primary={c.title}
-                  secondary={c.raisedFromRef ? `FROM ${c.raisedFromRef}` : c.description ?? undefined}
-                />
-                <span className="font-mono text-[9.5px] text-muted">
-                  {c.impactDatesDays != null ? `${c.impactDatesDays > 0 ? "+" : ""}${c.impactDatesDays}d` : "—"}
-                </span>
-                <Pill tone={STATUS_TONE[c.status] ?? "idle"} className="justify-self-start">
-                  {c.status.replace(/_/g, " ").toUpperCase()}
-                </Pill>
-              </TableRow>
-            ))}
-          </>
-        )}
-      </Card>
+      <ChangeRequestsTable crs={crs} projectId={project.id} projectRef={project.ref} />
     </div>
   );
 }

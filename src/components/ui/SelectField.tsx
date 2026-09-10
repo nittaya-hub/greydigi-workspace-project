@@ -37,7 +37,21 @@ export function SelectField({
   className?: string;
 }) {
   return (
-    <SelectPrimitive name={name} defaultValue={defaultValue} required={required} disabled={disabled}>
+    <SelectPrimitive
+      name={name}
+      defaultValue={defaultValue}
+      required={required}
+      disabled={disabled}
+      // Base UI's <Select.Value> only renders a resolved label when the
+      // root is given this items map — without it, the closed trigger
+      // falls back to the raw stored value (a uuid, here) instead of the
+      // option's label, even though the open dropdown itself shows the
+      // right names. Every SelectField across the app shares this one
+      // fix instead of each caller working around it individually (see
+      // TaskDrawer.tsx, which hand-rolled this same fix before this
+      // component covered it).
+      items={options.map((o) => ({ value: o.value, label: o.label }))}
+    >
       <SelectTrigger className={className}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>

@@ -1,4 +1,5 @@
 import { type ReactNode } from "react";
+import Link from "next/link";
 import clsx from "clsx";
 
 /** `.card` — white surface, thin line border, 12px radius. The workhorse
@@ -48,27 +49,29 @@ export function Eyebrow({ children, className }: { children: ReactNode; classNam
   );
 }
 
-/** `.tile` — a single stat card: eyebrow, big number, small note. */
+/** `.tile` — a single stat card: eyebrow, big number, small note. Pass
+ * `href` to make the whole tile a link to wherever that number's detail
+ * lives (e.g. "BLOCKED GATES" → /delivery/gates) — plain browser/Next
+ * navigation, so the back button returns here exactly as it left it.
+ * Omit `href` for a purely informational tile (e.g. inside a preview
+ * panel that isn't itself a real page to link to). */
 export function StatTile({
   label,
   value,
   note,
   accent = false,
   className,
+  href,
 }: {
   label: ReactNode;
   value: ReactNode;
   note?: ReactNode;
   accent?: boolean;
   className?: string;
+  href?: string;
 }) {
-  return (
-    <div
-      className={clsx(
-        "min-w-0 bg-white border border-line rounded-[12px] px-[15px] pt-[14px] pb-[13px] flex flex-col gap-[5px]",
-        className
-      )}
-    >
+  const content = (
+    <>
       <Eyebrow>{label}</Eyebrow>
       <span
         className={clsx(
@@ -79,15 +82,28 @@ export function StatTile({
         {value}
       </span>
       {note ? <span className="text-[11px] text-muted">{note}</span> : null}
-    </div>
+    </>
   );
+  const tileClass = clsx(
+    "min-w-0 bg-white border border-line rounded-[12px] px-[15px] pt-[14px] pb-[13px] flex flex-col gap-[5px]",
+    href && "transition-colors hover:border-coral/40 hover:bg-coral-tint/30",
+    className
+  );
+  if (href) {
+    return (
+      <Link href={href} className={tileClass}>
+        {content}
+      </Link>
+    );
+  }
+  return <div className={tileClass}>{content}</div>;
 }
 
 /** `.hero` — the dark "where we are" panel: answers the single most
  * important fact on a page before anything else. */
 export function HeroPanel({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={clsx("bg-ink text-[#EDEEF1] rounded-[12px] p-5 flex flex-col gap-3", className)}>
+    <div className={clsx("min-w-0 bg-ink text-[#EDEEF1] rounded-[12px] p-5 flex flex-col gap-3", className)}>
       {children}
     </div>
   );

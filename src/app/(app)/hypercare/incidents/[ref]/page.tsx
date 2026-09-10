@@ -15,7 +15,7 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
   const breachMinutes = incident.breachAt ? minutesUntil(incident.breachAt) : null;
 
   return (
-    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-5 max-w-[820px]">
+    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-5 max-w-[820px] mx-auto">
       <div className="flex flex-col gap-1.5">
         <span className="w-[34px] h-[3px] bg-coral rounded-[2px]" />
         <span className="font-mono text-[9.5px] text-muted">

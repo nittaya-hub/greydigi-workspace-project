@@ -21,7 +21,7 @@ export default async function EscalationsPage() {
   }
 
   return (
-    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px]">
+    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px] mx-auto">
       <PageHeading
         title="Escalations"
         description="Escalation levels come from the SLA policy on the service and fire automatically at 75% and 100% of target."

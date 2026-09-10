@@ -1,13 +1,10 @@
 import { notFound } from "next/navigation";
 import { Card, StatTile, EmptyState } from "@/components/ui/Card";
-import { Pill } from "@/components/ui/Pill";
-import { TableHead, TableRow, CellStack } from "@/components/ui/Table";
 import { getProjectByRef, getProjectBaselines } from "@/lib/data/project";
 import { createClient } from "@/lib/supabase/server";
 import { CreateBaselineButton } from "./CreateBaselineButton";
 import { CompareBaselinesButton, type CompareBaselineRow } from "./CompareBaselinesButton";
-
-const COLS = "52px 1fr 96px";
+import { BaselinesTable } from "./BaselinesTable";
 
 export default async function ProjectBaselinesPage({ params }: { params: Promise<{ ref: string }> }) {
   const { ref } = await params;
@@ -22,7 +19,7 @@ export default async function ProjectBaselinesPage({ params }: { params: Promise
     const supabase = await createClient();
     const { data } = await supabase
       .from("baselines")
-      .select("id, version, status, scope_snapshot, approved_at, created_at")
+      .select("id, version, status, scope_snapshot, dates_snapshot, approved_at, created_at")
       .eq("project_id", project.id)
       .order("version", { ascending: false });
     compareRows = (data ?? []).map((b) => ({
@@ -32,6 +29,7 @@ export default async function ProjectBaselinesPage({ params }: { params: Promise
       createdAt: b.created_at,
       approvedAt: b.approved_at,
       scopeSnapshot: b.scope_snapshot,
+      datesSnapshot: b.dates_snapshot,
     }));
   }
 
@@ -42,7 +40,12 @@ export default async function ProjectBaselinesPage({ params }: { params: Promise
           A baseline freezes scope, dates and effort at approval. Variance is measured against the current approved
           version.
         </p>
-        {baselines.length >= 2 ? <CompareBaselinesButton baselines={compareRows} /> : null}
+        <div className="flex items-center gap-2 flex-none">
+          {baselines.length >= 2 ? <CompareBaselinesButton baselines={compareRows} /> : null}
+          {baselines.length > 0 ? (
+            <CreateBaselineButton projectId={project.id} projectRef={project.ref} label={`Create baseline v${baselines.length + 1}`} />
+          ) : null}
+        </div>
       </div>
 
       {baselines.length === 0 ? (
@@ -64,22 +67,7 @@ export default async function ProjectBaselinesPage({ params }: { params: Promise
               accent={!!current?.varianceDays}
             />
           </div>
-          <Card>
-            <TableHead cols={COLS}>
-              <span>VER</span>
-              <span>APPROVED AND SOURCE</span>
-              <span>STATUS</span>
-            </TableHead>
-            {baselines.map((b, i) => (
-              <TableRow cols={COLS} key={b.id} last={i === baselines.length - 1}>
-                <span className="font-mono text-[9.5px] text-muted">{b.version}</span>
-                <CellStack primary={b.approvedByName} secondary={b.approvedAt ?? "Not yet approved"} />
-                <Pill tone={b.status === "approved" ? "done" : b.status === "superseded" ? "idle" : "in_progress"} className="justify-self-start">
-                  {b.status.toUpperCase()}
-                </Pill>
-              </TableRow>
-            ))}
-          </Card>
+          <BaselinesTable baselines={baselines} projectId={project.id} projectRef={project.ref} />
         </>
       )}
     </div>

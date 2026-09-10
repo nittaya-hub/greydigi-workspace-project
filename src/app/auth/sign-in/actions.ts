@@ -1,8 +1,10 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { SELECTED_CLIENT_COOKIE } from "@/lib/data/client-scope";
 
 export interface SendLinkResult {
   ok: boolean;
@@ -53,6 +55,15 @@ export async function signInWithPassword(
   const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
 
   if (error) return { ok: false, message: "Incorrect email or password." };
+
+  // Same reasoning as clearing this on sign-out: the client-scope cookie
+  // lives for a year, so a browser that last had a client selected would
+  // otherwise land back inside that client's scoped view instead of the
+  // master "greydigi Dashboard" every fresh sign-in — including one that
+  // never went through the sign-out button (a session that simply expired
+  // and got re-authenticated here). The CEO's own ask was explicit: the
+  // first page after login must always be the all-clients dashboard.
+  (await cookies()).delete(SELECTED_CLIENT_COOKIE);
 
   redirect(redirectPath || "/");
 }

@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { Modal, Field, fieldInputClass } from "@/components/ui/Modal";
+import { DatePicker } from "@/components/ui/DatePicker";
 import { addClient } from "./actions";
 
 export function AddClientButton() {
@@ -37,7 +38,7 @@ export function AddClientButton() {
             <input name="name" required autoFocus className={fieldInputClass} placeholder="Acme Co" />
           </Field>
           <Field label="CLIENT SINCE">
-            <input name="clientSince" type="date" className={fieldInputClass} />
+            <DatePicker name="clientSince" />
           </Field>
 
           {error ? <p className="text-[11.5px] text-block-fg leading-[1.5]">{error}</p> : null}

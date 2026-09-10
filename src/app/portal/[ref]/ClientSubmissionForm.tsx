@@ -7,6 +7,7 @@ import { SelectField } from "@/components/ui/SelectField";
 import { createClient as createBrowserClient } from "@/lib/supabase/client";
 import { createClientSubmission, addSubmissionAttachment } from "./client-submission-actions";
 import type { ClientSubmissionKind } from "@/lib/supabase/database.types";
+import type { SubmissionTaxonomyField } from "@/lib/data/submission-taxonomies";
 
 const KIND_META: Record<ClientSubmissionKind, { label: string; cta: string; titlePlaceholder: string }> = {
   issue: { label: "Report an issue", cta: "Report issue", titlePlaceholder: "Order sync is failing" },
@@ -14,7 +15,18 @@ const KIND_META: Record<ClientSubmissionKind, { label: string; cta: string; titl
   question: { label: "Ask a question", cta: "Send question", titlePlaceholder: "How do I read the prep sheet export?" },
 };
 
-export function ClientSubmissionForm({ projectRef, kind }: { projectRef: string; kind: ClientSubmissionKind }) {
+export function ClientSubmissionForm({
+  projectRef,
+  kind,
+  options,
+}: {
+  projectRef: string;
+  kind: ClientSubmissionKind;
+  /** Category/severity/priority options, workspace-configured under
+   * Settings → Submission types (src/lib/data/submission-taxonomies.ts).
+   * Only the fields this `kind` actually renders are read. */
+  options: Record<SubmissionTaxonomyField, { value: string; label: string }[]>;
+}) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -96,28 +108,10 @@ export function ClientSubmissionForm({ projectRef, kind }: { projectRef: string;
             {kind === "issue" ? (
               <>
                 <Field label="CATEGORY">
-                  <SelectField
-                    name="category"
-                    placeholder="Select a category"
-                    options={[
-                      { value: "data_sync", label: "Data sync" },
-                      { value: "access", label: "Access / login" },
-                      { value: "performance", label: "Performance" },
-                      { value: "incorrect_output", label: "Incorrect output" },
-                      { value: "other", label: "Other" },
-                    ]}
-                  />
+                  <SelectField name="category" placeholder="Select a category" options={options.category} />
                 </Field>
                 <Field label="SEVERITY">
-                  <SelectField
-                    name="severity"
-                    placeholder="How disruptive is this?"
-                    options={[
-                      { value: "sev1", label: "Sev1, blocking work now" },
-                      { value: "sev2", label: "Sev2, degraded but usable" },
-                      { value: "sev3", label: "Sev3, minor / cosmetic" },
-                    ]}
-                  />
+                  <SelectField name="severity" placeholder="How disruptive is this?" options={options.severity} />
                 </Field>
               </>
             ) : null}
@@ -128,15 +122,7 @@ export function ClientSubmissionForm({ projectRef, kind }: { projectRef: string;
                   <textarea name="businessImpact" rows={2} className={fieldInputClass} placeholder="Who does this affect, and how?" />
                 </Field>
                 <Field label="PRIORITY">
-                  <SelectField
-                    name="priority"
-                    placeholder="Select priority"
-                    options={[
-                      { value: "low", label: "Low, whenever convenient" },
-                      { value: "medium", label: "Medium, this quarter" },
-                      { value: "high", label: "High, blocking a milestone" },
-                    ]}
-                  />
+                  <SelectField name="priority" placeholder="Select priority" options={options.priority} />
                 </Field>
               </>
             ) : null}

@@ -6,6 +6,7 @@ export interface ShellPerson {
   fullName: string;
   initials: string;
   roleLabel: string;
+  isWorkspaceAdmin: boolean;
 }
 
 export interface ShellClientOption {
@@ -126,15 +127,23 @@ export async function getShellData(): Promise<ShellData> {
     const { data: scopedServices } = await servicesQuery;
     const serviceIds = (scopedServices ?? []).map((s) => s.id);
 
+    let openSubmissionsQuery = supabase
+      .from("client_submissions")
+      .select("id", { count: "exact", head: true })
+      .eq("workspace_id", person.workspace_id)
+      .in("status", ["open", "in_progress"]);
+    if (selectedClient) openSubmissionsQuery = openSubmissionsQuery.eq("client_id", selectedClient.id);
+
     const [
       { count: deliveryCount },
       { count: productCount },
-      { count: hypercareCount },
+      { count: incidentCount },
       { count: hypercareUrgentCount },
       { count: clientsCount },
       { count: peopleCount },
       { count: templatesCount },
       { count: unreadCount },
+      { count: openSubmissionCount },
     ] = await Promise.all([
       projectsQuery,
       supabase
@@ -172,8 +181,16 @@ export async function getShellData(): Promise<ShellData> {
         .from("notifications")
         .select("id", { count: "exact", head: true })
         .eq("person_id", person.id)
-        .eq("is_read", false),
+        .eq("is_read", false)
+        .eq("is_archived", false),
+      openSubmissionsQuery,
     ]);
+    // The sidebar's "Hypercare" badge used to be incident count only —
+    // 3 untriaged client submissions (Report an issue / Change request
+    // / Ask a question) sat waiting with the badge still reading 0,
+    // since nothing had told it those exist too. Both feed the same
+    // "does Hypercare need attention" question the badge is answering.
+    const hypercareCount = (incidentCount ?? 0) + (openSubmissionCount ?? 0);
 
     return {
       workspaceName: workspace?.name ?? "greydigi workspace",
@@ -181,13 +198,14 @@ export async function getShellData(): Promise<ShellData> {
         fullName: person.full_name,
         initials: initialsFrom(person.full_name),
         roleLabel: ROLE_LABEL[person.workspace_role] ?? person.workspace_role.toUpperCase(),
+        isWorkspaceAdmin: person.workspace_role === "workspace_admin",
       },
       selectedClient,
       clientOptions,
       counts: {
         delivery: deliveryCount ?? 0,
         product: productCount ?? 0,
-        hypercare: hypercareCount ?? 0,
+        hypercare: hypercareCount,
         hypercareUrgent: hypercareUrgentCount ?? 0,
         clients: clientsCount ?? 0,
         people: peopleCount ?? 0,

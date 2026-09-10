@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentPerson } from "@/lib/data/auth-guard";
 import { notifyWorkspace } from "@/lib/data/notify";
+import type { ClientSubmissionKind } from "@/lib/supabase/database.types";
+import type { SubmissionTaxonomyField } from "@/lib/data/submission-taxonomies";
 
 export async function renameWorkspace(workspaceId: string, name: string) {
   if (!name.trim()) throw new Error("Name cannot be empty.");
@@ -145,4 +147,65 @@ export async function updateSlaPolicy(
 
   revalidatePath("/settings/sla");
   revalidatePath("/hypercare/sla");
+}
+
+export async function addSubmissionTaxonomyOption(
+  workspaceId: string,
+  fields: { kind: ClientSubmissionKind; field: SubmissionTaxonomyField; value: string; label: string }
+) {
+  const value = fields.value.trim().toLowerCase().replace(/\s+/g, "_");
+  const label = fields.label.trim();
+  if (!value) throw new Error("Enter a value.");
+  if (!label) throw new Error("Enter a label.");
+
+  const supabase = await createClient();
+  const person = await getCurrentPerson();
+  const { count } = await supabase
+    .from("submission_taxonomy_options")
+    .select("id", { count: "exact", head: true })
+    .eq("workspace_id", workspaceId)
+    .eq("kind", fields.kind)
+    .eq("field", fields.field);
+
+  const { error } = await supabase.from("submission_taxonomy_options").insert({
+    workspace_id: workspaceId,
+    kind: fields.kind,
+    field: fields.field,
+    value,
+    label,
+    sort_order: count ?? 0,
+  });
+  if (error) throw new Error(error.message);
+
+  await notifyWorkspace(
+    workspaceId,
+    {
+      kind: "submission_taxonomy_edited",
+      title: `Submission option added: ${label}`,
+      body: `${person?.full_name ?? "Someone"} added "${label}" to ${fields.kind} ${fields.field} options.`,
+      relatedUrl: "/settings/submissions",
+    },
+    { excludePersonId: person?.id }
+  );
+
+  revalidatePath("/settings/submissions");
+}
+
+export async function updateSubmissionTaxonomyOption(
+  optionId: string,
+  workspaceId: string,
+  fields: { label: string; isActive: boolean }
+) {
+  const label = fields.label.trim();
+  if (!label) throw new Error("Label cannot be empty.");
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("submission_taxonomy_options")
+    .update({ label, is_active: fields.isActive })
+    .eq("id", optionId)
+    .eq("workspace_id", workspaceId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/settings/submissions");
 }

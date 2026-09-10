@@ -3,6 +3,7 @@ import { Card, StatTile, HeroPanel, Eyebrow } from "@/components/ui/Card";
 import { PhaseSpine, type PhaseSpineSegment } from "@/components/ui/PhaseSpine";
 import { Pill } from "@/components/ui/Pill";
 import { getPublicShareView } from "@/lib/data/public-share";
+import { PublicSubmissionForm } from "@/components/portal/PublicSubmissionForm";
 
 export default async function PublicShareViewPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
@@ -27,7 +28,7 @@ export default async function PublicShareViewPage({ params }: { params: Promise<
       </header>
 
       <main className="flex-1 px-4 sm:px-6 py-7 sm:py-9 max-w-[820px] w-full mx-auto flex flex-col gap-5">
-        {result.state === "valid" ? <ValidView snapshot={result.data} publishedAt={result.published_at} /> : null}
+        {result.state === "valid" ? <ValidView snapshot={result.data} publishedAt={result.published_at} token={token} /> : null}
         {result.state === "revoked" ? (
           <StateCard
             title="Share link revoked"
@@ -66,10 +67,14 @@ function StateCard({ title, body }: { title: string; body: string }) {
 function ValidView({
   snapshot,
   publishedAt,
+  token,
 }: {
   snapshot: import("@/lib/data/public-share").PublishedSnapshot;
   publishedAt: string | null;
+  token: string;
 }) {
+  const submissions = snapshot.submissions;
+  const anySubmissionEnabled = submissions ? submissions.issue || submissions.change_request || submissions.question : false;
   const segments: PhaseSpineSegment[] | null = snapshot.phases
     ? snapshot.phases.map((p) => ({
         code: p.code,
@@ -141,6 +146,39 @@ function ValidView({
                 <span className="font-mono text-[9.5px] text-muted">{d.version}</span>
               </div>
             ))}
+          </div>
+        </Card>
+      ) : null}
+
+      {anySubmissionEnabled ? (
+        <Card>
+          <div className="px-4 py-3.5 border-b border-line flex items-center justify-between">
+            <span className="font-display font-extrabold text-[13.5px]">Need something?</span>
+            <Pill tone="idle">NO LOGIN NEEDED</Pill>
+          </div>
+          <div className="px-4 py-3.5 flex flex-col gap-2.5">
+            <p className="m-0 text-[11.5px] text-muted leading-[1.5]">
+              Something wrong, something you want changed, or just a question — send it directly and the team is
+              notified right away.
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {submissions?.issue ? (
+                <PublicSubmissionForm
+                  token={token}
+                  kind="issue"
+                  categoryOptions={snapshot.submission_options?.issue.category}
+                  severityOptions={snapshot.submission_options?.issue.severity}
+                />
+              ) : null}
+              {submissions?.change_request ? (
+                <PublicSubmissionForm
+                  token={token}
+                  kind="change_request"
+                  priorityOptions={snapshot.submission_options?.change_request.priority}
+                />
+              ) : null}
+              {submissions?.question ? <PublicSubmissionForm token={token} kind="question" /> : null}
+            </div>
           </div>
         </Card>
       ) : null}

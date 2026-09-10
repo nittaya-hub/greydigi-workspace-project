@@ -12,7 +12,7 @@ export default async function ReleaseDetailPage({ params }: { params: Promise<{ 
   const openCriteria = release.criteria.filter((c) => c.status === "open").length;
 
   return (
-    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-5 max-w-[820px]">
+    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-5 max-w-[820px] mx-auto">
       <div className="flex items-end justify-between gap-4">
         <div className="flex flex-col gap-1.5">
           <span className="w-[34px] h-[3px] bg-coral rounded-[2px]" />

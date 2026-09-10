@@ -7,6 +7,7 @@ import { getCurrentWorkspaceId } from "@/lib/data/workspace";
 import { getProductOverview, getReleaseByCode, listProducts } from "@/lib/data/product";
 import { ExportCsvButton } from "./ExportCsvButton";
 import { NewFeatureButton } from "./NewFeatureButton";
+import { ExportPdfButton } from "@/components/pdf/ExportPdfButton";
 
 const FEAT_COLS = "62px 1fr 116px 76px 100px";
 
@@ -22,7 +23,7 @@ export default async function ProductOverviewPage() {
 
   if (!workspaceId) {
     return (
-      <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px]">
+      <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px] mx-auto">
         <PageHeading title="Product" description="Accelerators and internal capability." />
         <Card className="p-5">
           <p className="text-[12.5px] text-muted">Not signed in, or this workspace has no data yet.</p>
@@ -36,7 +37,7 @@ export default async function ProductOverviewPage() {
   const products = await listProducts(workspaceId);
 
   return (
-    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px]">
+    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px] mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-5">
         <PageHeading
           title="Product"
@@ -53,6 +54,7 @@ export default async function ProductOverviewPage() {
             }))}
             filename="product-features.csv"
           />
+          <ExportPdfButton href="/product/pdf" fallbackFilename={`product-features-${new Date().toISOString().slice(0, 10)}.pdf`} />
           <NewFeatureButton products={products.map((p) => ({ id: p.id, name: p.name }))} />
         </div>
       </div>

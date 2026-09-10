@@ -11,7 +11,16 @@ export interface HypercareOverview {
   requestBacklog: number;
   closestToBreach: { ref: string; title: string; serviceName: string; severity: string; breachAt: string | null; openedAt: string; ownerName: string; clientProject: string } | null;
   serviceHealth: { ref: string; name: string; health: ServiceHealth; note: string }[];
+  untriagedSubmissionCount: number;
+  latestUntriagedSubmissions: { id: string; kind: string; title: string; clientName: string; createdAt: string }[];
 }
+
+const SUBMISSION_KIND_LABEL: Record<string, string> = {
+  issue: "Report an issue",
+  change_request: "Change request",
+  question: "Question",
+};
+export { SUBMISSION_KIND_LABEL };
 
 function minutesUntil(iso: string) {
   return Math.round((new Date(iso).getTime() - Date.now()) / 60_000);
@@ -35,7 +44,15 @@ export async function getHypercareOverview(workspaceId: string, clientId?: strin
   const serviceIds = (services ?? []).map((s) => s.id);
   const serviceById = new Map((services ?? []).map((s) => [s.id, s]));
 
-  const [{ data: incidents }, { data: requests }, { count: clientCount }] = await Promise.all([
+  let submissionsQuery = supabase
+    .from("client_submissions")
+    .select("id, kind, title, client_id, created_at")
+    .eq("workspace_id", workspaceId)
+    .in("status", ["open", "in_progress"])
+    .order("created_at", { ascending: false });
+  if (clientId) submissionsQuery = submissionsQuery.eq("client_id", clientId);
+
+  const [{ data: incidents }, { data: requests }, { count: clientCount }, { data: submissions }] = await Promise.all([
     serviceIds.length
       ? supabase.from("incidents").select("id, ref, title, severity, breach_at, opened_at, service_id").in("service_id", serviceIds).neq("status", "resolved")
       : Promise.resolve({ data: [] as { id: string; ref: string; title: string; severity: string; breach_at: string | null; opened_at: string; service_id: string }[] }),
@@ -43,7 +60,14 @@ export async function getHypercareOverview(workspaceId: string, clientId?: strin
       ? supabase.from("support_requests").select("id, status").in("service_id", serviceIds)
       : Promise.resolve({ data: [] as { id: string; status: string }[] }),
     supabase.from("clients").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId),
+    submissionsQuery,
   ]);
+
+  const submissionClientIds = [...new Set((submissions ?? []).map((s) => s.client_id))];
+  const { data: submissionClients } = submissionClientIds.length
+    ? await supabase.from("clients").select("id, name").in("id", submissionClientIds)
+    : { data: [] as { id: string; name: string }[] };
+  const submissionClientNameById = new Map((submissionClients ?? []).map((c) => [c.id, c.name]));
 
   const withBreach = (incidents ?? []).filter((i) => i.breach_at).sort((a, b) => new Date(a.breach_at!).getTime() - new Date(b.breach_at!).getTime());
   const closest = withBreach[0];
@@ -69,6 +93,14 @@ export async function getHypercareOverview(workspaceId: string, clientId?: strin
           clientProject: service?.ref ?? "",
         }
       : null,
+    untriagedSubmissionCount: (submissions ?? []).length,
+    latestUntriagedSubmissions: (submissions ?? []).slice(0, 5).map((s) => ({
+      id: s.id,
+      kind: s.kind,
+      title: s.title,
+      clientName: submissionClientNameById.get(s.client_id) ?? "—",
+      createdAt: s.created_at,
+    })),
     serviceHealth: (services ?? [])
       .slice()
       .sort((a, b) => {
@@ -138,23 +170,36 @@ export interface ServiceDetail {
   liveSince: string | null;
   health: ServiceHealth;
   slaPolicy: { name: string; responseMinutes: number; resolveMinutes: number } | null;
+  slaTiers: { severity: string; responseMinutes: number; updateCadenceMinutes: number | null }[];
   openIncidents: number;
+  originProject: { ref: string; name: string; description: string | null } | null;
 }
 
 export async function getServiceByRef(ref: string): Promise<ServiceDetail | null> {
   const supabase = await createClient();
   const { data: service } = await supabase
     .from("services")
-    .select("id, ref, name, client_id, live_since, health")
+    .select("id, ref, name, client_id, origin_project_id, live_since, health")
     .ilike("ref", ref)
     .maybeSingle();
   if (!service) return null;
 
-  const [{ data: client }, { data: policy }, { count: openIncidents }] = await Promise.all([
+  const [{ data: client }, { data: policy }, { count: openIncidents }, { data: originProject }] = await Promise.all([
     supabase.from("clients").select("name").eq("id", service.client_id).maybeSingle(),
-    supabase.from("sla_policies").select("name, response_target_minutes, resolve_target_minutes").eq("service_id", service.id).maybeSingle(),
+    supabase.from("sla_policies").select("id, name, response_target_minutes, resolve_target_minutes").eq("service_id", service.id).maybeSingle(),
     supabase.from("incidents").select("id", { count: "exact", head: true }).eq("service_id", service.id).neq("status", "resolved"),
+    service.origin_project_id
+      ? supabase.from("projects").select("ref, name, description").eq("id", service.origin_project_id).maybeSingle()
+      : Promise.resolve({ data: null as { ref: string; name: string; description: string | null } | null }),
   ]);
+
+  const { data: tiers } = policy
+    ? await supabase
+        .from("sla_policy_tiers")
+        .select("severity, response_target_minutes, update_cadence_minutes")
+        .eq("sla_policy_id", policy.id)
+        .order("severity")
+    : { data: [] as { severity: string; response_target_minutes: number; update_cadence_minutes: number | null }[] };
 
   return {
     id: service.id,
@@ -164,7 +209,13 @@ export async function getServiceByRef(ref: string): Promise<ServiceDetail | null
     liveSince: service.live_since,
     health: service.health,
     slaPolicy: policy ? { name: policy.name, responseMinutes: policy.response_target_minutes, resolveMinutes: policy.resolve_target_minutes } : null,
+    slaTiers: (tiers ?? []).map((t) => ({
+      severity: t.severity,
+      responseMinutes: t.response_target_minutes,
+      updateCadenceMinutes: t.update_cadence_minutes,
+    })),
     openIncidents: openIncidents ?? 0,
+    originProject: originProject ? { ref: originProject.ref, name: originProject.name, description: originProject.description } : null,
   };
 }
 

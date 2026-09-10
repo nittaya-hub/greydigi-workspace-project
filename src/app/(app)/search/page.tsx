@@ -10,7 +10,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const total = results.projects.length + results.incidents.length + results.documents.length + results.changeRequests.length;
 
   return (
-    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px]">
+    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px] mx-auto">
       <PageHeading title="Search" description="Grouped by record type, scoped by permission." />
 
       <form method="get" className="flex items-center gap-2 border border-ink bg-white rounded-[9px] px-[13px] py-[11px]">

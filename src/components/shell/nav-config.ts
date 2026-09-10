@@ -14,22 +14,54 @@ export interface NavItem {
 export const WORKSPACE_NAV: NavItem[] = [{ label: "Overview", href: "/" }];
 
 /** Shown as the expandable "Settings" section in master-admin mode — see
- * SettingsSection in Sidebar.tsx. Users/Templates/Notifications keep their
- * existing top-level routes; they're just reachable from here now instead
- * of sitting as siblings of Settings. The three space rows deep-link into
- * the Spaces card on the settings page (src/app/(app)/settings/page.tsx). */
-export const SETTINGS_NAV: NavItem[] = [
-  { label: "Users and members", href: "/people" },
-  { label: "Templates", href: "/templates" },
-  { label: "Notifications", href: "/notifications" },
-  { label: "Delivery", href: "/settings#spaces-delivery" },
-  { label: "Product", href: "/settings#spaces-product" },
-  { label: "Hypercare", href: "/settings#spaces-hypercare" },
+ * SettingsSection in Sidebar.tsx. Grouped into two labeled sections so a
+ * list of eleven items doesn't read as one undifferentiated pile: the
+ * general workspace-configuration pages (formerly a separate in-page
+ * SettingsNav card — src/app/(app)/settings/SettingsNav.tsx, since
+ * removed — now folded in here instead of living in two places at once),
+ * and the access-control / per-space settings pages. The whole section
+ * is workspace_admin-only, gated in Sidebar.tsx via shell.person — this
+ * includes the "Notifications" row here, which is a duplicate shortcut
+ * only; the real, always-available entry point for every person's own
+ * notification inbox is the header's Notifications button
+ * (src/components/shell/Header.tsx), which doesn't go through this nav
+ * at all and stays visible regardless of role.
+ *
+ * Templates keeps its existing top-level route; it's just reachable
+ * from here too. The Delivery/Product/Hypercare rows and "Spaces"
+ * deep-link into the Spaces card on the settings page
+ * (src/app/(app)/settings/page.tsx). */
+export const SETTINGS_NAV_GROUPS: { label: string; items: NavItem[] }[] = [
+  {
+    label: "Workspace",
+    items: [
+      { label: "General", href: "/settings" },
+      { label: "Spaces", href: "/settings#spaces" },
+      { label: "SLA policies", href: "/settings/sla" },
+      { label: "Client Management", href: "/settings/portal" },
+      { label: "Branding", href: "/settings/branding" },
+      { label: "Integrations", href: "/settings/integrations" },
+      { label: "Audit log", href: "/settings/audit" },
+    ],
+  },
+  {
+    label: "Access",
+    items: [
+      { label: "Permissions", href: "/settings/permissions" },
+      { label: "Submission types", href: "/settings/submissions" },
+      { label: "Templates", href: "/templates" },
+      { label: "Notifications", href: "/notifications" },
+      { label: "Delivery", href: "/settings#spaces-delivery" },
+      { label: "Product", href: "/settings#spaces-product" },
+      { label: "Hypercare", href: "/settings#spaces-hypercare" },
+    ],
+  },
 ];
 
 export const DELIVERY_NAV: NavItem[] = [
   { label: "Overview", href: "/delivery" },
   { label: "Projects", href: "/delivery/projects" },
+  { label: "Tasks", href: "/delivery/tasks" },
   { label: "Flight plans", href: "/delivery/flight-plans" },
   { label: "Gates", href: "/delivery/gates" },
   { label: "Baselines", href: "/delivery/baselines" },
@@ -59,8 +91,14 @@ export const HYPERCARE_NAV: NavItem[] = [
 
 export type SpaceKey = "delivery" | "product" | "hypercare";
 
+/** Labeled "X Dashboard" in the sidebar (the "SPACES" section header
+ * itself reads "Dashboard Overview" — see Sidebar.tsx) — the underlying
+ * data differs by mode, not the labels: workspace-wide across every
+ * client/project in Master Admin mode, filtered to one client's data
+ * when a client is scoped (see getWorkspaceOverview's clientId param
+ * and shell.ts's existing per-client count filtering). */
 export const SPACES: { key: SpaceKey; label: string; nav: NavItem[] }[] = [
-  { key: "delivery", label: "Delivery", nav: DELIVERY_NAV },
-  { key: "product", label: "Product", nav: PRODUCT_NAV },
-  { key: "hypercare", label: "Hypercare", nav: HYPERCARE_NAV },
+  { key: "delivery", label: "Delivery Dashboard", nav: DELIVERY_NAV },
+  { key: "product", label: "Product Dashboard", nav: PRODUCT_NAV },
+  { key: "hypercare", label: "Hypercare Dashboard", nav: HYPERCARE_NAV },
 ];

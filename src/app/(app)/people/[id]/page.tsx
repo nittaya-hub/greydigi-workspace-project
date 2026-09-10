@@ -5,6 +5,7 @@ import { Pill, TaskStatusPill } from "@/components/ui/Pill";
 import { getPersonProfile, type PersonWorkItem } from "@/lib/data/person";
 import { getCurrentPerson } from "@/lib/data/auth-guard";
 import { ExportCsvButton } from "./ExportCsvButton";
+import { ExportPdfButton } from "@/components/pdf/ExportPdfButton";
 
 const ROLE_LABEL: Record<string, string> = {
   workspace_admin: "WORKSPACE ADMIN",
@@ -66,7 +67,7 @@ export default async function PersonDetailPage({ params }: { params: Promise<{ i
   ];
 
   return (
-    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-5 max-w-[900px]">
+    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-5 max-w-[900px] mx-auto">
       <div className="flex items-end justify-between gap-4">
         <div className="flex flex-col gap-1.5">
           <span className="w-[34px] h-[3px] bg-coral rounded-[2px]" />
@@ -74,7 +75,13 @@ export default async function PersonDetailPage({ params }: { params: Promise<{ i
           <h1 className="m-0 font-display font-extrabold text-[20px] text-ink">{person.fullName}</h1>
         </div>
         {canExport(viewer?.id, viewer?.workspace_role, person.id) ? (
-          <ExportCsvButton rows={exportRows} filename={`${person.fullName.replace(/\s+/g, "-").toLowerCase()}-work-summary.csv`} />
+          <div className="flex gap-1.5 flex-none">
+            <ExportCsvButton rows={exportRows} filename={`${person.fullName.replace(/\s+/g, "-").toLowerCase()}-work-summary.csv`} />
+            <ExportPdfButton
+              href={`/people/${person.id}/pdf`}
+              fallbackFilename={`${person.fullName.replace(/\s+/g, "-").toLowerCase()}-work-summary.pdf`}
+            />
+          </div>
         ) : null}
       </div>
 

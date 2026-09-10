@@ -48,46 +48,45 @@ export async function createClientSubmission(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, message: "Not signed in." };
 
-  const { data: person } = await supabase
-    .from("people")
-    .select("id, workspace_id, full_name")
-    .eq("auth_user_id", user.id)
-    .maybeSingle();
+  const [{ data: person }, { data: project }] = await Promise.all([
+    supabase.from("people").select("id, workspace_id, full_name").eq("auth_user_id", user.id).maybeSingle(),
+    supabase.from("projects").select("client_id").ilike("ref", projectRef).maybeSingle(),
+  ]);
   if (!person) return { ok: false, message: "No matching account for this login." };
-
-  const { data: project } = await supabase.from("projects").select("client_id").ilike("ref", projectRef).maybeSingle();
   if (!project) return { ok: false, message: "Project not found." };
 
-  const { data: submission, error } = await supabase
-    .from("client_submissions")
-    .insert({
-      workspace_id: person.workspace_id,
-      client_id: project.client_id,
-      kind,
-      category,
-      severity,
-      priority,
-      title,
-      description,
-      business_impact: businessImpact,
-      submitted_by: person.id,
-    })
-    .select("id")
-    .single();
+  const [{ data: submission, error }, { data: client }] = await Promise.all([
+    supabase
+      .from("client_submissions")
+      .insert({
+        workspace_id: person.workspace_id,
+        client_id: project.client_id,
+        kind,
+        category,
+        severity,
+        priority,
+        title,
+        description,
+        business_impact: businessImpact,
+        submitted_by: person.id,
+      })
+      .select("id")
+      .single(),
+    supabase.from("clients").select("name").eq("id", project.client_id).maybeSingle(),
+  ]);
   if (error || !submission) return { ok: false, message: error?.message ?? "Could not submit." };
 
-  const { data: client } = await supabase.from("clients").select("name").eq("id", project.client_id).maybeSingle();
-
-  await notifyWorkspace(
-    person.workspace_id,
-    {
-      kind: `client_submission_${kind}`,
-      title: `${KIND_LABEL[kind]}: ${title}`,
-      body: `${person.full_name} (${client?.name ?? "a client"}) submitted "${title}".`,
-      relatedUrl: "/hypercare/submissions",
-    },
-    { excludePersonId: person.id }
-  );
+  // No excludePersonId: this action's actor is a client, not staff — a
+  // real client is never in the internal recipient list anyway, and an
+  // internal admin testing this page as themselves should still see the
+  // notification, not have it excluded as if they'd edited their own
+  // task.
+  await notifyWorkspace(person.workspace_id, {
+    kind: `delivery_submission_${kind}`,
+    title: `${KIND_LABEL[kind]}: ${title}`,
+    body: `${person.full_name} (${client?.name ?? "a client"}) submitted "${title}".`,
+    relatedUrl: "/hypercare/submissions",
+  });
 
   revalidatePath("/hypercare/submissions");
 

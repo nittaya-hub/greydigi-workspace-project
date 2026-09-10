@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 
+type TaxonomyOption = { value: string; label: string };
+
 export interface PublishedSnapshot {
   project: { name: string; description: string | null; client_name: string; go_live_target: string | null };
   health: string;
@@ -10,6 +12,15 @@ export interface PublishedSnapshot {
   milestones?: { ref: string; title: string; status: string; date: string | null }[];
   updates?: { title: string; body: string; published_at: string | null }[];
   documents?: { name: string; kind: string; version: string; created_at: string }[];
+  /** Which of the three HyperCare submission cards are enabled for this
+   * published view (Client View Config → HyperCare section). */
+  submissions?: { issue: boolean; change_request: boolean; question: boolean };
+  /** Category/severity/priority option lists, frozen at publish time from
+   * Settings → Submission types (src/lib/data/submission-taxonomies.ts). */
+  submission_options?: {
+    issue: { category: TaxonomyOption[]; severity: TaxonomyOption[] };
+    change_request: { priority: TaxonomyOption[] };
+  };
 }
 
 export type PublicShareResult =

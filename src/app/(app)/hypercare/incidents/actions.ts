@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentPerson } from "@/lib/data/auth-guard";
 import { notifyWorkspace } from "@/lib/data/notify";
+import { computeTargetAt, getSlaTargetForIncident } from "@/lib/data/sla";
 import type { IncidentSeverity } from "@/lib/supabase/database.types";
 
 /** Logs a new incident against a service. Shared by the Hypercare overview
@@ -39,13 +40,22 @@ export async function logIncident(formData: FormData) {
   }, 0);
   const ref = `INC-${String(maxNum + 1).padStart(3, "0")}`;
 
+  // breach_at was declared in the schema from the start but nothing ever
+  // computed it — the matching SLA tier's response target, walked
+  // forward in service hours, is the real deadline this incident is
+  // held to (see src/lib/data/sla.ts).
+  const openedAt = new Date();
+  const target = await getSlaTargetForIncident(serviceId, severity);
+  const breachAt = target ? computeTargetAt(openedAt, target.responseTargetMinutes, target.businessHoursOnly) : null;
+
   const { error } = await supabase.from("incidents").insert({
     service_id: serviceId,
     ref,
     title,
     severity,
     status: "open",
-    opened_at: new Date().toISOString(),
+    opened_at: openedAt.toISOString(),
+    breach_at: breachAt?.toISOString() ?? null,
     root_cause: rootCause,
     created_by: person.id,
   });

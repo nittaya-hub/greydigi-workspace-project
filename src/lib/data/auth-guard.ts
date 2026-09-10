@@ -47,3 +47,31 @@ export async function getCurrentPerson() {
 
   return person ?? null;
 }
+
+/** Confirms the signed-in caller can act on the given project at least at
+ * `minRole`. A workspace_admin always passes (matches Super Admin's
+ * unrestricted reach). Otherwise looks up the caller's `project_members`
+ * grant and throws if it's missing or below `minRole`. RLS
+ * (fn_my_accessible_project_ids / fn_my_admin_project_ids, see
+ * supabase/migrations/0020_project_membership_rbac.sql) is the real
+ * backstop — this guard exists so a Server Action can give a clear error
+ * message before attempting a write RLS would silently drop anyway. */
+export async function requireProjectAccess(projectId: string, minRole: "member" | "project_admin") {
+  const person = await getCurrentPerson();
+  if (!person) throw new Error("Not signed in.");
+  if (person.workspace_role === "workspace_admin") return person;
+
+  const supabase = await createClient();
+  const { data: grant } = await supabase
+    .from("project_members")
+    .select("role")
+    .eq("project_id", projectId)
+    .eq("person_id", person.id)
+    .maybeSingle();
+
+  if (!grant) throw new Error("You don't have access to this project.");
+  if (minRole === "project_admin" && grant.role !== "project_admin") {
+    throw new Error("Only a project admin can do this.");
+  }
+  return person;
+}

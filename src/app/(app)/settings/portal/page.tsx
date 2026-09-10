@@ -1,10 +1,15 @@
 import { PageHeading, Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { AdminOnlyNotice } from "@/components/ui/AdminOnlyNotice";
 import { getCurrentWorkspaceId } from "@/lib/data/workspace";
+import { getCurrentPerson } from "@/lib/data/auth-guard";
 import { createClient } from "@/lib/supabase/server";
 import { savePortalSettings } from "../actions";
 
 export default async function PortalSettingsPage() {
+  const viewer = await getCurrentPerson();
+  if (viewer?.workspace_role !== "workspace_admin") return <AdminOnlyNotice title="Client Management" />;
+
   const workspaceId = await getCurrentWorkspaceId();
   let defaultShareExpiryDays = 30;
   let portalWelcomeMessage = "";
@@ -32,8 +37,8 @@ export default async function PortalSettingsPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeading
-        title="Portal and branding"
-        description="What client-portal viewers and public share links see. Reads a published projection, never internal records."
+        title="Client Management"
+        description="Client-facing portal settings — what client-portal viewers and public share links see. Reads a published projection, never internal records. Logo/colors/PDF theme live under Branding now."
       />
 
       <form action={save} className="flex flex-col gap-3">

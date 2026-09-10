@@ -9,7 +9,7 @@ export default async function SlaPage() {
   const sla = workspaceId ? await getSlaData(workspaceId, clientId) : { policies: [], metPct: null, servicePerformance: [] };
 
   return (
-    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px]">
+    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px] mx-auto">
       <PageHeading
         title="SLA"
         description="Met means resolved within the policy target, business hours only, paused time excluded. Every pause needs a reason."

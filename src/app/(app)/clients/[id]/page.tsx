@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card, CardHeader, StatTile } from "@/components/ui/Card";
 import { Pill } from "@/components/ui/Pill";
+import { LinkButton } from "@/components/ui/Button";
 import { FlightPlanSpine } from "@/components/portal/FlightPlanSpine";
 import { getClientById } from "@/lib/data/clients";
 import { getCurrentWorkspaceId } from "@/lib/data/workspace";
@@ -24,7 +25,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   const openIncidentServices = client.services.filter((s) => s.openIncidents > 0);
 
   return (
-    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-5 max-w-[1000px]">
+    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-5 max-w-[1000px] mx-auto">
       <div className="flex items-end justify-between gap-4">
         <div className="flex flex-col gap-1.5">
           <span className="w-[34px] h-[3px] bg-coral rounded-[2px]" />
@@ -34,6 +35,9 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         <div className="flex items-center gap-4 flex-none">
           <HypercareEnabledToggle clientId={client.id} initialEnabled={client.hypercareEnabled} />
           <div className="flex gap-1.5">
+            <LinkButton href={`/hypercare/clients/${client.id}/report-config`} variant="secondary">
+              Hypercare report settings
+            </LinkButton>
             <PortalAccessButton clientId={client.id} />
             <NewProjectButton clientId={client.id} templateVersions={templateVersions} leadOptions={leadOptions} />
           </div>

@@ -11,11 +11,16 @@ export function Modal({
   onClose,
   title,
   children,
+  maxWidthClassName = "max-w-[480px]",
 }: {
   open: boolean;
   onClose: () => void;
   title: ReactNode;
   children: ReactNode;
+  /** Override the dialog's max-width for content wider than a typical
+   * form, e.g. a template gallery grid. Defaults to the original width
+   * every other "New X" modal already uses. */
+  maxWidthClassName?: string;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -35,7 +40,7 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={typeof title === "string" ? title : undefined}
-        className="relative bg-white border border-line rounded-[12px] w-full max-w-[480px] max-h-[90vh] overflow-y-auto shadow-xl"
+        className={`relative bg-white border border-line rounded-[12px] w-full ${maxWidthClassName} max-h-[90vh] overflow-y-auto shadow-xl`}
       >
         <div className="flex items-center justify-between gap-3 px-4 py-3.5 border-b border-line sticky top-0 bg-white">
           <span className="font-display font-extrabold text-[13.5px] text-ink">{title}</span>

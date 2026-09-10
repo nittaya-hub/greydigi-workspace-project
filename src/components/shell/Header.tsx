@@ -2,28 +2,47 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { NotificationBell } from "./NotificationBell";
 
 type Crumb = { label: string; href: string };
 
-function breadcrumbSegments(pathname: string): Crumb[] {
-  if (pathname === "/") return [{ label: "WORKSPACE / OVERVIEW", href: "/" }];
+function breadcrumbSegments(pathname: string, selectedClientName: string | null): Crumb[] {
+  if (pathname === "/") {
+    const first = selectedClientName ? selectedClientName.toUpperCase() : "WORKSPACE";
+    return [{ label: `${first} / OVERVIEW`, href: "/" }];
+  }
   const rawSegments = pathname.split("/").filter(Boolean);
   let acc = "";
-  return rawSegments.map((segment) => {
+  return rawSegments.map((segment, i) => {
     acc += `/${segment}`;
+    // `clients` has no human-readable `ref` column like projects/services
+    // do, so its detail route is `/clients/<uuid>` — every other entity
+    // segment here is already short and readable (a ref/code), but a raw
+    // uuid rendered through the generic `.toUpperCase()` below reads as
+    // garbage ("01EC5D5A 2E59 4947..."). Swap in the name of whichever
+    // client the shell is actually scoped to right now (set by visiting
+    // this exact page — see ShellChrome's `shell.selectedClient`) instead
+    // of the id segment itself.
+    if (rawSegments[i - 1] === "clients" && UUID_RE.test(segment)) {
+      return { label: selectedClientName ? selectedClientName.toUpperCase() : "CLIENT", href: acc };
+    }
     return { label: segment.replace(/-/g, " ").toUpperCase(), href: acc };
   });
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export function Header({
   unreadNotifications,
+  selectedClientName = null,
   onMenuClick,
 }: {
   unreadNotifications: number;
+  selectedClientName?: string | null;
   onMenuClick?: () => void;
 }) {
   const pathname = usePathname();
-  const crumbs = breadcrumbSegments(pathname);
+  const crumbs = breadcrumbSegments(pathname, selectedClientName);
   const parentHref =
     pathname === "/" ? null : crumbs.length > 1 ? crumbs[crumbs.length - 2].href : "/";
 
@@ -72,18 +91,7 @@ export function Header({
         Search
         <span className="ml-auto font-mono text-[9px] border border-line rounded-[4px] px-[5px] py-px">/</span>
       </Link>
-      <Link
-        href="/notifications"
-        className="flex items-center gap-[7px] border border-line bg-white rounded-[9px] px-[9px] py-[7px] text-[11px] text-ink"
-      >
-        <span className="hidden sm:inline">Notifications</span>
-        <span aria-hidden className="sm:hidden">🔔</span>
-        {unreadNotifications > 0 ? (
-          <span className="bg-coral text-white font-mono text-[8.5px] rounded-[9px] px-[5px] py-px">
-            {unreadNotifications}
-          </span>
-        ) : null}
-      </Link>
+      <NotificationBell initialUnread={unreadNotifications} />
       <button
         type="button"
         className="bg-ink text-white rounded-[9px] px-[11px] py-[7px] text-[12px] font-semibold"

@@ -37,6 +37,9 @@ export type IntegrationStatus = "not_connected" | "connected";
 export type ClientSubmissionKind = "issue" | "change_request" | "question";
 export type ClientSubmissionStatus = "open" | "in_progress" | "resolved";
 export type TaskVisibility = "internal" | "external";
+export type ProjectMemberRole = "project_admin" | "member";
+export type DashboardSpace = "delivery" | "hypercare" | "product";
+export type DashboardBlockType = "text" | "image" | "flight_plan" | "documents" | "embed" | "metric" | "chart";
 export type ClientActionKind =
   | "review"
   | "approval"
@@ -92,6 +95,56 @@ export interface Database {
           created_at?: Timestamptz;
         }
       >;
+      workspace_branding: CrudTable<
+        {
+          id: string;
+          workspace_id: string;
+          tokens: Json;
+          logo_data_url: string | null;
+          logo_filename: string | null;
+          html_template: string | null;
+          source_filename: string | null;
+          updated_at: Timestamptz;
+          updated_by: string | null;
+        },
+        {
+          id?: string;
+          workspace_id: string;
+          tokens?: Json;
+          logo_data_url?: string | null;
+          logo_filename?: string | null;
+          html_template?: string | null;
+          source_filename?: string | null;
+          updated_at?: Timestamptz;
+          updated_by?: string | null;
+        }
+      >;
+      project_branding: CrudTable<
+        {
+          id: string;
+          project_id: string;
+          logo_data_url: string | null;
+          logo_filename: string | null;
+          accent_color: string | null;
+          welcome_headline: string | null;
+          updated_at: Timestamptz;
+          updated_by: string | null;
+          client_display_name: string | null;
+          show_client_name: boolean;
+        },
+        {
+          id?: string;
+          project_id: string;
+          logo_data_url?: string | null;
+          logo_filename?: string | null;
+          accent_color?: string | null;
+          welcome_headline?: string | null;
+          updated_at?: Timestamptz;
+          updated_by?: string | null;
+          client_display_name?: string | null;
+          show_client_name?: boolean;
+        }
+      >;
       workspace_integrations: CrudTable<
         {
           id: string;
@@ -118,6 +171,7 @@ export interface Database {
           kind: PersonKind;
           avatar_initials: string;
           workspace_role: WorkspaceRole;
+          is_active: boolean;
           created_at: Timestamptz;
         },
         {
@@ -129,6 +183,7 @@ export interface Database {
           kind: PersonKind;
           avatar_initials: string;
           workspace_role?: WorkspaceRole;
+          is_active?: boolean;
           created_at?: Timestamptz;
         }
       >;
@@ -173,6 +228,8 @@ export interface Database {
           submitted_by: string | null;
           created_at: Timestamptz;
           resolved_at: Timestamptz | null;
+          assignee_person_id: string | null;
+          needs_client_notice: boolean;
         },
         {
           id?: string;
@@ -190,7 +247,13 @@ export interface Database {
           submitted_by?: string | null;
           created_at?: Timestamptz;
           resolved_at?: Timestamptz | null;
+          assignee_person_id?: string | null;
+          needs_client_notice?: boolean;
         }
+      >;
+      client_submission_comments: CrudTable<
+        { id: string; submission_id: string; author_person_id: string | null; body: string; created_at: Timestamptz },
+        { id?: string; submission_id: string; author_person_id?: string | null; body: string; created_at?: Timestamptz }
       >;
       client_submission_attachments: CrudTable<
         {
@@ -216,6 +279,30 @@ export interface Database {
         { id: string; person_id: string; client_id: string; role: string; created_at: Timestamptz },
         { id?: string; person_id: string; client_id: string; role?: string; created_at?: Timestamptz }
       >;
+      submission_taxonomy_options: CrudTable<
+        {
+          id: string;
+          workspace_id: string;
+          kind: ClientSubmissionKind;
+          field: "category" | "severity" | "priority";
+          value: string;
+          label: string;
+          sort_order: number;
+          is_active: boolean;
+          created_at: Timestamptz;
+        },
+        {
+          id?: string;
+          workspace_id: string;
+          kind: ClientSubmissionKind;
+          field: "category" | "severity" | "priority";
+          value: string;
+          label: string;
+          sort_order?: number;
+          is_active?: boolean;
+          created_at?: Timestamptz;
+        }
+      >;
       notifications: CrudTable<
         {
           id: string;
@@ -225,7 +312,9 @@ export interface Database {
           title: string;
           body: string | null;
           related_url: string | null;
+          actor_label: string | null;
           is_read: boolean;
+          is_archived: boolean;
           created_at: Timestamptz;
         },
         {
@@ -236,7 +325,9 @@ export interface Database {
           title: string;
           body?: string | null;
           related_url?: string | null;
+          actor_label?: string | null;
           is_read?: boolean;
+          is_archived?: boolean;
           created_at?: Timestamptz;
         }
       >;
@@ -423,6 +514,10 @@ export interface Database {
           created_at?: Timestamptz;
         }
       >;
+      project_members: CrudTable<
+        { id: string; project_id: string; person_id: string; role: ProjectMemberRole; created_at: Timestamptz },
+        { id?: string; project_id: string; person_id: string; role?: ProjectMemberRole; created_at?: Timestamptz }
+      >;
       project_phases: CrudTable<
         {
           id: string;
@@ -487,8 +582,12 @@ export interface Database {
           owner: ConditionOwner;
           sequence: number;
           met_at: Timestamptz | null;
+          met_via_document_id: string | null;
           signed_by: string | null;
           signed_at: Timestamptz | null;
+          waived_by: string | null;
+          waived_reason: string | null;
+          waived_at: Timestamptz | null;
         },
         {
           id?: string;
@@ -499,8 +598,12 @@ export interface Database {
           owner?: ConditionOwner;
           sequence: number;
           met_at?: Timestamptz | null;
+          met_via_document_id?: string | null;
           signed_by?: string | null;
           signed_at?: Timestamptz | null;
+          waived_by?: string | null;
+          waived_reason?: string | null;
+          waived_at?: Timestamptz | null;
         }
       >;
       project_tasks: CrudTable<
@@ -519,6 +622,8 @@ export interface Database {
           sort_order: number;
           visibility: TaskVisibility;
           created_at: Timestamptz;
+          is_out_of_scope: boolean;
+          change_request_id: string | null;
         },
         {
           id?: string;
@@ -535,6 +640,8 @@ export interface Database {
           visibility?: TaskVisibility;
           assignee_person_id?: string | null;
           created_at?: Timestamptz;
+          is_out_of_scope?: boolean;
+          change_request_id?: string | null;
         }
       >;
       task_comments: CrudTable<
@@ -604,6 +711,102 @@ export interface Database {
           status?: ChangeRequestStatus;
           raised_from_ref?: string | null;
           created_by?: string | null;
+          created_at?: Timestamptz;
+        }
+      >;
+      project_progress_stats: CrudTable<
+        {
+          id: string;
+          project_id: string;
+          label: string;
+          value: string;
+          note: string | null;
+          reviewed_at: Timestamptz | null;
+          reviewed_by: string | null;
+          created_at: Timestamptz;
+        },
+        {
+          id?: string;
+          project_id: string;
+          label: string;
+          value: string;
+          note?: string | null;
+          reviewed_at?: Timestamptz | null;
+          reviewed_by?: string | null;
+          created_at?: Timestamptz;
+        }
+      >;
+      project_decisions: CrudTable<
+        {
+          id: string;
+          project_id: string;
+          title: string;
+          detail: string | null;
+          owner: string | null;
+          due_label: string | null;
+          status: "open" | "closed";
+          reviewed_at: Timestamptz | null;
+          reviewed_by: string | null;
+          created_at: Timestamptz;
+        },
+        {
+          id?: string;
+          project_id: string;
+          title: string;
+          detail?: string | null;
+          owner?: string | null;
+          due_label?: string | null;
+          status?: "open" | "closed";
+          reviewed_at?: Timestamptz | null;
+          reviewed_by?: string | null;
+          created_at?: Timestamptz;
+        }
+      >;
+      project_weekly_commitments: CrudTable<
+        {
+          id: string;
+          project_id: string;
+          period_label: string;
+          owner_label: string;
+          items: Json;
+          accent: boolean;
+          reviewed_at: Timestamptz | null;
+          reviewed_by: string | null;
+          created_at: Timestamptz;
+        },
+        {
+          id?: string;
+          project_id: string;
+          period_label: string;
+          owner_label: string;
+          items?: Json;
+          accent?: boolean;
+          reviewed_at?: Timestamptz | null;
+          reviewed_by?: string | null;
+          created_at?: Timestamptz;
+        }
+      >;
+      project_baseline_measures: CrudTable<
+        {
+          id: string;
+          project_id: string;
+          measure_name: string;
+          today_value: string;
+          after_value: string;
+          baselined_when: string | null;
+          reviewed_at: Timestamptz | null;
+          reviewed_by: string | null;
+          created_at: Timestamptz;
+        },
+        {
+          id?: string;
+          project_id: string;
+          measure_name: string;
+          today_value: string;
+          after_value: string;
+          baselined_when?: string | null;
+          reviewed_at?: Timestamptz | null;
+          reviewed_by?: string | null;
           created_at?: Timestamptz;
         }
       >;
@@ -679,6 +882,56 @@ export interface Database {
           updated_at?: Timestamptz;
         }
       >;
+      project_checkpoint_snapshots: CrudTable<
+        { id: string; project_id: string; week_label: string; published_at: Timestamptz; published_by: string | null; snapshot: Json },
+        { id?: string; project_id: string; week_label: string; published_at?: Timestamptz; published_by?: string | null; snapshot: Json }
+      >;
+      client_dashboards: CrudTable<
+        {
+          id: string;
+          workspace_id: string;
+          space: DashboardSpace;
+          project_id: string | null;
+          client_id: string | null;
+          published_at: Timestamptz | null;
+          published_by: string | null;
+          updated_at: Timestamptz;
+        },
+        {
+          id?: string;
+          workspace_id: string;
+          space: DashboardSpace;
+          project_id?: string | null;
+          client_id?: string | null;
+          published_at?: Timestamptz | null;
+          published_by?: string | null;
+          updated_at?: Timestamptz;
+        }
+      >;
+      dashboard_blocks: CrudTable<
+        {
+          id: string;
+          dashboard_id: string;
+          block_type: DashboardBlockType;
+          config: Json;
+          grid_x: number;
+          grid_y: number;
+          grid_w: number;
+          grid_h: number;
+          created_at: Timestamptz;
+        },
+        {
+          id?: string;
+          dashboard_id: string;
+          block_type: DashboardBlockType;
+          config?: Json;
+          grid_x?: number;
+          grid_y?: number;
+          grid_w?: number;
+          grid_h?: number;
+          created_at?: Timestamptz;
+        }
+      >;
       share_links: CrudTable<
         {
           id: string;
@@ -706,6 +959,36 @@ export interface Database {
       share_link_views: CrudTable<
         { id: string; share_link_id: string; viewed_at: Timestamptz; ip_city: string | null; ip_country: string | null },
         { id?: string; share_link_id: string; viewed_at?: Timestamptz; ip_city?: string | null; ip_country?: string | null }
+      >;
+      hypercare_view_configs: CrudTable<
+        { id: string; client_id: string; fields: Json; updated_at: Timestamptz },
+        { id?: string; client_id: string; fields?: Json; updated_at?: Timestamptz }
+      >;
+      hypercare_share_reports: CrudTable<
+        {
+          id: string;
+          client_id: string;
+          period_start: string;
+          period_end: string;
+          token: string;
+          status: ShareLinkStatus;
+          snapshot: Json;
+          published_by: string | null;
+          published_at: Timestamptz;
+          revoked_at: Timestamptz | null;
+        },
+        {
+          id?: string;
+          client_id: string;
+          period_start: string;
+          period_end: string;
+          token: string;
+          status?: ShareLinkStatus;
+          snapshot: Json;
+          published_by?: string | null;
+          published_at?: Timestamptz;
+          revoked_at?: Timestamptz | null;
+        }
       >;
       client_actions: CrudTable<
         {
@@ -905,6 +1188,22 @@ export interface Database {
           business_hours_only?: boolean;
         }
       >;
+      sla_policy_tiers: CrudTable<
+        {
+          id: string;
+          sla_policy_id: string;
+          severity: IncidentSeverity;
+          response_target_minutes: number;
+          update_cadence_minutes: number | null;
+        },
+        {
+          id?: string;
+          sla_policy_id: string;
+          severity: IncidentSeverity;
+          response_target_minutes: number;
+          update_cadence_minutes?: number | null;
+        }
+      >;
       incidents: CrudTable<
         {
           id: string;
@@ -1018,7 +1317,43 @@ export interface Database {
         Returns: Json;
       };
       fn_client_portal_project: { Args: { p_project_id: string }; Returns: Json };
+      fn_client_portal_projects: { Args: { p_client_id: string }; Returns: Json };
+      fn_client_dashboard_delivery: { Args: { p_project_id: string }; Returns: Json };
+      fn_client_dashboard_hypercare: { Args: { p_client_id: string }; Returns: Json };
+      fn_client_dashboard_product: { Args: Record<string, never>; Returns: Json };
       fn_publish_client_view: { Args: { p_project_id: string; p_published_by: string }; Returns: Json };
+      fn_public_submit_client_submission: {
+        Args: {
+          p_token: string;
+          p_kind: ClientSubmissionKind;
+          p_title: string;
+          p_description: string;
+          p_category?: string | null;
+          p_severity?: string | null;
+          p_priority?: string | null;
+          p_business_impact?: string | null;
+        };
+        Returns: Json;
+      };
+      fn_publish_hypercare_report: {
+        Args: { p_client_id: string; p_period_start: string; p_period_end: string; p_published_by: string; p_token: string };
+        Returns: Json;
+      };
+      fn_public_hypercare_report_view: { Args: { p_token: string }; Returns: Json };
+      fn_preview_hypercare_report: { Args: { p_client_id: string; p_period_start: string; p_period_end: string }; Returns: Json };
+      fn_public_submit_hypercare_submission: {
+        Args: {
+          p_token: string;
+          p_kind: ClientSubmissionKind;
+          p_title: string;
+          p_description: string;
+          p_category?: string | null;
+          p_severity?: string | null;
+          p_priority?: string | null;
+          p_business_impact?: string | null;
+        };
+        Returns: Json;
+      };
       fn_release_readiness_pct: { Args: { p_release_id: string }; Returns: number };
       fn_log_activity: {
         Args: {
@@ -1030,6 +1365,18 @@ export interface Database {
           p_entity_id: string;
           p_summary: string;
           p_metadata?: Json;
+        };
+        Returns: void;
+      };
+      fn_notify_workspace: {
+        Args: {
+          p_workspace_id: string;
+          p_kind: string;
+          p_title: string;
+          p_body?: string | null;
+          p_related_url?: string | null;
+          p_actor_label?: string | null;
+          p_exclude_person_id?: string | null;
         };
         Returns: void;
       };
@@ -1059,6 +1406,9 @@ export interface Database {
       escalation_status: EscalationStatus;
       client_action_kind: ClientActionKind;
       client_action_status: ClientActionStatus;
+      project_member_role: ProjectMemberRole;
+      dashboard_space: DashboardSpace;
+      dashboard_block_type: DashboardBlockType;
     };
   };
 }

@@ -11,7 +11,7 @@ export default async function ProductsListPage() {
   const products = workspaceId ? await listProducts(workspaceId) : [];
 
   return (
-    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px]">
+    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px] mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-5">
         <PageHeading title="Products" description="Reusable capability. If two client projects need the same thing twice, it belongs here." />
         <NewProductButton />

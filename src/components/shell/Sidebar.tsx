@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
-import { SPACES, SETTINGS_NAV, WORKSPACE_NAV, type NavItem, type SpaceKey } from "@/components/shell/nav-config";
+import { ChevronDown, ChevronRight } from "lucide-react";
+import { SPACES, SETTINGS_NAV_GROUPS, WORKSPACE_NAV, type NavItem, type SpaceKey } from "@/components/shell/nav-config";
 import { ProjectMiniNav } from "@/components/shell/ProjectMiniNav";
 import { ClientSwitcher } from "@/components/shell/ClientSwitcher";
 import type { ShellData } from "@/lib/data/shell";
@@ -53,85 +55,131 @@ function NavLink({ item, active, count }: { item: NavItem; active: boolean; coun
   );
 }
 
+/** Chevron toggle for a section header — separate click target from the
+ * section's own Link, so opening/closing the sub-nav never fires a
+ * navigation. stopPropagation + preventDefault keep the two independent
+ * even though the chevron sits inside the header's anchor. */
+function ExpandToggle({ expanded, onToggle }: { expanded: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onToggle();
+      }}
+      aria-label={expanded ? "Collapse section" : "Expand section"}
+      className="w-4 h-4 flex-none flex items-center justify-center rounded-[4px] text-[#8B90A0] hover:text-white hover:bg-white/10"
+    >
+      {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+    </button>
+  );
+}
+
 function SpaceSection({
   space,
   active,
+  expanded,
+  onToggle,
   count,
   pathname,
 }: {
   space: (typeof SPACES)[number];
   active: boolean;
+  expanded: boolean;
+  onToggle: () => void;
   count: number;
   pathname: string;
 }) {
   const countTone = space.key === "hypercare" && count > 0 ? "coral" : "muted";
 
-  if (!active) {
-    return (
-      <NavLink
-        item={{ label: space.label, href: `/${space.key}`, countTone }}
-        active={false}
-        count={count}
-      />
-    );
-  }
-
   return (
     <div className="flex flex-col gap-0.5">
-      <div className="flex items-center gap-[9px] rounded-[7px] px-2 py-1.5 text-[12px] font-semibold text-white bg-white/8">
-        <span className="w-0.5 h-3.5 flex-none rounded-sm bg-coral" />
+      <Link
+        href={`/${space.key}`}
+        className={clsx(
+          "flex items-center gap-[9px] rounded-[7px] px-2 py-1.5 text-[12px]",
+          active ? "font-semibold text-white bg-white/8" : "text-[#B9BDC7] hover:text-white"
+        )}
+      >
+        <span className={clsx("w-0.5 h-3.5 flex-none rounded-sm", active ? "bg-coral" : "bg-transparent")} />
         <span className="flex-1">{space.label}</span>
         <span className={clsx("font-mono text-[9.5px]", countTone === "coral" ? "text-coral" : "text-muted-2")}>
           {count}
         </span>
-      </div>
-      <div className="flex flex-col gap-0.5 my-0.5 ml-[11px] pl-[9px] border-l border-white/10">
-        {space.nav.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={clsx(
-              "rounded-[6px] px-2 py-1.5 text-[11.5px]",
-              pathname === item.href ? "font-semibold text-white bg-white/6" : "text-[#B9BDC7] hover:text-white"
-            )}
-          >
-            {item.label}
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function SettingsSection({ active, pathname, counts }: { active: boolean; pathname: string; counts: { people: number; templates: number } }) {
-  if (!active) {
-    return <NavLink item={{ label: "Settings", href: "/settings" }} active={false} />;
-  }
-
-  return (
-    <div className="flex flex-col gap-0.5">
-      <div className="flex items-center gap-[9px] rounded-[7px] px-2 py-1.5 text-[12px] font-semibold text-white bg-white/8">
-        <span className="w-0.5 h-3.5 flex-none rounded-sm bg-coral" />
-        <span className="flex-1">Settings</span>
-      </div>
-      <div className="flex flex-col gap-0.5 my-0.5 ml-[11px] pl-[9px] border-l border-white/10">
-        {SETTINGS_NAV.map((item) => {
-          const count = item.href === "/people" ? counts.people : item.href === "/templates" ? counts.templates : undefined;
-          return (
+        <ExpandToggle expanded={expanded} onToggle={onToggle} />
+      </Link>
+      {expanded ? (
+        <div className="flex flex-col gap-0.5 my-0.5 ml-[11px] pl-[9px] border-l border-white/10">
+          {space.nav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               className={clsx(
-                "flex items-center gap-2 rounded-[6px] px-2 py-1.5 text-[11.5px]",
+                "rounded-[6px] px-2 py-1.5 text-[11.5px]",
                 pathname === item.href ? "font-semibold text-white bg-white/6" : "text-[#B9BDC7] hover:text-white"
               )}
             >
-              <span className="flex-1">{item.label}</span>
-              {count !== undefined ? <span className="font-mono text-[9.5px] text-muted-2">{count}</span> : null}
+              {item.label}
             </Link>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function SettingsSection({
+  active,
+  expanded,
+  onToggle,
+  pathname,
+  counts,
+}: {
+  active: boolean;
+  expanded: boolean;
+  onToggle: () => void;
+  pathname: string;
+  counts: { people: number; templates: number };
+}) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <Link
+        href="/settings"
+        className={clsx(
+          "flex items-center gap-[9px] rounded-[7px] px-2 py-1.5 text-[12px]",
+          active ? "font-semibold text-white bg-white/8" : "text-[#B9BDC7] hover:text-white"
+        )}
+      >
+        <span className={clsx("w-0.5 h-3.5 flex-none rounded-sm", active ? "bg-coral" : "bg-transparent")} />
+        <span className="flex-1">Settings</span>
+        <ExpandToggle expanded={expanded} onToggle={onToggle} />
+      </Link>
+      {expanded ? (
+        <div className="flex flex-col gap-2 my-0.5 ml-[11px] pl-[9px] border-l border-white/10">
+          {SETTINGS_NAV_GROUPS.map((group) => (
+            <div key={group.label} className="flex flex-col gap-0.5">
+              <span className="font-mono text-[8px] tracking-[.09em] text-muted-2 px-2 pt-0.5">{group.label.toUpperCase()}</span>
+              {group.items.map((item) => {
+                const count = item.href === "/settings/permissions" ? counts.people : item.href === "/templates" ? counts.templates : undefined;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={clsx(
+                      "flex items-center gap-2 rounded-[6px] px-2 py-1.5 text-[11.5px]",
+                      pathname === item.href ? "font-semibold text-white bg-white/6" : "text-[#B9BDC7] hover:text-white"
+                    )}
+                  >
+                    <span className="flex-1">{item.label}</span>
+                    {count !== undefined ? <span className="font-mono text-[9.5px] text-muted-2">{count}</span> : null}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -142,6 +190,18 @@ export function Sidebar({ shell, onNavigate }: { shell: ShellData; onNavigate?: 
   const settingsActive = activeSpace === null && isSettingsPath(pathname);
   const isWorkspaceCore = activeSpace === null && !settingsActive;
   const spaces = shell.selectedClient && !shell.selectedClient.hypercareEnabled ? SPACES.filter((s) => s.key !== "hypercare") : SPACES;
+
+  // Each section's sub-nav auto-expands while its route is active; the
+  // chevron toggle can additionally force a section open or closed
+  // (independent of the current route) — an explicit override always
+  // wins over the route-derived default, in either direction.
+  const [overrides, setOverrides] = useState<Record<string, boolean>>({});
+  function isExpanded(key: string, routeActive: boolean) {
+    return overrides[key] ?? routeActive;
+  }
+  function toggle(key: string, currentlyExpanded: boolean) {
+    setOverrides((prev) => ({ ...prev, [key]: !currentlyExpanded }));
+  }
 
   return (
     <div
@@ -188,23 +248,36 @@ export function Sidebar({ shell, onNavigate }: { shell: ShellData; onNavigate?: 
             <div className="font-mono text-[8.5px] tracking-[.1em] text-muted-2 px-2 pt-2.5 pb-[5px]">WORKSPACE</div>
             {WORKSPACE_NAV.map((item) => {
               const active = isWorkspaceCore && pathname === item.href;
-              const label = item.href === "/" ? `${shell.workspaceName} Overview` : item.label;
+              const label = item.href === "/" ? `${shell.workspaceName} Dashboard` : item.label;
               return <NavLink key={item.href} item={{ ...item, label }} active={active} />;
             })}
-            <SettingsSection active={settingsActive} pathname={pathname} counts={{ people: shell.counts.people, templates: shell.counts.templates }} />
+            {shell.person?.isWorkspaceAdmin ? (
+              <SettingsSection
+                active={settingsActive}
+                expanded={isExpanded("settings", settingsActive)}
+                onToggle={() => toggle("settings", isExpanded("settings", settingsActive))}
+                pathname={pathname}
+                counts={{ people: shell.counts.people, templates: shell.counts.templates }}
+              />
+            ) : null}
           </>
         )}
 
-        <div className="font-mono text-[8.5px] tracking-[.1em] text-muted-2 px-2 pt-4 pb-[5px]">SPACES</div>
-        {spaces.map((space) => (
-          <SpaceSection
-            key={space.key}
-            space={space}
-            active={activeSpace === space.key}
-            count={shell.counts[SPACE_COUNT_KEY[space.key]]}
-            pathname={pathname}
-          />
-        ))}
+        <div className="font-mono text-[8.5px] tracking-[.1em] text-muted-2 px-2 pt-4 pb-[5px]">DASHBOARD OVERVIEW</div>
+        {spaces.map((space) => {
+          const active = activeSpace === space.key;
+          return (
+            <SpaceSection
+              key={space.key}
+              space={space}
+              active={active}
+              expanded={isExpanded(space.key, active)}
+              onToggle={() => toggle(space.key, isExpanded(space.key, active))}
+              count={shell.counts[SPACE_COUNT_KEY[space.key]]}
+              pathname={pathname}
+            />
+          );
+        })}
 
         {activeSpace === "delivery" ? <ProjectMiniNav /> : null}
       </nav>

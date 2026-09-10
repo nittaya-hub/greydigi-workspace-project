@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentPerson } from "@/lib/data/auth-guard";
+import { getCurrentPerson, requireWorkspaceAdmin } from "@/lib/data/auth-guard";
 import { notifyWorkspace } from "@/lib/data/notify";
 
 /** Creates a project and clones its flight plan from the chosen locked
@@ -105,6 +105,46 @@ export async function createProject(formData: FormData) {
     }
   }
 
+  // Phases and gates were already cloned from the template; tasks never
+  // were, so every new project started with an empty Tasks and
+  // milestones tab, grouped under "Phase — Unassigned" the moment
+  // someone added their own task by hand (no phase to put it under).
+  // Cloning template_tasks the same way gives a project its starting
+  // checklist for real, ordered by the phase it was cloned into.
+  const { data: templateTasks, error: templateTasksError } = await supabase
+    .from("template_tasks")
+    .select("template_phase_id, title, is_critical_path")
+    .eq("template_version_id", templateVersionId);
+  if (templateTasksError) throw new Error(templateTasksError.message);
+
+  if (templateTasks && templateTasks.length > 0) {
+    const phaseIndexByTemplatePhase = new Map((templatePhases ?? []).map((p) => [p.id, p.index]));
+    const orderedTasks = [...templateTasks].sort((a, b) => {
+      const ai = phaseIndexByTemplatePhase.get(a.template_phase_id) ?? 0;
+      const bi = phaseIndexByTemplatePhase.get(b.template_phase_id) ?? 0;
+      return ai - bi;
+    });
+
+    const taskRows = orderedTasks
+      .map((t, i) => {
+        const projectPhaseId = phaseIdByTemplatePhase.get(t.template_phase_id);
+        if (!projectPhaseId) return null;
+        return {
+          project_id: project.id,
+          project_phase_id: projectPhaseId,
+          ref: `${ref}-T${String(i + 1).padStart(2, "0")}`,
+          title: t.title,
+          is_critical_path: t.is_critical_path,
+        };
+      })
+      .filter((row): row is NonNullable<typeof row> => row !== null);
+
+    if (taskRows.length > 0) {
+      const { error: tasksInsertError } = await supabase.from("project_tasks").insert(taskRows);
+      if (tasksInsertError) throw new Error(tasksInsertError.message);
+    }
+  }
+
   await notifyWorkspace(
     person.workspace_id,
     {
@@ -121,4 +161,73 @@ export async function createProject(formData: FormData) {
   revalidatePath("/");
 
   return { ref };
+}
+
+/** Edits a project's own fields. Any internal member may (projects_
+ * internal_update, 0007_rls.sql) — this is metadata correction, not the
+ * destructive operation deleteProject below is. Ref is uppercased and can
+ * change: every URL/link that embeds the old ref (client portal links,
+ * share links, bookmarks) breaks the moment this changes, so the caller
+ * is trusted to know that, not warned again server-side. */
+export async function updateProject(
+  projectId: string,
+  currentRef: string,
+  fields: { ref: string; name: string; description: string; goLiveTarget: string }
+) {
+  const person = await getCurrentPerson();
+  if (!person) throw new Error("Not signed in.");
+
+  const ref = fields.ref.trim().toUpperCase();
+  const name = fields.name.trim();
+  if (!ref) throw new Error("Ref is required.");
+  if (!name) throw new Error("Name is required.");
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("projects")
+    .update({
+      ref,
+      name,
+      description: fields.description.trim() || null,
+      go_live_target: fields.goLiveTarget.trim() || null,
+    })
+    .eq("id", projectId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/delivery/projects");
+  revalidatePath("/delivery");
+  revalidatePath(`/delivery/projects/${currentRef.toLowerCase()}`);
+  if (ref.toLowerCase() !== currentRef.toLowerCase()) revalidatePath(`/delivery/projects/${ref.toLowerCase()}`);
+  revalidatePath("/");
+
+  return { ref };
+}
+
+/** Deletes a project outright — workspace admin only (projects_internal_
+ * delete, 0041_projects_delete_rls.sql). Every child row (phases, gates,
+ * gate conditions, tasks, documents, baselines, change requests, client
+ * updates, share links, project members, client view config, project
+ * branding, client dashboard) cascades with it — declared `on delete
+ * cascade` against projects.id since 0003_delivery.sql. A Hypercare
+ * service already earned from this project is NOT deleted — its
+ * origin_project_id just goes null (`on delete set null`,
+ * 0005_hypercare.sql) — a live client-facing service must outlive the
+ * delivery record that spawned it. */
+export async function deleteProject(projectId: string, ref: string, name: string) {
+  const person = await requireWorkspaceAdmin();
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("projects").delete().eq("id", projectId);
+  if (error) throw new Error(error.message);
+
+  await notifyWorkspace(person.workspace_id, {
+    kind: "project_deleted",
+    title: `Project deleted: ${name}`,
+    body: `${person.full_name} deleted ${ref} — ${name}. Everything under it (tasks, documents, gates) went with it.`,
+    relatedUrl: "/delivery/projects",
+  });
+
+  revalidatePath("/delivery/projects");
+  revalidatePath("/delivery");
+  revalidatePath("/");
 }

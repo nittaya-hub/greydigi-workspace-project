@@ -240,6 +240,44 @@ export async function createProjectForClient(clientId: string, formData: FormDat
     }
   }
 
+  // Clone template_tasks -> project_tasks the same way phases/gates were
+  // just cloned above -- without this, a project starts with an empty
+  // Tasks and milestones tab, and any task added by hand has no phase to
+  // group under ("Phase — Unassigned") since there's no default checklist
+  // at all. Mirrors src/app/(app)/delivery/projects/actions.ts::createProject.
+  const { data: templateTasks } = await supabase
+    .from("template_tasks")
+    .select("template_phase_id, title, is_critical_path")
+    .eq("template_version_id", templateVersionId);
+
+  if (templateTasks && templateTasks.length > 0) {
+    const phaseIndexByTemplatePhase = new Map((templatePhases ?? []).map((p) => [p.id, p.index]));
+    const orderedTasks = [...templateTasks].sort((a, b) => {
+      const ai = phaseIndexByTemplatePhase.get(a.template_phase_id) ?? 0;
+      const bi = phaseIndexByTemplatePhase.get(b.template_phase_id) ?? 0;
+      return ai - bi;
+    });
+
+    const tasksToInsert = orderedTasks
+      .map((t, i) => {
+        const projectPhaseId = phaseIdMap.get(t.template_phase_id);
+        if (!projectPhaseId) return null;
+        return {
+          project_id: project.id,
+          project_phase_id: projectPhaseId,
+          ref: `${ref}-T${String(i + 1).padStart(2, "0")}`,
+          title: t.title,
+          is_critical_path: t.is_critical_path,
+        };
+      })
+      .filter((t): t is NonNullable<typeof t> => t !== null);
+
+    if (tasksToInsert.length > 0) {
+      const { error: tasksError } = await supabase.from("project_tasks").insert(tasksToInsert);
+      if (tasksError) throw new Error(tasksError.message);
+    }
+  }
+
   const { data: clientRow } = await supabase.from("clients").select("name").eq("id", clientId).maybeSingle();
   await notifyWorkspace(
     person.workspace_id,

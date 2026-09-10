@@ -25,7 +25,7 @@ export default async function RequestsPage() {
   const open = requests.filter((r) => r.status !== "done");
 
   return (
-    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px]">
+    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px] mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-5">
         <PageHeading title="Requests" description="Nothing is broken. A client wants something small, or an answer. Anything over half a day becomes a CR." />
         <NewRequestButton services={services.map((s) => ({ id: s.id, ref: s.ref, name: s.name }))} />

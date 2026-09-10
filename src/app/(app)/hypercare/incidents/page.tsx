@@ -19,7 +19,7 @@ export default async function IncidentsListPage() {
   const resolved = incidents.filter((i) => i.status === "resolved");
 
   return (
-    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px]">
+    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px] mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-5">
         <PageHeading title="Incidents" description="Default sort is time to breach. Severity comes from the SLA policy, not from whoever logged it." />
         <LogIncidentButton services={services.map((s) => ({ id: s.id, ref: s.ref, name: s.name }))} />

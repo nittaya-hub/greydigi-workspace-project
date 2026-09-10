@@ -1,11 +1,8 @@
 import { notFound } from "next/navigation";
-import { Card, EmptyState } from "@/components/ui/Card";
-import { Pill } from "@/components/ui/Pill";
-import { TableHead, TableRow, CellStack } from "@/components/ui/Table";
+import { Card } from "@/components/ui/Card";
 import { getProjectByRef, getProjectDocuments } from "@/lib/data/project";
 import { UploadDocumentButton } from "./UploadDocumentButton";
-
-const COLS = "1fr 62px 104px 104px";
+import { DocumentsTable } from "./DocumentsTable";
 
 export default async function ProjectDocumentsPage({ params }: { params: Promise<{ ref: string }> }) {
   const { ref } = await params;
@@ -39,41 +36,21 @@ export default async function ProjectDocumentsPage({ params }: { params: Promise
         ) : null}
       </div>
 
-      <Card>
-        {documents.length === 0 ? (
-          <EmptyState title="No documents yet." description="Uploaded artefacts and generated documents will appear here." />
-        ) : (
-          <>
-            <TableHead cols={COLS}>
-              <span>ARTEFACT</span>
-              <span>VER</span>
-              <span>VISIBILITY</span>
-              <span>STATUS</span>
-            </TableHead>
-            {documents.map((d, i) => (
-              <TableRow cols={COLS} key={d.id} last={i === documents.length - 1}>
-                <CellStack primary={d.name} secondary={d.kind.toUpperCase()} />
-                <span className="font-mono text-[9.5px] text-muted">{d.version}</span>
-                <Pill tone={d.visibility === "client_visible" ? "waiting_on_client" : "idle"} className="justify-self-start">
-                  {d.visibility === "client_visible" ? "CLIENT" : "INTERNAL"}
-                </Pill>
-                <Pill
-                  tone={!d.requiresSignature ? "in_progress" : d.signedAt ? "done" : "blocked"}
-                  className="justify-self-start"
-                >
-                  {!d.requiresSignature ? "CURRENT" : d.signedAt ? "SIGNED" : "UNSIGNED"}
-                </Pill>
-              </TableRow>
-            ))}
-          </>
-        )}
-      </Card>
+      <DocumentsTable documents={documents} />
 
       <Card className="p-4 flex flex-col gap-1.5">
         <span className="font-mono text-[9px] tracking-[.09em] text-muted">VISIBILITY RULE</span>
         <span className="text-[11.5px] text-muted leading-[1.55]">
           Internal is the default. Marking a document client visible adds it to the published projection at the
           next publish, not immediately. Unpublishing removes it from the portal and keeps the file.
+        </span>
+      </Card>
+      <Card className="p-4 flex flex-col gap-1.5">
+        <span className="font-mono text-[9px] tracking-[.09em] text-muted">GATE COLUMN</span>
+        <span className="text-[11.5px] text-muted leading-[1.55]">
+          Six kinds map to a signed artefact on the flight plan spine — Scope brief, Quote and Agreement clear G2,
+          Manifest v1 &amp; foundation schema clears G3, Go-live pack clears G4, Tie-out certificate clears G5.
+          Anything filed as internal is a working file, not one of the six, and carries no gate.
         </span>
       </Card>
     </div>

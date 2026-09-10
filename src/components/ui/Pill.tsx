@@ -94,19 +94,34 @@ export function GateStatusPill({ status, className }: { status: string; classNam
   );
 }
 
-const TASK_TONE: Record<string, PillTone> = {
-  done: "done",
-  in_progress: "in_progress",
-  waiting_on_client: "waiting_on_client",
-  blocked: "blocked",
-  watch: "watch",
-  idle: "idle",
+// Task status gets its own dedicated palette instead of routing through
+// the shared Pill tones above — those tone *names* (in_progress,
+// waiting_on_client, blocked...) are reused all over the app for
+// unrelated meanings (document visibility, publish state, brand tags),
+// so recoloring them to match the reference deck's task legend — green
+// done, orange in progress, grey not started, red waiting on client —
+// would have repainted two dozen unrelated badges along with it. Mirrors
+// TaskPhaseGroup.tsx's STATUS_SELECT_CLASSES, which needs the same
+// colors for the inline status select's own badge look.
+const TASK_STATUS_CLASSES: Record<string, string> = {
+  done: "bg-ok-bg text-ok-fg",
+  in_progress: "bg-coral-tint text-coral-strong",
+  waiting_on_client: "bg-block-bg text-block-fg",
+  blocked: "bg-block-bg text-block-fg",
+  watch: "bg-warn-bg text-warn-fg",
+  idle: "bg-idle-bg text-muted",
 };
 
 export function TaskStatusPill({ status, className }: { status: string; className?: string }) {
   return (
-    <Pill tone={TASK_TONE[status] ?? "idle"} className={className}>
+    <span
+      className={clsx(
+        "inline-flex items-center whitespace-nowrap rounded-[5px] px-[7px] py-[3px] font-mono text-[9px] tracking-[.06em] justify-self-start",
+        TASK_STATUS_CLASSES[status] ?? TASK_STATUS_CLASSES.idle,
+        className
+      )}
+    >
       {status.replace(/_/g, " ").toUpperCase()}
-    </Pill>
+    </span>
   );
 }

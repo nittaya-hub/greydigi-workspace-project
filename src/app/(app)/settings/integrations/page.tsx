@@ -1,9 +1,14 @@
 import { PageHeading, Card, CardHeader } from "@/components/ui/Card";
+import { AdminOnlyNotice } from "@/components/ui/AdminOnlyNotice";
 import { getCurrentWorkspaceId } from "@/lib/data/workspace";
+import { getCurrentPerson } from "@/lib/data/auth-guard";
 import { createClient } from "@/lib/supabase/server";
 import { IntegrationRow } from "./IntegrationRow";
 
 export default async function IntegrationsSettingsPage() {
+  const viewer = await getCurrentPerson();
+  if (viewer?.workspace_role !== "workspace_admin") return <AdminOnlyNotice title="Integrations" />;
+
   const workspaceId = await getCurrentWorkspaceId();
   let rows: { id: string; name: string; status: string; connected_at: string | null }[] = [];
 
