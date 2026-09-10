@@ -100,7 +100,7 @@ function GroupSection({
                       : "bg-coral-tint"
                     : dark
                       ? "bg-white/5"
-                      : "bg-[#F6F5F1]"
+                      : "bg-paper"
               )}
             />
           ))}
