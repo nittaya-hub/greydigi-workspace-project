@@ -34,7 +34,7 @@ export default async function PublicHypercareReportPage({ params }: { params: Pr
         ) : null}
       </header>
 
-      <main className="flex-1 w-full max-w-[1100px] mx-auto px-4 sm:px-6 py-7 sm:py-9 flex flex-col gap-5 bg-paper">
+      <main className="w-full max-w-[1100px] mx-auto px-4 sm:px-6 py-7 sm:py-9 flex flex-col gap-5 bg-paper">
         {result.state === "valid" ? <ValidView data={result.data} publishedAt={result.published_at} token={token} /> : null}
         {result.state === "revoked" ? (
           <StateCard title="Report link revoked" body="This link has been revoked. Ask your greydigi contact for a new one." />
