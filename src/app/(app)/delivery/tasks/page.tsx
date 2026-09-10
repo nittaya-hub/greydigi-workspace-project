@@ -11,7 +11,7 @@ import {
   getTaskComments,
   getTaskCustomFields,
   getTaskCustomFieldValues,
-  getWorkspaceInternalPeople,
+  getWorkspacePeople,
   getProjectChangeRequests,
   type TaskRow,
   type TaskCustomFieldColumn,
@@ -45,7 +45,7 @@ export default async function WorkspaceTasksPage({
 
   const [projects, people] = await Promise.all([
     workspaceId ? listProjects(workspaceId, clientId) : Promise.resolve([]),
-    workspaceId ? getWorkspaceInternalPeople(workspaceId) : Promise.resolve([]),
+    workspaceId ? getWorkspacePeople(workspaceId) : Promise.resolve([]),
   ]);
 
   const sections: ProjectTaskSection[] = await Promise.all(

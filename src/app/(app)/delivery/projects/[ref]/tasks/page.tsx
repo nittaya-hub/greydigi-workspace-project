@@ -9,7 +9,7 @@ import {
   getTaskComments,
   getTaskCustomFields,
   getTaskCustomFieldValues,
-  getWorkspaceInternalPeople,
+  getWorkspacePeople,
   getProjectChangeRequests,
 } from "@/lib/data/project";
 import { TaskPhaseGroup } from "./TaskPhaseGroup";
@@ -35,7 +35,7 @@ export default async function ProjectTasksPage({
 
   const [tasks, people, customFields] = await Promise.all([
     getProjectTasks(project.id),
-    getWorkspaceInternalPeople(project.workspaceId),
+    getWorkspacePeople(project.workspaceId),
     getTaskCustomFields(project.id),
   ]);
   const customValues = await getTaskCustomFieldValues(tasks.map((t) => t.id));

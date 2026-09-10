@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/shadcn/select";
 
 function filenameFromResponse(res: Response, fallback: string): string {
   const disposition = res.headers.get("Content-Disposition") ?? "";
@@ -78,16 +79,23 @@ export function ExportPdfButton({
     <div className="flex flex-col items-end gap-1">
       <div className="flex items-center gap-1.5">
         {allowOrientationChoice ? (
-          <select
+          <Select
             value={orientation}
-            onChange={(e) => setOrientation(e.target.value === "landscape" ? "landscape" : "portrait")}
             disabled={state === "loading"}
-            className="border border-line bg-white rounded-[9px] px-2 py-[9px] text-[11.5px] text-ink"
-            aria-label="PDF orientation"
+            items={[
+              { value: "portrait", label: "Portrait" },
+              { value: "landscape", label: "Landscape" },
+            ]}
+            onValueChange={(next) => setOrientation(next === "landscape" ? "landscape" : "portrait")}
           >
-            <option value="portrait">Portrait</option>
-            <option value="landscape">Landscape</option>
-          </select>
+            <SelectTrigger aria-label="PDF orientation" className="h-auto rounded-[9px] border-line px-2 py-[9px] text-[11.5px] text-ink">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="portrait">Portrait</SelectItem>
+              <SelectItem value="landscape">Landscape</SelectItem>
+            </SelectContent>
+          </Select>
         ) : null}
         <Button variant="secondary" type="button" className="flex-none" disabled={state === "loading"} onClick={handleExport}>
           {state === "loading" ? "Exporting…" : state === "done" ? "Downloaded" : label}

@@ -41,6 +41,10 @@ export function NotificationRowItem({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [optimisticRead, setOptimisticRead] = useState(notification.isRead);
+  // Optimistic "just archived, hide immediately" — only meaningful in
+  // the active list. The Archived filter's own rows start (and stay)
+  // unarchived-locally so they render normally as history, not as a
+  // notification mid-disappearing.
   const [archived, setArchived] = useState(false);
   const [, startTransition] = useTransition();
 
@@ -95,14 +99,18 @@ export function NotificationRowItem({
             </span>
           </span>
         </button>
-        <button
-          type="button"
-          onClick={handleArchive}
-          aria-label="Archive"
-          className="flex-none w-7 h-7 flex items-center justify-center rounded-[7px] text-muted-2 hover:bg-canvas hover:text-ink"
-        >
-          <Archive size={13} />
-        </button>
+        {notification.isArchived ? (
+          <span className="flex-none font-mono text-[8.5px] tracking-[.04em] text-muted-2 px-1.5">ARCHIVED</span>
+        ) : (
+          <button
+            type="button"
+            onClick={handleArchive}
+            aria-label="Archive"
+            className="flex-none w-7 h-7 flex items-center justify-center rounded-[7px] text-muted-2 hover:bg-canvas hover:text-ink"
+          >
+            <Archive size={13} />
+          </button>
+        )}
       </div>
       {expanded ? (
         <div className="px-4 pb-3.5 pl-[26px] flex flex-col gap-2">

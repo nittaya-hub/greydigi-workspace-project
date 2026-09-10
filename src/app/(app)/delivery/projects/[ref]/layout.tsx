@@ -29,8 +29,11 @@ export default async function ProjectLayout({
     { label: "Change requests", href: `${base}/change-requests` },
     { label: "Client updates", href: `${base}/client-updates` },
     { label: "Checkpoint data", href: `${base}/checkpoint` },
+    // "Share links" used to be its own tab here; the public no-login
+    // link (P·1) it managed moved into Client view config instead, next
+    // to the portal link it always sat beside anyway -- see that page's
+    // own "Public share link" card (workspace_admin only).
     { label: "Client view config", href: `${base}/client-view-config` },
-    { label: "Share links", href: `${base}/share-links` },
     { label: "Members", href: `${base}/members` },
   ];
 

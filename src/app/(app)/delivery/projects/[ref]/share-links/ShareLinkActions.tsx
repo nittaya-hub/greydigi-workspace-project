@@ -22,7 +22,7 @@ export function ShareLinkActions({
   if (status !== "active") {
     return (
       <a
-        href={`/delivery/projects/${projectRef.toLowerCase()}/share-links`}
+        href={`/delivery/projects/${projectRef.toLowerCase()}/client-view-config`}
         className="border border-line rounded-[9px] px-2 py-1 text-[10.5px] text-ink"
       >
         View audit

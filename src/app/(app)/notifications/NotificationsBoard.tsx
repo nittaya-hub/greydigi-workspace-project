@@ -15,7 +15,7 @@ const CATEGORY_LABEL: Record<NotificationCategory, string> = {
   other: "OTHER",
 };
 
-type FilterKey = "all" | "action" | NotificationCategory;
+type FilterKey = "all" | "action" | "archived" | NotificationCategory;
 
 /** Search box + category filter pills (Action needed / Delivery /
  * Hypercare / Other) + 20-per-page pagination, replacing the old fixed
@@ -29,22 +29,25 @@ export function NotificationsBoard({ notifications }: { notifications: Notificat
   const [filter, setFilter] = useState<FilterKey>("all");
   const [page, setPage] = useState(0);
 
-  const actionCount = notifications.filter((n) => !n.isRead && isActionNeeded(n.kind)).length;
+  const active = notifications.filter((n) => !n.isArchived);
+  const archivedList = notifications.filter((n) => n.isArchived);
+  const actionCount = active.filter((n) => !n.isRead && isActionNeeded(n.kind)).length;
   const categoryCounts = useMemo(() => {
     const counts: Record<NotificationCategory, number> = { hypercare: 0, delivery: 0, other: 0 };
-    for (const n of notifications) counts[notificationCategory(n.kind)]++;
+    for (const n of active) counts[notificationCategory(n.kind)]++;
     return counts;
-  }, [notifications]);
+  }, [active]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return notifications.filter((n) => {
+    const source = filter === "archived" ? archivedList : active;
+    return source.filter((n) => {
       if (filter === "action" && !(!n.isRead && isActionNeeded(n.kind))) return false;
-      if (filter !== "all" && filter !== "action" && notificationCategory(n.kind) !== filter) return false;
+      if (filter !== "all" && filter !== "action" && filter !== "archived" && notificationCategory(n.kind) !== filter) return false;
       if (!q) return true;
       return n.title.toLowerCase().includes(q) || (n.body ?? "").toLowerCase().includes(q);
     });
-  }, [notifications, query, filter]);
+  }, [active, archivedList, query, filter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages - 1);
@@ -83,7 +86,7 @@ export function NotificationsBoard({ notifications }: { notifications: Notificat
               filter === "all" ? "bg-ink text-white" : "border border-line text-coral"
             )}
           >
-            ALL {notifications.length}
+            ALL {active.length}
           </button>
           {actionCount > 0 ? (
             <button
@@ -112,6 +115,18 @@ export function NotificationsBoard({ notifications }: { notifications: Notificat
                 {CATEGORY_LABEL[c]} {categoryCounts[c]}
               </button>
             ))}
+          {archivedList.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setFilterAndResetPage("archived")}
+              className={clsx(
+                "font-mono text-[9px] tracking-[.06em] rounded-[5px] px-[7px] py-[3px]",
+                filter === "archived" ? "bg-ink text-white" : "border border-line text-muted"
+              )}
+            >
+              ARCHIVED {archivedList.length}
+            </button>
+          ) : null}
         </div>
       </div>
 

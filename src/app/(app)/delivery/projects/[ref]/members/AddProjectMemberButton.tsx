@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
-import { Modal, Field, fieldInputClass } from "@/components/ui/Modal";
+import { Modal, Field } from "@/components/ui/Modal";
+import { SelectField } from "@/components/ui/SelectField";
 import { addProjectMember } from "./actions";
 
 export function AddProjectMemberButton({
@@ -50,22 +51,23 @@ export function AddProjectMemberButton({
           className="flex flex-col gap-3"
         >
           <Field label="PERSON">
-            <select name="personId" required className={fieldInputClass} defaultValue="">
-              <option value="" disabled>
-                Choose a person
-              </option>
-              {candidates.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.fullName}
-                </option>
-              ))}
-            </select>
+            <SelectField
+              name="personId"
+              required
+              placeholder="Choose a person"
+              options={candidates.map((c) => ({ value: c.id, label: c.fullName }))}
+            />
           </Field>
           <Field label="ROLE">
-            <select name="role" required className={fieldInputClass} defaultValue="member">
-              <option value="member">Member — edits own tasks, comments anywhere</option>
-              <option value="project_admin">Project Admin — full control of this project</option>
-            </select>
+            <SelectField
+              name="role"
+              required
+              defaultValue="member"
+              options={[
+                { value: "member", label: "Member — edits own tasks, comments anywhere" },
+                { value: "project_admin", label: "Project Admin — full control of this project" },
+              ]}
+            />
           </Field>
 
           {error ? <p className="text-[11.5px] text-block-fg leading-[1.5]">{error}</p> : null}

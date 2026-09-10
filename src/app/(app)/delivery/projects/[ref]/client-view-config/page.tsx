@@ -3,9 +3,10 @@ import { Card, CardHeader, Eyebrow, EmptyState } from "@/components/ui/Card";
 import { Pill } from "@/components/ui/Pill";
 import { Button } from "@/components/ui/Button";
 import { ClientPortalView } from "@/components/portal/ClientPortalView";
-import { getProjectByRef, getClientViewConfig, getProjectBranding } from "@/lib/data/project";
+import { getProjectByRef, getClientViewConfig, getProjectBranding, getProjectShareLinks } from "@/lib/data/project";
 import { getWorkspaceBranding } from "@/lib/data/branding";
 import { getPortalProject } from "@/lib/data/portal";
+import { getCurrentPerson } from "@/lib/data/auth-guard";
 import { unpublishClientView } from "./actions";
 import { ClientViewFieldToggle } from "./ClientViewFieldToggle";
 import { PublishClientViewButton } from "./PublishClientViewButton";
@@ -13,6 +14,8 @@ import { LockedOffToggle } from "./LockedOffToggle";
 import { CopyPortalLinkButton } from "./CopyPortalLinkButton";
 import { ExpandPreviewButton } from "./ExpandPreviewButton";
 import { BrandingEditor } from "./BrandingEditor";
+import { ShareLinksTable } from "../share-links/ShareLinksTable";
+import { createShareLink } from "../share-links/actions";
 
 // Every section here defaults ON when a project has no explicit value yet
 // (see `on` below). `gantt` is the exception, for a different reason than
@@ -57,6 +60,14 @@ export default async function ClientViewConfigPage({ params }: { params: Promise
   const fields = config?.fields ?? {};
   const branding = await getProjectBranding(project.id);
   const hostBranding = await getWorkspaceBranding(project.workspaceId);
+  const viewer = await getCurrentPerson();
+  const isWorkspaceAdmin = viewer?.workspace_role === "workspace_admin";
+  const shareLinks = isWorkspaceAdmin ? await getProjectShareLinks(project.id) : [];
+
+  async function createLink() {
+    "use server";
+    await createShareLink(project!.id, project!.ref);
+  }
 
   // Live draft preview — reads through the exact same fn_client_portal_project
   // RPC the real /portal/[ref] page calls (see src/lib/data/portal.ts), just
@@ -107,6 +118,26 @@ export default async function ClientViewConfigPage({ params }: { params: Promise
           </span>
         </div>
       </Card>
+
+      {isWorkspaceAdmin ? (
+        <Card className="p-4 flex flex-col gap-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col gap-1">
+              <span className="font-mono text-[9px] tracking-[.09em] text-muted">PUBLIC SHARE LINK (P·1) — NO LOGIN, WORKSPACE ADMIN ONLY</span>
+              <span className="text-[11.5px] text-muted leading-[1.5] max-w-[66ch]">
+                For a stakeholder who shouldn&apos;t have a portal account, like a board member or a site manager.
+                Shows the same published snapshot as above, no login required. Every view is logged.
+              </span>
+            </div>
+            <form action={createLink} className="flex-none">
+              <Button variant="secondary" type="submit">
+                Create link
+              </Button>
+            </form>
+          </div>
+          <ShareLinksTable links={shareLinks} projectRef={project.ref} />
+        </Card>
+      ) : null}
 
       <div className="grid lg:grid-cols-2 gap-4 items-start">
         <div className="flex flex-col gap-5">

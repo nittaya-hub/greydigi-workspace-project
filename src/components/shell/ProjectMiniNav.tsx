@@ -84,7 +84,6 @@ export function ProjectMiniNav() {
     { label: "Change requests", href: `${base}/change-requests` },
     { label: "Client updates", href: `${base}/client-updates` },
     { label: "Client view config", href: `${base}/client-view-config` },
-    { label: "Share links", href: `${base}/share-links` },
     { label: "Members", href: `${base}/members` },
   ];
   if (project.linkedServiceRef) {

@@ -8,6 +8,7 @@ export interface NotificationRow {
   relatedUrl: string | null;
   actorLabel: string | null;
   isRead: boolean;
+  isArchived: boolean;
   createdAt: string;
 }
 
@@ -21,23 +22,27 @@ async function currentPersonId() {
   return person?.id ?? null;
 }
 
-/** Newest 20, unarchived only — archiving (separate from is_read, see
- * ArchiveNotificationButton.tsx) is how the list stays from growing
- * without bound rather than a hard delete. */
-/** `limit` defaults to a generous cap for the full /notifications page,
+/** Newest 200, archived included — archiving (separate from is_read,
+ * see NotificationRowItem.tsx) used to permanently drop a row out of
+ * every view with no way back; it now stays fetched here too, with
+ * `isArchived` on each row so NotificationsBoard.tsx can offer an
+ * "Archived" filter pill instead of the notification just vanishing
+ * the moment someone clicks archive.
+ * `limit` defaults to a generous cap for the full /notifications page,
  * which paginates 20 at a time client-side (NotificationsBoard.tsx) —
  * this just bounds how much it ever has to page through. The header
  * bell's own preview (getRecentNotificationsForBell, notifications/
- * actions.ts) calls this with a small limit instead. */
+ * actions.ts) calls this with a small limit instead and still excludes
+ * archived ones there, since a glanceable dropdown of "done with"
+ * items would be pure noise. */
 export async function listNotifications(limit = 200): Promise<NotificationRow[]> {
   const supabase = await createClient();
   const personId = await currentPersonId();
   if (!personId) return [];
   const { data } = await supabase
     .from("notifications")
-    .select("id, kind, title, body, related_url, actor_label, is_read, created_at")
+    .select("id, kind, title, body, related_url, actor_label, is_read, is_archived, created_at")
     .eq("person_id", personId)
-    .eq("is_archived", false)
     .order("created_at", { ascending: false })
     .limit(limit);
   return (data ?? []).map((n) => ({
@@ -48,6 +53,7 @@ export async function listNotifications(limit = 200): Promise<NotificationRow[]>
     relatedUrl: n.related_url,
     actorLabel: n.actor_label,
     isRead: n.is_read,
+    isArchived: n.is_archived,
     createdAt: n.created_at,
   }));
 }

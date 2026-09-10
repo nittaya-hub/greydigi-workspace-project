@@ -11,7 +11,7 @@ export default async function PublicShareViewPage({ params }: { params: Promise<
 
   return (
     <div className="min-h-dvh bg-paper flex flex-col">
-      <header className="flex items-center gap-3 px-4 sm:px-6 py-3.5 border-b border-line bg-white">
+      <header className="flex items-center gap-3 px-4 sm:px-6 py-3.5 border-b border-line bg-paper/90">
         <Image src="/greydigi-logo.png" alt="greydigi" width={22} height={22} className="rounded-[6px]" />
         <span className="font-display font-extrabold text-[14px]">greydigi</span>
         <span className="flex-1" />

@@ -5,6 +5,7 @@ import Link from "next/link";
 import clsx from "clsx";
 import { LinkButton } from "@/components/ui/Button";
 import { ConfirmButton } from "@/components/ui/ConfirmButton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/shadcn/select";
 import type { MemberRow } from "@/lib/data/admin";
 import type { WorkspaceRole } from "@/lib/supabase/database.types";
 import { withTimeout } from "@/lib/withTimeout";
@@ -57,25 +58,30 @@ function RoleSelect({ personId, role }: { personId: string; role: string }) {
   const [isPending, startTransition] = useTransition();
 
   return (
-    <select
+    <Select
       value={optimistic}
       disabled={isPending}
-      onChange={(e) => {
-        const next = e.target.value as WorkspaceRole;
+      items={ROLE_OPTIONS.map((o) => ({ value: o.value, label: o.label.toUpperCase() }))}
+      onValueChange={(next) => {
+        const nextRole = next as WorkspaceRole;
         const prev = optimistic;
-        setOptimistic(next);
+        setOptimistic(nextRole);
         startTransition(() => {
-          withTimeout(updateMemberRole(personId, next)).catch(() => setOptimistic(prev));
+          withTimeout(updateMemberRole(personId, nextRole)).catch(() => setOptimistic(prev));
         });
       }}
-      className="font-mono text-[9.5px] bg-white border border-line rounded-[5px] px-1.5 py-1 disabled:opacity-50"
     >
-      {ROLE_OPTIONS.map((o) => (
-        <option key={o.value} value={o.value}>
-          {o.label.toUpperCase()}
-        </option>
-      ))}
-    </select>
+      <SelectTrigger className="h-auto rounded-[5px] border-line px-1.5 py-1 font-mono text-[9.5px] disabled:opacity-50">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {ROLE_OPTIONS.map((o) => (
+          <SelectItem key={o.value} value={o.value} className="font-mono text-[10px]">
+            {o.label.toUpperCase()}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 

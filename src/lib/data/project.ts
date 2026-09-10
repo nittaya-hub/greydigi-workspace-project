@@ -402,6 +402,25 @@ export async function getWorkspaceInternalPeople(workspaceId: string): Promise<W
   return (data ?? []).map((p) => ({ id: p.id, fullName: p.full_name, avatarInitials: p.avatar_initials }));
 }
 
+/** Every person in the workspace, internal staff and client contacts
+ * alike -- unlike getWorkspaceInternalPeople above. Tasks in a real
+ * flight plan are genuinely two-sided (e.g. "Continuity cover on the
+ * schema" assigned to a client-side owner, matching the checkpoint
+ * deck's own "This week / From Nutrition Kitchen" commitments) so the
+ * task assignee picker needs both kinds in its option list -- an
+ * internal-only list meant a client-assigned task's owner_id couldn't
+ * be resolved to a label at all, and Select rendered the raw uuid as
+ * its own fallback text instead of a name. */
+export async function getWorkspacePeople(workspaceId: string): Promise<WorkspacePersonOption[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("people")
+    .select("id, full_name, avatar_initials")
+    .eq("workspace_id", workspaceId)
+    .order("full_name", { ascending: true });
+  return (data ?? []).map((p) => ({ id: p.id, fullName: p.full_name, avatarInitials: p.avatar_initials }));
+}
+
 export async function getTaskByRef(projectId: string, taskRef: string) {
   const supabase = await createClient();
   const { data: task } = await supabase

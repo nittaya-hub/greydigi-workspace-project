@@ -31,7 +31,7 @@ export default async function PrintProjectOverviewPage({ params }: { params: Pro
     <div
       style={branding.accentColor ? ({ "--color-coral": branding.accentColor } as React.CSSProperties) : undefined}
       // max-w matches renderPrintPage.ts's LANDSCAPE_WIDTH (1850)
-      className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-5 max-w-[1850px] mx-auto"
+      className="bg-paper px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-5 max-w-[1850px] mx-auto"
     >
       <header className="flex items-center gap-3 pb-3.5 border-b border-line flex-wrap">
         {/* eslint-disable-next-line @next/next/no-img-element -- printed page, not a Next-optimized route */}

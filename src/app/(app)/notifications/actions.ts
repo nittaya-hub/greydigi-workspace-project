@@ -51,6 +51,7 @@ export async function getRecentNotificationsForBell(limit = 5): Promise<Notifica
     relatedUrl: n.related_url,
     actorLabel: n.actor_label,
     isRead: n.is_read,
+    isArchived: false,
     createdAt: n.created_at,
   }));
 }
