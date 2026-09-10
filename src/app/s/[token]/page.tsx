@@ -11,47 +11,57 @@ export default async function PublicShareViewPage({ params }: { params: Promise<
   const result = await getPublicShareView(token);
 
   return (
-    <div className="min-h-dvh bg-paper flex flex-col">
-      <header className="flex items-center gap-3 px-4 sm:px-6 py-3.5 border-b border-line bg-paper/90">
-        <Image src="/greydigi-logo.png" alt="greydigi" width={22} height={22} className="rounded-[6px]" />
-        <span className="font-display font-extrabold text-[14px]">greydigi</span>
-        <span className="flex-1" />
-        {result.state === "valid" ? (
-          <>
-            <Pill tone="idle" className="hidden sm:inline-flex">
-              SHARED VIEW · NO LOGIN REQUIRED
-            </Pill>
-            <span className="font-mono text-[9.5px] text-muted">
-              {result.data.project.go_live_target ? `GO LIVE ${result.data.project.go_live_target}` : ""}
-            </span>
-          </>
-        ) : null}
-      </header>
+    // Everything -- header, content, footer -- is one bounded "sheet"
+    // (max-w-[1100px], rounded + bordered + shadowed once there's room
+    // for it) resting on a grayer bg-canvas desk, rather than three
+    // separate full-bleed bands with the footer trailing off as a bare
+    // line of text with nothing bookending it. Sheet treatment only
+    // kicks in from sm: up -- on a phone there's no margin to spare for
+    // a visible desk around it anyway, so it degrades to edge-to-edge.
+    <div className="min-h-dvh bg-canvas flex flex-col items-center sm:py-10 px-0 sm:px-6">
+      <div className="w-full max-w-[1100px] bg-paper flex flex-col sm:rounded-[16px] sm:border sm:border-line sm:shadow-xl overflow-hidden">
+        <header className="flex items-center gap-3 px-4 sm:px-6 py-3.5 border-b border-line bg-paper/90">
+          <Image src="/greydigi-logo.png" alt="greydigi" width={22} height={22} className="rounded-[6px]" />
+          <span className="font-display font-extrabold text-[14px]">greydigi</span>
+          <span className="flex-1" />
+          {result.state === "valid" ? (
+            <>
+              <Pill tone="idle" className="hidden sm:inline-flex">
+                SHARED VIEW · NO LOGIN REQUIRED
+              </Pill>
+              <span className="font-mono text-[9.5px] text-muted">
+                {result.data.project.go_live_target ? `GO LIVE ${result.data.project.go_live_target}` : ""}
+              </span>
+            </>
+          ) : null}
+        </header>
 
-      <main className="flex-1 px-4 sm:px-6 py-7 sm:py-9 max-w-[1100px] w-full mx-auto flex flex-col gap-5 bg-paper">
-        {result.state === "valid" ? <ValidView snapshot={result.data} publishedAt={result.published_at} token={token} /> : null}
-        {result.state === "revoked" ? (
-          <StateCard
-            title="Share link revoked"
-            body="This link has been revoked by its owner. If you still need access, ask your greydigi contact for a new one."
-          />
-        ) : null}
-        {result.state === "expired" ? (
-          <StateCard title="Share link expired" body="This link's expiry date has passed. Ask your greydigi contact for a new one." />
-        ) : null}
-        {result.state === "invalid" ? (
-          <StateCard title="Link not found" body="This link doesn't exist, or was never created. Check the URL and try again." />
-        ) : null}
-        {result.state === "error" ? (
-          <StateCard title="This view isn't ready yet" body="The project this link points to hasn't been published for client viewing." />
-        ) : null}
-      </main>
+        <main className="flex-1 px-4 sm:px-8 py-7 sm:py-9 flex flex-col gap-5 bg-paper">
+          {result.state === "valid" ? <ValidView snapshot={result.data} publishedAt={result.published_at} token={token} /> : null}
+          {result.state === "revoked" ? (
+            <StateCard
+              title="Share link revoked"
+              body="This link has been revoked by its owner. If you still need access, ask your greydigi contact for a new one."
+            />
+          ) : null}
+          {result.state === "expired" ? (
+            <StateCard title="Share link expired" body="This link's expiry date has passed. Ask your greydigi contact for a new one." />
+          ) : null}
+          {result.state === "invalid" ? (
+            <StateCard title="Link not found" body="This link doesn't exist, or was never created. Check the URL and try again." />
+          ) : null}
+          {result.state === "error" ? (
+            <StateCard title="This view isn't ready yet" body="The project this link points to hasn't been published for client viewing." />
+          ) : null}
+        </main>
 
-      <footer className="text-center py-6">
-        <span className="font-mono text-[9.5px] text-muted">
-          Shared by greydigi · not affiliated with your account · this link can be revoked at any time by its owner
-        </span>
-      </footer>
+        <footer className="flex items-center gap-2.5 px-4 sm:px-6 py-3.5 border-t border-line bg-paper/90">
+          <Image src="/greydigi-logo.png" alt="" width={16} height={16} className="rounded-[4px] opacity-60" />
+          <span className="font-mono text-[9px] tracking-[.03em] text-muted-2 leading-[1.5]">
+            Shared by greydigi · not affiliated with your account · this link can be revoked at any time by its owner
+          </span>
+        </footer>
+      </div>
     </div>
   );
 }
@@ -134,49 +144,60 @@ function ValidView({
         </div>
       ) : null}
 
-      {snapshot.milestones && snapshot.milestones.length > 0 ? (
-        <Card>
-          <div className="px-4 py-3.5 border-b border-line font-display font-extrabold text-[13.5px]">Milestones</div>
-          <div className="px-4 py-3.5 flex flex-col gap-2.5">
-            {snapshot.milestones.map((m) => (
-              <div key={m.ref} className="flex justify-between text-[12.5px]">
-                <span className="font-semibold text-ink">{m.title}</span>
-                <span className="font-mono text-[9.5px] text-muted">{m.date ?? "—"}</span>
+      {/* Grouped into one responsive row (same shape as
+          ClientPortalView's Dates/Documents/Latest-update grid) instead
+          of three full-width cards each holding a short list -- at
+          1100px wide, a handful of lines stretched edge to edge is the
+          "not proportional to the screen" the cards looked like before. */}
+      {(snapshot.milestones && snapshot.milestones.length > 0) ||
+      (snapshot.updates && snapshot.updates.length > 0) ||
+      (snapshot.documents && snapshot.documents.length > 0) ? (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {snapshot.milestones && snapshot.milestones.length > 0 ? (
+            <Card>
+              <div className="px-4 py-3.5 border-b border-line font-display font-extrabold text-[13.5px]">Milestones</div>
+              <div className="px-4 py-3.5 flex flex-col gap-2.5">
+                {snapshot.milestones.map((m) => (
+                  <div key={m.ref} className="flex justify-between text-[12.5px]">
+                    <span className="font-semibold text-ink">{m.title}</span>
+                    <span className="font-mono text-[9.5px] text-muted">{m.date ?? "—"}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </Card>
-      ) : null}
+            </Card>
+          ) : null}
 
-      {snapshot.updates && snapshot.updates.length > 0 ? (
-        <Card>
-          <div className="px-4 py-3.5 border-b border-line font-display font-extrabold text-[13.5px]">Published updates</div>
-          <div className="px-4 py-3.5 flex flex-col gap-3.5">
-            {snapshot.updates.map((u, i) => (
-              <div key={i} className="flex flex-col gap-1">
-                <div className="flex justify-between">
-                  <span className="text-[12.5px] font-semibold text-ink">{u.title}</span>
-                  <span className="font-mono text-[9.5px] text-muted">{u.published_at?.slice(0, 10) ?? ""}</span>
-                </div>
-                <span className="text-[12px] text-muted leading-[1.6]">{u.body}</span>
+          {snapshot.updates && snapshot.updates.length > 0 ? (
+            <Card>
+              <div className="px-4 py-3.5 border-b border-line font-display font-extrabold text-[13.5px]">Published updates</div>
+              <div className="px-4 py-3.5 flex flex-col gap-3.5">
+                {snapshot.updates.map((u, i) => (
+                  <div key={i} className="flex flex-col gap-1">
+                    <div className="flex justify-between">
+                      <span className="text-[12.5px] font-semibold text-ink">{u.title}</span>
+                      <span className="font-mono text-[9.5px] text-muted">{u.published_at?.slice(0, 10) ?? ""}</span>
+                    </div>
+                    <span className="text-[12px] text-muted leading-[1.6]">{u.body}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </Card>
-      ) : null}
+            </Card>
+          ) : null}
 
-      {snapshot.documents && snapshot.documents.length > 0 ? (
-        <Card>
-          <div className="px-4 py-3.5 border-b border-line font-display font-extrabold text-[13.5px]">Published documents</div>
-          <div className="px-4 py-3.5 flex flex-col gap-2.5">
-            {snapshot.documents.map((d, i) => (
-              <div key={i} className="flex justify-between text-[12.5px]">
-                <span className="font-semibold text-ink">{d.name}</span>
-                <span className="font-mono text-[9.5px] text-muted">{d.version}</span>
+          {snapshot.documents && snapshot.documents.length > 0 ? (
+            <Card>
+              <div className="px-4 py-3.5 border-b border-line font-display font-extrabold text-[13.5px]">Published documents</div>
+              <div className="px-4 py-3.5 flex flex-col gap-2.5">
+                {snapshot.documents.map((d, i) => (
+                  <div key={i} className="flex justify-between text-[12.5px]">
+                    <span className="font-semibold text-ink">{d.name}</span>
+                    <span className="font-mono text-[9.5px] text-muted">{d.version}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </Card>
+            </Card>
+          ) : null}
+        </div>
       ) : null}
 
       {snapshot.decisions && snapshot.decisions.length > 0 ? (
