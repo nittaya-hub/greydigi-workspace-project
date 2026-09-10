@@ -1,16 +1,22 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // @sparticuz/chromium resolves its bundled binary from a path relative
-  // to its own package folder at runtime (chromium.executablePath()).
-  // Left to the default bundler behavior, Next relocates the package
-  // into the compiled server output and that relative lookup breaks --
-  // confirmed in production logs: "The input directory
+  // @sparticuz/chromium is already in Next's own default external-
+  // packages list, so it was never being bundled into a JS chunk -- the
+  // real gap is output file tracing (@vercel/nft), which decides what
+  // gets copied into the deployed function by statically following
+  // import/require/fs calls. It has no way to see that
+  // chromium.executablePath() needs the *.br binaries under bin/ (they
+  // aren't reached by any traceable require), so it silently drops that
+  // whole folder. Confirmed in production logs: "The input directory
   // '/var/task/node_modules/@sparticuz/chromium/bin' does not exist."
-  // Marking it (and puppeteer-core, which launches it) external keeps
-  // both as plain node_modules requires that Next's output file tracing
-  // copies in as-is, so the binary sits where the package expects it.
+  // outputFileTracingIncludes force-includes it regardless of what
+  // static tracing finds -- same fix Next's own docs give for the
+  // identical problem with aws-crt/sharp's native binaries.
   serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
+  outputFileTracingIncludes: {
+    "/*": ["node_modules/@sparticuz/chromium/bin/**/*"],
+  },
 };
 
 export default nextConfig;
