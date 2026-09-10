@@ -22,9 +22,22 @@ async function requireWorkspaceAdmin() {
   return person;
 }
 
+/** At most one active link per project. Without this, clicking "Create
+ * link" again -- easy to do by accident, not realizing an active one
+ * already exists -- leaves several links all genuinely valid at once
+ * with no way to tell which is the "real" one to hand to a stakeholder.
+ * Revoking any existing active link first (rather than blocking the
+ * click) keeps "Create link" a single always-available action and
+ * still leaves the old one in the audit history as revoked, not
+ * deleted. */
 export async function createShareLink(projectId: string, projectRef: string) {
   const person = await requireWorkspaceAdmin();
   const supabase = await createClient();
+  await supabase
+    .from("share_links")
+    .update({ status: "revoked", revoked_at: new Date().toISOString() })
+    .eq("project_id", projectId)
+    .eq("status", "active");
   const { error } = await supabase.from("share_links").insert({
     project_id: projectId,
     token: newToken(),

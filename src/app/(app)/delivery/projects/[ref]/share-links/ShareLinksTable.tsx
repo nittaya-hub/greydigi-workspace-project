@@ -21,6 +21,7 @@ export function ShareLinksTable({ links, projectRef }: { links: ShareLinkRow[]; 
       searchPlaceholder="Search links by token or creator..."
       searchMatch={(l, q) => l.token.toLowerCase().includes(q) || l.createdByName.toLowerCase().includes(q)}
       filters={FILTERS}
+      defaultFilterKey="active"
       emptyTitle="No links created."
       emptyDescription="Use a link for a stakeholder who should not have a portal account, like a board member or a site manager."
       itemNounSingular="LINK"

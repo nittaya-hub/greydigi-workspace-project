@@ -29,6 +29,13 @@ interface FilterablePagedListProps<T> {
   searchMatch: (row: T, query: string) => boolean;
   /** Category pills shown after "ALL <n>". Omit for a plain search-only list. */
   filters?: FilterPillDef<T>[];
+  /** Which filter pill's key is selected on first render. Omit for the
+   * usual "ALL" default -- pass one of `filters`' own keys when a list
+   * is mostly interesting for one subset (e.g. ShareLinksTable: only
+   * ever one row is "active" at a time, and showing every revoked link
+   * from a project's whole history by default reads as clutter, not
+   * an audit trail someone asked to see). */
+  defaultFilterKey?: string;
   emptyTitle: string;
   emptyDescription: string;
   noMatchTitle?: string;
@@ -102,9 +109,10 @@ function FilterablePagedListBody<T>({
   renderRow,
   getRowId,
   highlightId,
+  defaultFilterKey,
 }: FilterablePagedListProps<T> & { highlightId: string | null }) {
   const [query, setQuery] = useState("");
-  const [filterKey, setFilterKey] = useState("all");
+  const [filterKey, setFilterKey] = useState(defaultFilterKey ?? "all");
   const [page, setPage] = useState(0);
   const [highlighted, setHighlighted] = useState<string | null>(null);
   const [appliedHighlightId, setAppliedHighlightId] = useState<string | null>(null);
