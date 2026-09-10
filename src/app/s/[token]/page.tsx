@@ -63,7 +63,6 @@ export default async function PublicShareViewPage({ params }: { params: Promise<
             projectRef=""
             interactive={false}
             frame="embedded"
-            className="flex-1"
             publicBadge={
               <>
                 <Pill tone="idle" className="hidden sm:inline-flex">
