@@ -5,6 +5,7 @@ import type { DashboardSpace } from "@/lib/supabase/database.types";
 import { METRICS_BY_SPACE, METRIC_LABELS, CHARTS_BY_SPACE, CHART_LABELS } from "@/lib/dashboard/metrics";
 import { isAllowedEmbedUrl } from "@/lib/dashboard/embed-allowlist";
 import type { DashboardBlockRow } from "@/lib/dashboard/service";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/shadcn/select";
 
 const inputClass = "border border-line bg-white rounded-[7px] px-2 py-1 text-[12px] w-full";
 
@@ -87,17 +88,24 @@ function MetricControl({
   onSave: (config: Record<string, unknown>) => void;
 }) {
   const options = METRICS_BY_SPACE[space];
+  const value = typeof config.metric === "string" ? config.metric : undefined;
   return (
-    <select defaultValue={typeof config.metric === "string" ? config.metric : ""} onChange={(e) => onSave({ metric: e.target.value })} className={inputClass}>
-      <option value="" disabled>
-        Choose a metric...
-      </option>
-      {options.map((m) => (
-        <option key={m} value={m}>
-          {METRIC_LABELS[m]}
-        </option>
-      ))}
-    </select>
+    <Select
+      value={value}
+      items={options.map((m) => ({ value: m, label: METRIC_LABELS[m] }))}
+      onValueChange={(next) => onSave({ metric: next })}
+    >
+      <SelectTrigger className={inputClass}>
+        <SelectValue placeholder="Choose a metric..." />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((m) => (
+          <SelectItem key={m} value={m}>
+            {METRIC_LABELS[m]}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -111,17 +119,24 @@ function ChartControl({
   onSave: (config: Record<string, unknown>) => void;
 }) {
   const options = CHARTS_BY_SPACE[space];
+  const value = typeof config.series === "string" ? config.series : undefined;
   return (
-    <select defaultValue={typeof config.series === "string" ? config.series : ""} onChange={(e) => onSave({ series: e.target.value })} className={inputClass}>
-      <option value="" disabled>
-        Choose a chart...
-      </option>
-      {options.map((s) => (
-        <option key={s} value={s}>
-          {CHART_LABELS[s]}
-        </option>
-      ))}
-    </select>
+    <Select
+      value={value}
+      items={options.map((s) => ({ value: s, label: CHART_LABELS[s] }))}
+      onValueChange={(next) => onSave({ series: next })}
+    >
+      <SelectTrigger className={inputClass}>
+        <SelectValue placeholder="Choose a chart..." />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((s) => (
+          <SelectItem key={s} value={s}>
+            {CHART_LABELS[s]}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 
