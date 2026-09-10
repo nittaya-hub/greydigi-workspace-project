@@ -239,8 +239,16 @@ export function Sidebar({ shell, onNavigate }: { shell: ShellData; onNavigate?: 
 
       <nav className="px-[9px] flex flex-col gap-0.5 flex-1">
         {shell.selectedClient ? (
+          // "Client details" -- not "{Client} Overview" -- deliberately:
+          // picking this same client in ClientSwitcher above redirects to
+          // `/`, which retitles ITSELF "{Client} Overview" (page.tsx).
+          // Two things sharing that exact label, landing on two different
+          // pages (the KPI/decision-queue dashboard vs. this roster/
+          // people/portal-access record), read as the same destination
+          // when they aren't -- this link is the People/Portal
+          // access/Flight plans record, so it gets its own name.
           <NavLink
-            item={{ label: `${shell.selectedClient.name} Overview`, href: `/clients/${shell.selectedClient.id}` }}
+            item={{ label: "Client details", href: `/clients/${shell.selectedClient.id}` }}
             active={pathname === `/clients/${shell.selectedClient.id}`}
           />
         ) : (
