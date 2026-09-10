@@ -151,7 +151,7 @@ function NeedSomethingCard({ snapshot, token }: { snapshot: PublishedSnapshot; t
             Something wrong, something you want changed, or just a question — send it directly and the team is
             notified right away.
           </p>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2.5">
             {submissions?.issue ? (
               <PublicSubmissionForm
                 token={token}

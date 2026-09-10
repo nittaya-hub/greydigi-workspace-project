@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { AlertTriangle, GitPullRequest, HelpCircle } from "lucide-react";
 import { Button } from "@/components/shadcn/button";
 import { Input } from "@/components/shadcn/input";
 import { Textarea } from "@/components/shadcn/textarea";
@@ -20,10 +21,28 @@ import type { ClientSubmissionKind } from "@/lib/supabase/database.types";
 
 type Option = { value: string; label: string };
 
-const KIND_META: Record<ClientSubmissionKind, { label: string; cta: string; titlePlaceholder: string }> = {
-  issue: { label: "Report an issue", cta: "Report issue", titlePlaceholder: "Order sync is failing" },
-  change_request: { label: "Change request", cta: "Raise change request", titlePlaceholder: "Add a second recall channel" },
-  question: { label: "Ask a question", cta: "Send question", titlePlaceholder: "How do I read the prep sheet export?" },
+const KIND_META: Record<ClientSubmissionKind, { label: string; hint: string; cta: string; titlePlaceholder: string; icon: typeof AlertTriangle }> = {
+  issue: {
+    label: "Report an issue",
+    hint: "Something's not working",
+    cta: "Report issue",
+    titlePlaceholder: "Order sync is failing",
+    icon: AlertTriangle,
+  },
+  change_request: {
+    label: "Change request",
+    hint: "Ask for something different",
+    cta: "Raise change request",
+    titlePlaceholder: "Add a second recall channel",
+    icon: GitPullRequest,
+  },
+  question: {
+    label: "Ask a question",
+    hint: "Not sure how something works",
+    cta: "Send question",
+    titlePlaceholder: "How do I read the prep sheet export?",
+    icon: HelpCircle,
+  },
 };
 
 /** Shared between /s/[token] (Delivery's P·1) and /s/hypercare/[token] —
@@ -87,7 +106,22 @@ export function PublicSubmissionForm({
         if (!next) reset();
       }}
     >
-      <DialogTrigger render={<Button variant="outline" size="sm" />}>{meta.label}</DialogTrigger>
+      <DialogTrigger
+        render={
+          <button
+            type="button"
+            className="flex-1 min-w-[168px] flex items-center gap-2.5 rounded-[10px] border border-line bg-white px-3.5 py-3 text-left transition-colors hover:border-coral/40 hover:bg-coral-tint/30"
+          />
+        }
+      >
+        <span className="flex-none w-8 h-8 rounded-[8px] bg-coral-tint flex items-center justify-center">
+          <meta.icon className="w-4 h-4 text-coral-strong" aria-hidden />
+        </span>
+        <span className="flex flex-col gap-0.5 min-w-0">
+          <span className="text-[12.5px] font-semibold text-ink">{meta.label}</span>
+          <span className="text-[10.5px] text-muted truncate">{meta.hint}</span>
+        </span>
+      </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{meta.label}</DialogTitle>

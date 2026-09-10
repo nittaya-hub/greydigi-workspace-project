@@ -24,18 +24,30 @@ import { createShareLink } from "../share-links/actions";
 // existing project already showed before this page existed.
 //
 // The three submission cards (Report an issue / Change request / Ask a
-// question) used to live here, default off. They moved to Hypercare's own
-// report settings (src/app/(app)/hypercare/clients/[id]/report-config) as
-// public, no-login forms on the Hypercare report link — Delivery no
-// longer offers them, so nobody on the team has to guess which page
-// configures them.
+// question) briefly moved to being Hypercare-only (their own report
+// settings, src/app/(app)/hypercare/clients/[id]/report-config) on the
+// idea that Delivery shouldn't offer them too -- reversed on direct
+// request: Delivery's own portal/share link needs its own "Need
+// something?" card, independently switchable from Hypercare's. Same
+// fields (submissions_issue/_change_request/_question) the RPC has
+// always read here regardless -- this UI is the only piece that had
+// been removed.
 // progress_stats/decisions/commitments/baseline_measures default off for
 // the same reason gantt does, plus a second one: every row in those four
 // tables also needs reviewed_at set (see 0054_checkpoint_sections.sql and
 // the Checkpoint data tab) before it's in the RPC result at all, so
 // turning the toggle on early just shows an empty section until the team
 // has actually entered and reviewed something.
-const DEFAULT_OFF_FIELDS = new Set(["gantt", "progress_stats", "decisions", "commitments", "baseline_measures"]);
+const DEFAULT_OFF_FIELDS = new Set([
+  "gantt",
+  "progress_stats",
+  "decisions",
+  "commitments",
+  "baseline_measures",
+  "submissions_issue",
+  "submissions_change_request",
+  "submissions_question",
+]);
 
 const FIELD_LABELS: Record<string, { label: string; note: string }> = {
   status: { label: "Phase and gate status", note: "Gate status only, no condition detail" },
@@ -49,6 +61,9 @@ const FIELD_LABELS: Record<string, { label: string; note: string }> = {
   decisions: { label: "Decisions log", note: "Open decisions with an owner and a date — reviewed rows only" },
   commitments: { label: "This week / next week", note: "Weekly commitments from both sides — reviewed rows only" },
   baseline_measures: { label: "Baseline measures", note: "Before-and-after measures the project holds itself to — reviewed rows only" },
+  submissions_issue: { label: "Report an issue card", note: "Client can send an issue — category, severity, description" },
+  submissions_change_request: { label: "Change request card", note: "Client can raise a change — business impact, priority" },
+  submissions_question: { label: "Ask a question card", note: "General clarification and inquiry inbox" },
 };
 
 export default async function ClientViewConfigPage({ params }: { params: Promise<{ ref: string }> }) {

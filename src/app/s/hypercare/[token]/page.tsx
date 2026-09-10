@@ -176,7 +176,7 @@ function ValidView({
             <p className="m-0 text-[11.5px] text-muted leading-[1.5]">
               Something wrong, something you want changed, or just a question — send it directly and the team is notified right away.
             </p>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-2.5">
               {data.submissions.issue ? (
                 <PublicSubmissionForm
                   token={token}
