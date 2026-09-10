@@ -31,3 +31,18 @@ export function notificationCategory(kind: string): NotificationCategory {
   if (kind.startsWith("delivery_submission_")) return "delivery";
   return "other";
 }
+
+/** Shared by NotificationBell.tsx and NotificationRowItem.tsx (each had
+ * its own copy). Rounded to hours only, everything under one hour
+ * collapsed into "JUST NOW" -- so three notifications a couple of
+ * minutes apart all showed the same "JUST NOW" with no way to tell
+ * which came first. Minutes now get their own bucket. */
+export function timeAgo(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  const minutes = Math.floor(ms / 60_000);
+  if (minutes < 1) return "JUST NOW";
+  if (minutes < 60) return `${minutes}M AGO`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}H AGO`;
+  return `${Math.floor(hours / 24)}D AGO`;
+}

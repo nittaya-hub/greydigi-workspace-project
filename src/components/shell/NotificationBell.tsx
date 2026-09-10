@@ -5,16 +5,8 @@ import Link from "next/link";
 import clsx from "clsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/shadcn/popover";
 import type { NotificationRow } from "@/lib/data/admin";
-import { notificationCategory } from "@/lib/notifications";
+import { notificationCategory, timeAgo } from "@/lib/notifications";
 import { getRecentNotificationsForBell, getUnreadNotificationCount, markNotificationRead } from "@/app/(app)/notifications/actions";
-
-function timeAgo(iso: string) {
-  const ms = Date.now() - new Date(iso).getTime();
-  const hours = Math.floor(ms / 3_600_000);
-  if (hours < 1) return "JUST NOW";
-  if (hours < 24) return `${hours}H AGO`;
-  return `${Math.floor(hours / 24)}D AGO`;
-}
 
 /** The header's Notifications button — a live-updating count badge plus
  * a dropdown preview of the 5 newest unread notifications, so the team

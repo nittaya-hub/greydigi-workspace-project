@@ -6,16 +6,8 @@ import { Archive } from "lucide-react";
 import clsx from "clsx";
 import type { NotificationRow } from "@/lib/data/admin";
 import { withTimeout } from "@/lib/withTimeout";
-import { notificationCategory } from "@/lib/notifications";
+import { notificationCategory, timeAgo } from "@/lib/notifications";
 import { archiveNotification, markNotificationRead } from "./actions";
-
-function timeAgo(iso: string) {
-  const ms = Date.now() - new Date(iso).getTime();
-  const hours = Math.floor(ms / 3_600_000);
-  if (hours < 1) return "JUST NOW";
-  if (hours < 24) return `${hours}H AGO`;
-  return `${Math.floor(hours / 24)}D AGO`;
-}
 
 function sourceTag(kind: string): { label: string; tone: "coral" | "neutral" } | null {
   const category = notificationCategory(kind);
