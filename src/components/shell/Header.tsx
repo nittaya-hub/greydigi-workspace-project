@@ -32,6 +32,26 @@ function breadcrumbSegments(pathname: string, selectedClientName: string | null)
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** The back arrow's target is computed by truncating the URL by one
+ * segment, which assumes every intermediate segment is a real page --
+ * true everywhere except this one route:
+ * hypercare/clients/[id]/report-config has no page.tsx at
+ * hypercare/clients/[id] itself (only report-config does, since this
+ * is deliberately its own standalone page, not a tab under a client
+ * detail view -- see that page's own comment), so truncating one
+ * segment off it lands on a URL that 404s. The real "back" destination
+ * for that page is /clients/[id] (its own top breadcrumb link already
+ * goes there) -- rewritten here, the one confirmed gap after checking
+ * every dynamic route in the app for the same "intermediate segment
+ * isn't a real page" shape. */
+const HYPERCARE_CLIENT_ROOT_RE = /^\/hypercare\/clients\/([0-9a-f-]{36})$/i;
+
+function resolveParentHref(href: string | null): string | null {
+  if (!href) return href;
+  const match = href.match(HYPERCARE_CLIENT_ROOT_RE);
+  return match ? `/clients/${match[1]}` : href;
+}
+
 export function Header({
   unreadNotifications,
   selectedClientName = null,
@@ -43,8 +63,9 @@ export function Header({
 }) {
   const pathname = usePathname();
   const crumbs = breadcrumbSegments(pathname, selectedClientName);
-  const parentHref =
-    pathname === "/" ? null : crumbs.length > 1 ? crumbs[crumbs.length - 2].href : "/";
+  const parentHref = resolveParentHref(
+    pathname === "/" ? null : crumbs.length > 1 ? crumbs[crumbs.length - 2].href : "/"
+  );
 
   return (
     <div className="flex items-center gap-2.5 px-4 py-[11px] border-b border-line bg-paper/90">
