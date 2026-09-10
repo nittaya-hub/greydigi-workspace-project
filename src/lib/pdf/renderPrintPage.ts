@@ -71,9 +71,19 @@ export async function renderPrintPagePdf(
 
   const viewportWidth = landscape ? LANDSCAPE_WIDTH : PORTRAIT_WIDTH;
 
-  const { executablePath, args } = await resolveLaunchOptions();
-  const browser = await puppeteer.launch({ headless: true, executablePath, args });
+  // Everything below, including the Chromium launch itself, is wrapped
+  // in one try/catch: a route handler with no catch of its own left any
+  // failure here (a launch failure on Vercel, a page.goto timeout, ...)
+  // as an unhandled exception, which Next.js turns into an opaque 500
+  // with no body -- ExportPdfButton already reads `body.error` from the
+  // response on failure, but there was never a body to read, so a real
+  // export bug just showed as "Export failed (500)." with nothing to
+  // diagnose it by, on either end. Logging + returning the real message
+  // here is what actually surfaces the underlying cause.
+  let browser;
   try {
+    const { executablePath, args } = await resolveLaunchOptions();
+    browser = await puppeteer.launch({ headless: true, executablePath, args });
     const page = await browser.newPage();
     await page.setViewport({ width: viewportWidth, height: 1000 });
     if (cookies.length > 0) await page.setCookie(...cookies);
@@ -105,8 +115,12 @@ export async function renderPrintPagePdf(
         "Content-Disposition": `attachment; filename="${filename}"`,
       },
     });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error.";
+    console.error(`PDF export failed for ${printPath}:`, err);
+    return NextResponse.json({ error: `Export failed: ${message}` }, { status: 500 });
   } finally {
-    await browser.close();
+    if (browser) await browser.close();
   }
 }
 
