@@ -254,7 +254,7 @@ export function ClientPortalView({
             ) : null}
 
             {result.progress_stats && result.progress_stats.length > 0 ? (
-              <div className="grid grid-cols-2 @lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 @lg:grid-cols-4 gap-3 bg-paper">
                 {result.progress_stats.map((s, i) => (
                   <StatTile key={i} label={s.label} value={s.value} note={s.note ?? undefined} />
                 ))}
@@ -285,7 +285,7 @@ export function ClientPortalView({
             ) : null}
 
             {result.commitments && result.commitments.length > 0 ? (
-              <div className="grid @lg:grid-cols-3 gap-4">
+              <div className="grid @lg:grid-cols-3 gap-4 bg-paper">
                 {result.commitments.map((c, i) => (
                   <Card key={i} className={c.accent ? "border-coral" : undefined}>
                     <div className="px-4 py-3.5 border-b border-line-soft flex items-center justify-between gap-2">
@@ -320,7 +320,7 @@ export function ClientPortalView({
               </Card>
             ) : null}
 
-            <div className="grid @lg:grid-cols-3 gap-4">
+            <div className="grid @lg:grid-cols-3 gap-4 bg-paper">
               {result.milestones && result.milestones.length > 0 ? (
                 <Card>
                   <div className="px-4 py-3.5 border-b border-line font-display font-extrabold text-[13.5px]">Dates</div>
