@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Image from "next/image";
 import { Card, StatTile, HeroPanel, Eyebrow, EmptyState } from "@/components/ui/Card";
 import { Pill } from "@/components/ui/Pill";
@@ -43,6 +44,8 @@ export function ClientPortalView({
   submissionOptions,
   branding,
   hostLogoDataUrl,
+  publicBadge,
+  footer,
 }: {
   result: PortalProjectResult;
   projectRef: string;
@@ -79,6 +82,20 @@ export function ClientPortalView({
    * /greydigi-logo.png. This identity never disappears just because a
    * project has its own client logo — the two sit side by side. */
   hostLogoDataUrl?: string | null;
+  /** Right-aligned in the header, e.g. a "SHARED VIEW · NO LOGIN
+   * REQUIRED" pill for the public share link (/s/[token]/page.tsx) --
+   * so that page can render this exact component (same markup the Live
+   * Preview pane on Client View Config shows, no separately-maintained
+   * copy to drift out of sync) with just the one badge the real
+   * authenticated portal and the admin preview don't need. Omitted
+   * (the common case) renders identically to before. */
+  publicBadge?: ReactNode;
+  /** Rendered as the last element, inside the same flex-col column as
+   * header/main -- for the public share link's "Shared by greydigi..."
+   * disclosure, which the authenticated portal and the preview pane
+   * have no reason to show. Omitted (the common case) renders no
+   * footer, exactly as before. */
+  footer?: ReactNode;
 }) {
   const project = result.project;
   if (!project) return null;
@@ -149,6 +166,7 @@ export function ClientPortalView({
         ) : null}
         {showClientName ? <span className="text-[12px] sm:text-[12.5px] text-muted min-w-0 truncate">{clientDisplayName}</span> : null}
         <span className="flex-1" />
+        {publicBadge}
       </header>
 
       {/* @container: the two grids below key their column count off this
@@ -412,6 +430,7 @@ export function ClientPortalView({
           </>
         )}
       </main>
+      {footer}
     </div>
   );
 }

@@ -12,6 +12,7 @@ export interface PublishedSnapshot {
   milestones?: { ref: string; title: string; status: string; date: string | null }[];
   updates?: { title: string; body: string; published_at: string | null }[];
   documents?: { name: string; kind: string; version: string; created_at: string }[];
+  roadmap?: { ref: string; title: string; kind: string; quarter: string | null }[];
   /** Everything below was already in fn_publish_client_view's snapshot
    * (gated on the same Client View Config toggles as the live portal --
    * see 0055_checkpoint_sections_newest_first.sql) and fn_public_share_view
@@ -29,7 +30,14 @@ export interface PublishedSnapshot {
     project_phase_id: string | null;
   }[];
   progress_stats?: { label: string; value: string; note: string | null }[];
-  decisions?: { id: string; title: string; detail: string | null; owner: string | null; due_label: string | null; status: string }[];
+  decisions?: {
+    id: string;
+    title: string;
+    detail: string | null;
+    owner: string | null;
+    due_label: string | null;
+    status: "open" | "closed";
+  }[];
   commitments?: { period_label: string; owner_label: string; items: string[]; accent: boolean }[];
   baseline_measures?: { measure_name: string; today_value: string; after_value: string; baselined_when: string | null }[];
   /** Which of the three HyperCare submission cards are enabled for this
