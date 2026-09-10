@@ -4,6 +4,7 @@ import { PhaseSpine, type PhaseSpineSegment } from "@/components/ui/PhaseSpine";
 import { Pill } from "@/components/ui/Pill";
 import { getPublicShareView } from "@/lib/data/public-share";
 import { PublicSubmissionForm } from "@/components/portal/PublicSubmissionForm";
+import { GanttTimeline } from "@/components/portal/GanttTimeline";
 
 export default async function PublicShareViewPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
@@ -27,7 +28,7 @@ export default async function PublicShareViewPage({ params }: { params: Promise<
         ) : null}
       </header>
 
-      <main className="flex-1 px-4 sm:px-6 py-7 sm:py-9 max-w-[820px] w-full mx-auto flex flex-col gap-5">
+      <main className="flex-1 px-4 sm:px-6 py-7 sm:py-9 max-w-[820px] w-full mx-auto flex flex-col gap-5 bg-paper">
         {result.state === "valid" ? <ValidView snapshot={result.data} publishedAt={result.published_at} token={token} /> : null}
         {result.state === "revoked" ? (
           <StateCard
@@ -105,6 +106,32 @@ function ValidView({
         </HeroPanel>
       ) : null}
 
+      {/* Everything from here through baseline measures mirrors the
+          authenticated portal's own sections (ClientPortalView.tsx) --
+          this data was always in the published snapshot
+          (fn_publish_client_view already builds it, fn_public_share_view
+          already returns it verbatim), it just wasn't rendered here, which
+          left the no-login share link materially behind what its own
+          config screen promises ("shows the same published snapshot"). */}
+      {snapshot.gantt_tasks && snapshot.gantt_tasks.length > 0 && snapshot.phases ? (
+        <Card className="p-4">
+          <GanttTimeline
+            phases={snapshot.phases.map((p) => ({ id: p.code, started_at: p.started_at }))}
+            tasks={snapshot.gantt_tasks}
+            goLiveTarget={snapshot.project.go_live_target}
+            dark={false}
+          />
+        </Card>
+      ) : null}
+
+      {snapshot.progress_stats && snapshot.progress_stats.length > 0 ? (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-paper">
+          {snapshot.progress_stats.map((s, i) => (
+            <StatTile key={i} label={s.label} value={s.value} note={s.note ?? undefined} />
+          ))}
+        </div>
+      ) : null}
+
       {snapshot.milestones && snapshot.milestones.length > 0 ? (
         <Card>
           <div className="px-4 py-3.5 border-b border-line font-display font-extrabold text-[13.5px]">Milestones</div>
@@ -144,6 +171,65 @@ function ValidView({
               <div key={i} className="flex justify-between text-[12.5px]">
                 <span className="font-semibold text-ink">{d.name}</span>
                 <span className="font-mono text-[9.5px] text-muted">{d.version}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      ) : null}
+
+      {snapshot.decisions && snapshot.decisions.length > 0 ? (
+        <Card>
+          <div className="px-4 py-3.5 border-b border-line flex items-center justify-between">
+            <span className="font-display font-extrabold text-[13.5px]">Decisions</span>
+            <Eyebrow>{snapshot.decisions.filter((d) => d.status === "open").length} OPEN</Eyebrow>
+          </div>
+          <div className="px-4 py-3.5 flex flex-col gap-3">
+            {snapshot.decisions.map((d) => (
+              <div key={d.id} className="flex flex-col gap-0.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[12.5px] font-semibold text-ink">{d.title}</span>
+                  <Pill tone={d.status === "closed" ? "done" : "waiting_on_client"}>{d.status.toUpperCase()}</Pill>
+                </div>
+                {d.detail ? <span className="text-[11.5px] text-muted leading-[1.5]">{d.detail}</span> : null}
+                <span className="font-mono text-[9.5px] text-muted-2">
+                  {(d.owner ?? "—").toUpperCase()} · {d.due_label ?? "no date"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      ) : null}
+
+      {snapshot.commitments && snapshot.commitments.length > 0 ? (
+        <div className="grid sm:grid-cols-2 gap-4 bg-paper">
+          {snapshot.commitments.map((c, i) => (
+            <Card key={i} className={c.accent ? "border-coral" : undefined}>
+              <div className="px-4 py-3.5 border-b border-line-soft flex items-center justify-between gap-2">
+                <span className="font-display font-extrabold text-[13px]">{c.period_label}</span>
+                <Eyebrow className="text-muted-2">{c.owner_label}</Eyebrow>
+              </div>
+              <ul className="m-0 px-4 py-3.5 flex flex-col gap-2 list-disc pl-8">
+                {c.items.map((item, j) => (
+                  <li key={j} className="text-[11.5px] text-ink leading-[1.5]">
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          ))}
+        </div>
+      ) : null}
+
+      {snapshot.baseline_measures && snapshot.baseline_measures.length > 0 ? (
+        <Card>
+          <div className="px-4 py-3.5 border-b border-line font-display font-extrabold text-[13.5px]">Measures we hold ourselves to</div>
+          <div className="px-4 py-3.5 flex flex-col gap-3">
+            {snapshot.baseline_measures.map((m, i) => (
+              <div key={i} className="flex items-center justify-between gap-3">
+                <span className="text-[12.5px] font-semibold text-ink">{m.measure_name}</span>
+                <span className="text-[11.5px] text-muted text-right">
+                  {m.today_value} <span className="text-muted-2">→</span> {m.after_value}
+                </span>
               </div>
             ))}
           </div>
