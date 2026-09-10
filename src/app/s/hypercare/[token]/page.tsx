@@ -19,40 +19,37 @@ export default async function PublicHypercareReportPage({ params }: { params: Pr
   const result = await getPublicHypercareReportView(token);
 
   return (
-    // Same bounded "sheet on a desk" treatment as the delivery share
-    // page (src/app/s/[token]/page.tsx) -- header and footer are the top
-    // and bottom edges of one sheet, not a full-bleed header with a
-    // trailing line of unbounded footer text.
-    <div className="min-h-dvh bg-canvas flex flex-col items-center sm:py-10 px-0 sm:px-6">
-      <div className="w-full max-w-[1100px] bg-paper flex flex-col sm:rounded-[16px] sm:border sm:border-line sm:shadow-xl overflow-hidden">
-        <header className="flex items-center gap-3 px-4 sm:px-6 py-3.5 border-b border-line bg-paper/90">
-          <Image src="/greydigi-logo.png" alt="greydigi" width={22} height={22} className="rounded-[6px]" />
-          <span className="font-display font-extrabold text-[14px]">greydigi</span>
-          <span className="flex-1" />
-          {result.state === "valid" ? (
-            <Pill tone="idle" className="hidden sm:inline-flex">
-              HYPERCARE REPORT · NO LOGIN REQUIRED
-            </Pill>
-          ) : null}
-        </header>
+    // Full-bleed, edge to edge -- same as the delivery share page
+    // (src/app/s/[token]/page.tsx). Header and footer span the full
+    // viewport width; only main's own content caps at 1100px + centers.
+    <div className="min-h-dvh bg-paper flex flex-col">
+      <header className="flex items-center gap-3 px-4 sm:px-6 py-3.5 border-b border-line bg-paper/90">
+        <Image src="/greydigi-logo.png" alt="greydigi" width={22} height={22} className="rounded-[6px]" />
+        <span className="font-display font-extrabold text-[14px]">greydigi</span>
+        <span className="flex-1" />
+        {result.state === "valid" ? (
+          <Pill tone="idle" className="hidden sm:inline-flex">
+            HYPERCARE REPORT · NO LOGIN REQUIRED
+          </Pill>
+        ) : null}
+      </header>
 
-        <main className="flex-1 px-4 sm:px-8 py-7 sm:py-9 flex flex-col gap-5 bg-paper">
-          {result.state === "valid" ? <ValidView data={result.data} publishedAt={result.published_at} token={token} /> : null}
-          {result.state === "revoked" ? (
-            <StateCard title="Report link revoked" body="This link has been revoked. Ask your greydigi contact for a new one." />
-          ) : null}
-          {result.state === "invalid" ? (
-            <StateCard title="Link not found" body="This link doesn't exist, or was never created. Check the URL and try again." />
-          ) : null}
-        </main>
+      <main className="flex-1 w-full max-w-[1100px] mx-auto px-4 sm:px-6 py-7 sm:py-9 flex flex-col gap-5 bg-paper">
+        {result.state === "valid" ? <ValidView data={result.data} publishedAt={result.published_at} token={token} /> : null}
+        {result.state === "revoked" ? (
+          <StateCard title="Report link revoked" body="This link has been revoked. Ask your greydigi contact for a new one." />
+        ) : null}
+        {result.state === "invalid" ? (
+          <StateCard title="Link not found" body="This link doesn't exist, or was never created. Check the URL and try again." />
+        ) : null}
+      </main>
 
-        <footer className="flex items-center gap-2.5 px-4 sm:px-6 py-3.5 border-t border-line bg-paper/90">
-          <Image src="/greydigi-logo.png" alt="" width={16} height={16} className="rounded-[4px] opacity-60" />
-          <span className="font-mono text-[9px] tracking-[.03em] text-muted-2 leading-[1.5]">
-            Shared by greydigi · not affiliated with your account · this link can be revoked at any time by its owner
-          </span>
-        </footer>
-      </div>
+      <footer className="flex items-center gap-2.5 px-4 sm:px-6 py-3.5 border-t border-line bg-paper/90">
+        <Image src="/greydigi-logo.png" alt="" width={16} height={16} className="rounded-[4px] opacity-60" />
+        <span className="font-mono text-[9px] tracking-[.03em] text-muted-2 leading-[1.5]">
+          Shared by greydigi · not affiliated with your account · this link can be revoked at any time by its owner
+        </span>
+      </footer>
     </div>
   );
 }

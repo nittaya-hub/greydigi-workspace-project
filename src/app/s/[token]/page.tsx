@@ -11,57 +11,53 @@ export default async function PublicShareViewPage({ params }: { params: Promise<
   const result = await getPublicShareView(token);
 
   return (
-    // Everything -- header, content, footer -- is one bounded "sheet"
-    // (max-w-[1100px], rounded + bordered + shadowed once there's room
-    // for it) resting on a grayer bg-canvas desk, rather than three
-    // separate full-bleed bands with the footer trailing off as a bare
-    // line of text with nothing bookending it. Sheet treatment only
-    // kicks in from sm: up -- on a phone there's no margin to spare for
-    // a visible desk around it anyway, so it degrades to edge-to-edge.
-    <div className="min-h-dvh bg-canvas flex flex-col items-center sm:py-10 px-0 sm:px-6">
-      <div className="w-full max-w-[1100px] bg-paper flex flex-col sm:rounded-[16px] sm:border sm:border-line sm:shadow-xl overflow-hidden">
-        <header className="flex items-center gap-3 px-4 sm:px-6 py-3.5 border-b border-line bg-paper/90">
-          <Image src="/greydigi-logo.png" alt="greydigi" width={22} height={22} className="rounded-[6px]" />
-          <span className="font-display font-extrabold text-[14px]">greydigi</span>
-          <span className="flex-1" />
-          {result.state === "valid" ? (
-            <>
-              <Pill tone="idle" className="hidden sm:inline-flex">
-                SHARED VIEW · NO LOGIN REQUIRED
-              </Pill>
-              <span className="font-mono text-[9.5px] text-muted">
-                {result.data.project.go_live_target ? `GO LIVE ${result.data.project.go_live_target}` : ""}
-              </span>
-            </>
-          ) : null}
-        </header>
+    // Full-bleed, edge to edge -- header and footer are the same width
+    // as the viewport, not an inset "sheet" with margin around it.
+    // main's own content still caps at 1100px + centers for readability,
+    // same as the authenticated portal; only the header/footer bands
+    // span the full width.
+    <div className="min-h-dvh bg-paper flex flex-col">
+      <header className="flex items-center gap-3 px-4 sm:px-6 py-3.5 border-b border-line bg-paper/90">
+        <Image src="/greydigi-logo.png" alt="greydigi" width={22} height={22} className="rounded-[6px]" />
+        <span className="font-display font-extrabold text-[14px]">greydigi</span>
+        <span className="flex-1" />
+        {result.state === "valid" ? (
+          <>
+            <Pill tone="idle" className="hidden sm:inline-flex">
+              SHARED VIEW · NO LOGIN REQUIRED
+            </Pill>
+            <span className="font-mono text-[9.5px] text-muted">
+              {result.data.project.go_live_target ? `GO LIVE ${result.data.project.go_live_target}` : ""}
+            </span>
+          </>
+        ) : null}
+      </header>
 
-        <main className="flex-1 px-4 sm:px-8 py-7 sm:py-9 flex flex-col gap-5 bg-paper">
-          {result.state === "valid" ? <ValidView snapshot={result.data} publishedAt={result.published_at} token={token} /> : null}
-          {result.state === "revoked" ? (
-            <StateCard
-              title="Share link revoked"
-              body="This link has been revoked by its owner. If you still need access, ask your greydigi contact for a new one."
-            />
-          ) : null}
-          {result.state === "expired" ? (
-            <StateCard title="Share link expired" body="This link's expiry date has passed. Ask your greydigi contact for a new one." />
-          ) : null}
-          {result.state === "invalid" ? (
-            <StateCard title="Link not found" body="This link doesn't exist, or was never created. Check the URL and try again." />
-          ) : null}
-          {result.state === "error" ? (
-            <StateCard title="This view isn't ready yet" body="The project this link points to hasn't been published for client viewing." />
-          ) : null}
-        </main>
+      <main className="flex-1 w-full max-w-[1100px] mx-auto px-4 sm:px-6 py-7 sm:py-9 flex flex-col gap-5 bg-paper">
+        {result.state === "valid" ? <ValidView snapshot={result.data} publishedAt={result.published_at} token={token} /> : null}
+        {result.state === "revoked" ? (
+          <StateCard
+            title="Share link revoked"
+            body="This link has been revoked by its owner. If you still need access, ask your greydigi contact for a new one."
+          />
+        ) : null}
+        {result.state === "expired" ? (
+          <StateCard title="Share link expired" body="This link's expiry date has passed. Ask your greydigi contact for a new one." />
+        ) : null}
+        {result.state === "invalid" ? (
+          <StateCard title="Link not found" body="This link doesn't exist, or was never created. Check the URL and try again." />
+        ) : null}
+        {result.state === "error" ? (
+          <StateCard title="This view isn't ready yet" body="The project this link points to hasn't been published for client viewing." />
+        ) : null}
+      </main>
 
-        <footer className="flex items-center gap-2.5 px-4 sm:px-6 py-3.5 border-t border-line bg-paper/90">
-          <Image src="/greydigi-logo.png" alt="" width={16} height={16} className="rounded-[4px] opacity-60" />
-          <span className="font-mono text-[9px] tracking-[.03em] text-muted-2 leading-[1.5]">
-            Shared by greydigi · not affiliated with your account · this link can be revoked at any time by its owner
-          </span>
-        </footer>
-      </div>
+      <footer className="flex items-center gap-2.5 px-4 sm:px-6 py-3.5 border-t border-line bg-paper/90">
+        <Image src="/greydigi-logo.png" alt="" width={16} height={16} className="rounded-[4px] opacity-60" />
+        <span className="font-mono text-[9px] tracking-[.03em] text-muted-2 leading-[1.5]">
+          Shared by greydigi · not affiliated with your account · this link can be revoked at any time by its owner
+        </span>
+      </footer>
     </div>
   );
 }
