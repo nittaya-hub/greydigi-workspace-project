@@ -38,7 +38,7 @@ export async function updateSubmissionStatus(submissionId: string, status: Clien
       kind: "client_submission_status_changed",
       title: `${submission.title}: ${status.replace(/_/g, " ")}`,
       body: `${person.full_name} marked ${clientName}'s submission "${submission.title}" as ${status.replace(/_/g, " ")}.`,
-      relatedUrl: "/hypercare/submissions",
+      relatedUrl: `/hypercare/submissions?submission=${submissionId}`,
     },
     { excludePersonId: person.id }
   );
@@ -90,7 +90,7 @@ export async function updateSubmissionAssignee(submissionId: string, assigneePer
       person_id: assigneePersonId,
       kind: "submission_assigned",
       title: `You were assigned "${submission.title}"`,
-      related_url: "/hypercare/submissions",
+      related_url: `/hypercare/submissions?submission=${submissionId}`,
     });
   }
 
@@ -124,7 +124,7 @@ export async function toggleSubmissionNeedsClientNotice(submissionId: string, ne
         kind: "submission_needs_client_notice",
         title: `Notify ${client?.name ?? "the client"} — "${submission.title}"`,
         body: `${actor.full_name} flagged that ${client?.name ?? "the client"} needs to be told about "${submission.title}".`,
-        relatedUrl: "/hypercare/submissions",
+        relatedUrl: `/hypercare/submissions?submission=${submissionId}`,
       },
       { excludePersonId: actor.id }
     );
@@ -170,7 +170,7 @@ export async function addSubmissionComment(submissionId: string, body: string) {
       kind: "submission_comment_added",
       title: `New comment on "${submission?.title ?? "a submission"}"`,
       body: trimmed.length > 140 ? `${trimmed.slice(0, 140)}…` : trimmed,
-      relatedUrl: "/hypercare/submissions",
+      relatedUrl: `/hypercare/submissions?submission=${submissionId}`,
     },
     { excludePersonId: actor.id }
   );

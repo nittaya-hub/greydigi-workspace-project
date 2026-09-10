@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import clsx from "clsx";
 import { EmptyState } from "@/components/ui/Card";
 import { Pill } from "@/components/ui/Pill";
@@ -33,11 +34,51 @@ function ageDays(iso: string) {
  * since the pill is the one thing in this row that should stay readable
  * at a glance. */
 export function ClientSubmissionsTable({ submissions, people }: { submissions: ClientSubmissionRow[]; people: WorkspacePersonOption[] }) {
+  const searchParams = useSearchParams();
+  const highlightId = searchParams.get("submission");
+
   const [query, setQuery] = useState("");
   const [kindFilter, setKindFilter] = useState<string>("all");
   const [page, setPage] = useState(0);
+  const [highlighted, setHighlighted] = useState<string | null>(null);
+  const [appliedHighlightId, setAppliedHighlightId] = useState<string | null>(null);
+  const rowRefs = useRef(new Map<string, HTMLDivElement>());
 
   const kinds = useMemo(() => [...new Set(submissions.map((s) => s.kind))].sort(), [submissions]);
+
+  // A notification or task link can carry ?submission=<id> to point at
+  // one specific row -- with search + a kind filter + 20-per-page
+  // pagination on this list, the row that link was about could easily
+  // be filtered out or several pages away, which is exactly what made
+  // it un-findable before this. Adjusted directly during render (React's
+  // own pattern for resetting state when a prop changes: https://
+  // react.dev/learn/you-might-not-need-an-effect) rather than in a
+  // useEffect, so there's no flash of the old filtered view first, and
+  // so a later action elsewhere on the page revalidating the route --
+  // which hands this component a new `submissions` array reference --
+  // doesn't reset the search/filter the person has since changed;
+  // `appliedHighlightId` only re-triggers this for a genuinely new id.
+  if (highlightId && highlightId !== appliedHighlightId) {
+    const index = submissions.findIndex((s) => s.id === highlightId);
+    if (index !== -1) {
+      setAppliedHighlightId(highlightId);
+      setKindFilter("all");
+      setQuery("");
+      setPage(Math.floor(index / PAGE_SIZE));
+      setHighlighted(highlightId);
+    }
+  }
+
+  // Scrolling the target row into view is a real external-system effect
+  // (the DOM), and clearing the flash after a delay is subscribing to an
+  // external timer, calling setState from *its* callback -- both the
+  // legitimate use of an effect, unlike the state adjustment above.
+  useEffect(() => {
+    if (!highlighted) return;
+    rowRefs.current.get(highlighted)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const timeout = setTimeout(() => setHighlighted(null), 2600);
+    return () => clearTimeout(timeout);
+  }, [highlighted, page]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -128,7 +169,19 @@ export function ClientSubmissionsTable({ submissions, people }: { submissions: C
             {pageRows.map((s, i) => {
               const days = ageDays(s.createdAt);
               return (
-                <TableRow cols={COLS} key={s.id} last={i === pageRows.length - 1}>
+                <TableRow
+                  cols={COLS}
+                  key={s.id}
+                  last={i === pageRows.length - 1}
+                  innerRef={(el) => {
+                    if (el) rowRefs.current.set(s.id, el);
+                    else rowRefs.current.delete(s.id);
+                  }}
+                  className={clsx(
+                    "transition-colors duration-700",
+                    highlighted === s.id && "bg-coral-tint"
+                  )}
+                >
                   <Pill tone={s.kind === "issue" ? "blocked" : s.kind === "change_request" ? "watch" : "idle"} className="justify-self-start">
                     {KIND_LABEL[s.kind] ?? s.kind.toUpperCase()}
                   </Pill>

@@ -85,7 +85,7 @@ export async function createClientSubmission(
     kind: `delivery_submission_${kind}`,
     title: `${KIND_LABEL[kind]}: ${title}`,
     body: `${person.full_name} (${client?.name ?? "a client"}) submitted "${title}".`,
-    relatedUrl: "/hypercare/submissions",
+    relatedUrl: `/hypercare/submissions?submission=${submission.id}`,
   });
 
   revalidatePath("/hypercare/submissions");

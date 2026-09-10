@@ -25,15 +25,22 @@ export function TableRow({
   children,
   className,
   last = false,
+  innerRef,
 }: {
   cols: string;
   children: ReactNode;
   className?: string;
   last?: boolean;
+  /** Lets a caller grab the row's own DOM node (e.g. to scroll a
+   * specific row into view after arriving from a notification link) --
+   * a plain callback ref rather than forwardRef, since most callers
+   * never need it and this keeps the common case untouched. */
+  innerRef?: (el: HTMLDivElement | null) => void;
 }) {
   const style: CSSProperties = { gridTemplateColumns: cols };
   return (
     <div
+      ref={innerRef}
       style={style}
       className={clsx(
         "grid gap-2.5 items-center px-4 py-[11px] text-[12px]",
