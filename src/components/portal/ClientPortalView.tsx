@@ -159,7 +159,16 @@ export function ClientPortalView({
           now correctly stay single-column instead of cramming a
           full-width layout into a narrow box (the preview used to inherit
           viewport-sized sm:/lg: breakpoints regardless of its own width). */}
-      <main className="@container flex-1 px-4 sm:px-6 py-7 sm:py-9 max-w-[1100px] w-full mx-auto flex flex-col gap-5">
+      {/* bg-paper again here, not just on the outer wrapper -- this is
+          the element that actually holds every card on the page (Timeline,
+          Decisions, Measures, ...), so it carries its own opaque
+          background rather than relying on the ancestor div's paint to
+          show through every descendant box. Costs nothing when it's
+          already the same color; removes any chance of body's own
+          --color-canvas (globals.css, the app-wide default background)
+          reading through as a second, greyer tone partway down a long
+          page like this one. */}
+      <main className="@container flex-1 px-4 sm:px-6 py-7 sm:py-9 max-w-[1100px] w-full mx-auto flex flex-col gap-5 bg-paper">
         <div className="flex flex-col gap-1.5">
           <span className="w-[34px] h-[3px] bg-coral rounded-[2px]" />
           {branding?.welcomeHeadline ? (

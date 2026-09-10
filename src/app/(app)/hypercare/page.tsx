@@ -97,7 +97,7 @@ export default async function HypercareOverviewPage() {
             {overview.latestUntriagedSubmissions.map((s, i) => (
               <Link
                 key={s.id}
-                href="/hypercare/submissions"
+                href={`/hypercare/submissions?submission=${s.id}`}
                 className={`flex items-center justify-between gap-3 px-4 py-[11px] text-[12px] hover:bg-canvas ${
                   i < overview.latestUntriagedSubmissions.length - 1 ? "border-b border-line-soft" : ""
                 }`}
