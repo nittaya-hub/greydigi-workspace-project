@@ -1,10 +1,10 @@
 import Image from "next/image";
 import { Card, StatTile, HeroPanel, Eyebrow } from "@/components/ui/Card";
-import { PhaseSpine, type PhaseSpineSegment } from "@/components/ui/PhaseSpine";
 import { Pill } from "@/components/ui/Pill";
 import { getPublicShareView } from "@/lib/data/public-share";
 import { PublicSubmissionForm } from "@/components/portal/PublicSubmissionForm";
 import { GanttTimeline } from "@/components/portal/GanttTimeline";
+import { FlightPlanSpine } from "@/components/portal/FlightPlanSpine";
 
 export default async function PublicShareViewPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
@@ -28,7 +28,7 @@ export default async function PublicShareViewPage({ params }: { params: Promise<
         ) : null}
       </header>
 
-      <main className="flex-1 px-4 sm:px-6 py-7 sm:py-9 max-w-[820px] w-full mx-auto flex flex-col gap-5 bg-paper">
+      <main className="flex-1 px-4 sm:px-6 py-7 sm:py-9 max-w-[1100px] w-full mx-auto flex flex-col gap-5 bg-paper">
         {result.state === "valid" ? <ValidView snapshot={result.data} publishedAt={result.published_at} token={token} /> : null}
         {result.state === "revoked" ? (
           <StateCard
@@ -76,12 +76,6 @@ function ValidView({
 }) {
   const submissions = snapshot.submissions;
   const anySubmissionEnabled = submissions ? submissions.issue || submissions.change_request || submissions.question : false;
-  const segments: PhaseSpineSegment[] | null = snapshot.phases
-    ? snapshot.phases.map((p) => ({
-        code: p.code,
-        state: p.completed_at ? "done" : snapshot.phase?.code === p.code ? "current" : "future",
-      }))
-    : null;
 
   return (
     <>
@@ -96,13 +90,21 @@ function ValidView({
         <StatTile label="PROGRESS" value={`${snapshot.progress_pct}%`} note={snapshot.gate ? `Held at ${snapshot.gate.code}` : undefined} />
       </div>
 
-      {segments ? (
+      {snapshot.phases && snapshot.phases.length > 0 ? (
+        // Full width, same as the Timeline card below it -- FlightPlanSpine
+        // needs the whole page's worth of space to lay out all 7 phases on
+        // one line without scrolling, same reasoning as ClientPortalView's
+        // own copy of this panel. No `gates` passed: the published
+        // snapshot only freezes the single currently-held gate (used in
+        // the STATUS tile's note above), not the full gates list
+        // FlightPlanSpine's own gates row would need -- gates is optional
+        // there specifically for this case, so it just renders phases.
         <HeroPanel>
           <Eyebrow className="text-muted-2">WHERE THINGS STAND</Eyebrow>
           <span className="font-display font-extrabold text-[19px] leading-[1.2]">
             {snapshot.phase ? `${snapshot.phase.code} ${snapshot.phase.name}` : "Not started"}
           </span>
-          <PhaseSpine segments={segments} dark />
+          <FlightPlanSpine phases={snapshot.phases} dark />
         </HeroPanel>
       ) : null}
 
