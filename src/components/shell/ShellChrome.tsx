@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import clsx from "clsx";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { Header } from "@/components/shell/Header";
@@ -14,6 +15,17 @@ import type { ShellData } from "@/lib/data/shell";
  */
 export function ShellChrome({ shell, children }: { shell: ShellData; children: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
+  const pathname = usePathname();
+
+  // <main> below, not the window, is what actually scrolls (the outer
+  // shell is a fixed h-dvh with overflow-hidden) -- Next's own
+  // scroll-to-top-on-navigate only ever targets window.scrollTo, so it's
+  // a no-op here, and a new page's content was landing wherever the
+  // previous page had scrolled to instead of at its own top.
+  useEffect(() => {
+    mainRef.current?.scrollTo(0, 0);
+  }, [pathname]);
 
   return (
     <div className="flex h-dvh w-full overflow-hidden bg-canvas">
@@ -50,7 +62,7 @@ export function ShellChrome({ shell, children }: { shell: ShellData; children: R
           selectedClientName={shell.selectedClient?.name ?? null}
           onMenuClick={() => setDrawerOpen(true)}
         />
-        <main className="flex-1 min-h-0 overflow-y-auto">{children}</main>
+        <main ref={mainRef} className="flex-1 min-h-0 overflow-y-auto">{children}</main>
       </div>
     </div>
   );
