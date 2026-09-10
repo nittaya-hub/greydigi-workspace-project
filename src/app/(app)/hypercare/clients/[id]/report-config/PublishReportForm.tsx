@@ -8,6 +8,7 @@ import { Field, Modal } from "@/components/ui/Modal";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { publishHypercareReport, previewHypercareReport } from "./actions";
 import type { HypercareReportData } from "@/lib/data/hypercare-report";
+import { getSiteUrl } from "@/lib/site-url";
 
 const HEALTH_TONE: Record<string, "blocked" | "watch" | "done"> = { at_risk: "blocked", watch: "watch", healthy: "done" };
 const HEALTH_LABEL: Record<string, string> = { at_risk: "AT RISK", watch: "WATCH", healthy: "HEALTHY" };
@@ -69,7 +70,7 @@ export function PublishReportForm({ clientId }: { clientId: string }) {
     startTransition(async () => {
       try {
         const { token } = await publishHypercareReport(clientId, periodStart, periodEnd);
-        setNewLink(`${window.location.origin}/s/hypercare/${token}`);
+        setNewLink(`${getSiteUrl() ?? ""}/s/hypercare/${token}`);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Could not publish.");
       }

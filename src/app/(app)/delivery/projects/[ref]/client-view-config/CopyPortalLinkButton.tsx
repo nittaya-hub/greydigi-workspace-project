@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { getSiteUrl } from "@/lib/site-url";
 
 /** Client-side only — no server round trip needed to copy a link. Mirrors
- * the copy pattern in share-links/ShareLinkActions.tsx (window.location.origin,
+ * the copy pattern in share-links/ShareLinkActions.tsx (getSiteUrl(),
  * a brief "Copied" confirmation state). The portal link is the project's
  * own ref, lower-cased, same as every other /portal/[ref] route in the app.
  * Rendered inside the PUBLISHED status card as a share-dialog-style row:
@@ -12,10 +13,8 @@ import { Button } from "@/components/ui/Button";
  * lone header button — the URL itself should be visible, not just copyable. */
 export function CopyPortalLinkButton({ projectRef }: { projectRef: string }) {
   const [copied, setCopied] = useState(false);
-  const url =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/portal/${projectRef.toLowerCase()}`
-      : `/portal/${projectRef.toLowerCase()}`;
+  const origin = getSiteUrl();
+  const url = origin ? `${origin}/portal/${projectRef.toLowerCase()}` : `/portal/${projectRef.toLowerCase()}`;
 
   return (
     <div className="flex items-center gap-2 w-full">

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { revokeShareLink, regenerateShareLink } from "./actions";
+import { getSiteUrl } from "@/lib/site-url";
 
 export function ShareLinkActions({
   linkId,
@@ -17,7 +18,8 @@ export function ShareLinkActions({
   const [isPending, startTransition] = useTransition();
   const [copied, setCopied] = useState(false);
 
-  const url = typeof window !== "undefined" ? `${window.location.origin}/s/${token}` : `/s/${token}`;
+  const origin = getSiteUrl();
+  const url = origin ? `${origin}/s/${token}` : `/s/${token}`;
 
   if (status !== "active") {
     return (
