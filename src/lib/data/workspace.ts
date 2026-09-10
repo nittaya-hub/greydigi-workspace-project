@@ -208,7 +208,7 @@ export async function getWorkspaceOverview(workspaceId: string, clientId?: strin
         on: clientById.get(sub.client_id) ?? "—",
         age: age.label,
         ageTone: age.tone,
-        href: "/hypercare/submissions",
+        href: `/hypercare/submissions?submission=${sub.id}`,
       },
     });
   }

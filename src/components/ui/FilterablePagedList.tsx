@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
 import clsx from "clsx";
 import { EmptyState } from "@/components/ui/Card";
 
@@ -12,31 +13,16 @@ export interface FilterPillDef<T> {
   predicate: (row: T) => boolean;
 }
 
-/** Shared shell for every "search + filter pills + 20-per-page
- * pagination" list in the app (first built independently three times —
- * DocumentsTable.tsx, NotificationsBoard.tsx, ClientSubmissionsTable.tsx
- * — before it was clear the same shape would be needed a dozen more
- * times across the rest of the app). Callers own the actual row markup
- * (renderHead/renderRow) since columns differ per list; this owns only
- * the search/filter/page state and the surrounding chrome. Rows are
- * expected to already arrive newest-first from the server query --
- * this component filters and paginates but never re-sorts, so "page 1
- * shows the latest" is a property of the caller's query, not of this
- * component. */
-export function FilterablePagedList<T>({
-  rows,
-  searchPlaceholder,
-  searchMatch,
-  filters,
-  emptyTitle,
-  emptyDescription,
-  noMatchTitle,
-  noMatchDescription,
-  itemNounSingular,
-  itemNounPlural,
-  renderHead,
-  renderRow,
-}: {
+export interface RowHighlightProps {
+  /** Pass as the row's own `<TableRow innerRef={...}>`. A no-op ref when
+   * highlighting isn't wired up for this list (no getRowId given). */
+  innerRef: (el: HTMLDivElement | null) => void;
+  /** True for exactly the one row a `?<highlightParam>=<id>` link on
+   * this page's URL pointed at, for a couple of seconds after arriving. */
+  highlighted: boolean;
+}
+
+interface FilterablePagedListProps<T> {
   rows: T[];
   searchPlaceholder: string;
   /** Return true if `row` matches the lowercased `query`. */
@@ -50,11 +36,79 @@ export function FilterablePagedList<T>({
   itemNounSingular: string;
   itemNounPlural: string;
   renderHead: () => ReactNode;
-  renderRow: (row: T, index: number, isLast: boolean) => ReactNode;
-}) {
+  /** `rowProps` is only meaningful when `highlightParam`/`getRowId` are
+   * given: spread `rowProps.innerRef` onto the row's own TableRow (its
+   * `innerRef` prop) and fold `rowProps.highlighted` into that row's
+   * className (e.g. `clsx(..., rowProps.highlighted && "bg-coral-tint
+   * transition-colors duration-700")`) to actually show the flash. */
+  renderRow: (row: T, index: number, isLast: boolean, rowProps: RowHighlightProps) => ReactNode;
+  /** Query param name (e.g. "document", "gate") that a link from
+   * elsewhere in the app -- a dashboard widget, a decision queue, a
+   * notification -- can carry to point at one specific row. When
+   * present (together with getRowId), arriving with that param clears
+   * any filter/search that would hide the row, jumps to its page,
+   * scrolls it into view, and flashes it -- see hypercare/submissions'
+   * ClientSubmissionsTable, which had this hand-rolled before it moved
+   * here for every other filtered+paginated list to share. */
+  highlightParam?: string;
+  getRowId?: (row: T) => string;
+}
+
+/** Shared shell for every "search + filter pills + 20-per-page
+ * pagination" list in the app (first built independently three times —
+ * DocumentsTable.tsx, NotificationsBoard.tsx, ClientSubmissionsTable.tsx
+ * — before it was clear the same shape would be needed a dozen more
+ * times across the rest of the app). Callers own the actual row markup
+ * (renderHead/renderRow) since columns differ per list; this owns only
+ * the search/filter/page state and the surrounding chrome. Rows are
+ * expected to already arrive newest-first from the server query --
+ * this component filters and paginates but never re-sorts, so "page 1
+ * shows the latest" is a property of the caller's query, not of this
+ * component.
+ *
+ * Wrapped in its own Suspense boundary because reading the highlight
+ * param needs useSearchParams(), which Next.js requires a Suspense
+ * boundary around wherever a route might attempt a static/PPR shell —
+ * true for some callers of this shared component even when they render
+ * dynamically once deployed. The fallback is the exact same list with
+ * highlighting simply not applied yet, not a skeleton, so there's
+ * nothing to visibly flash before it resolves. */
+export function FilterablePagedList<T>(props: FilterablePagedListProps<T>) {
+  return (
+    <Suspense fallback={<FilterablePagedListBody {...props} highlightId={null} />}>
+      <FilterablePagedListWithParams {...props} />
+    </Suspense>
+  );
+}
+
+function FilterablePagedListWithParams<T>(props: FilterablePagedListProps<T>) {
+  const searchParams = useSearchParams();
+  const highlightId = props.highlightParam ? searchParams.get(props.highlightParam) : null;
+  return <FilterablePagedListBody {...props} highlightId={highlightId} />;
+}
+
+function FilterablePagedListBody<T>({
+  rows,
+  searchPlaceholder,
+  searchMatch,
+  filters,
+  emptyTitle,
+  emptyDescription,
+  noMatchTitle,
+  noMatchDescription,
+  itemNounSingular,
+  itemNounPlural,
+  renderHead,
+  renderRow,
+  getRowId,
+  highlightId,
+}: FilterablePagedListProps<T> & { highlightId: string | null }) {
   const [query, setQuery] = useState("");
   const [filterKey, setFilterKey] = useState("all");
   const [page, setPage] = useState(0);
+  const [highlighted, setHighlighted] = useState<string | null>(null);
+  const [appliedHighlightId, setAppliedHighlightId] = useState<string | null>(null);
+  const rowRefs = useRef(new Map<string, HTMLDivElement>());
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -74,6 +128,32 @@ export function FilterablePagedList<T>({
     setFilterKey(next);
     setPage(0);
   }
+
+  // Adjusted directly during render (React's own pattern for resetting
+  // state when a prop changes, rather than in a useEffect -- avoids a
+  // flash of the old filtered view and keeps a later revalidation
+  // elsewhere on the page, which hands this component a new `rows`
+  // reference, from resetting a search the person has since typed).
+  // Index is computed against the unfiltered `rows` order, which is
+  // exactly page 0's "all, no search" order this jumps to.
+  if (highlightId && getRowId && highlightId !== appliedHighlightId) {
+    const index = rows.findIndex((r) => getRowId(r) === highlightId);
+    if (index !== -1) {
+      setAppliedHighlightId(highlightId);
+      setFilterKey("all");
+      setQuery("");
+      setPage(Math.floor(index / PAGE_SIZE));
+      setHighlighted(highlightId);
+    }
+  }
+
+  useEffect(() => {
+    if (!highlighted) return;
+    rowRefs.current.get(highlighted)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const timeout = setTimeout(() => setHighlighted(null), 2600);
+    return () => clearTimeout(timeout);
+  }, [highlighted, page]);
+
 
   return (
     <div className="flex flex-col gap-3">
@@ -136,7 +216,31 @@ export function FilterablePagedList<T>({
         ) : (
           <>
             {renderHead()}
-            {pageRows.map((row, i) => renderRow(row, i, i === pageRows.length - 1))}
+            {/* A per-row ref callback, same shape as the innerRef
+                ClientSubmissionsTable writes directly as a JSX
+                attribute -- the only difference here is it's built one
+                level removed, as an object handed to the caller's
+                renderRow, which is enough indirection that eslint-
+                plugin-react-hooks' newer `refs` rule can no longer see
+                that the ref.current write only ever runs later, in
+                React's own commit phase, and flags it as if it ran
+                during render. It doesn't: a callback ref's body never
+                executes until React actually attaches/detaches the DOM
+                node. */}
+            {/* eslint-disable-next-line react-hooks/refs */}
+            {pageRows.map((row, i) => {
+              const id = getRowId?.(row);
+              const innerRef = id
+                ? (el: HTMLDivElement | null) => {
+                    if (el) rowRefs.current.set(id, el);
+                    else rowRefs.current.delete(id);
+                  }
+                : () => {};
+              return renderRow(row, i, i === pageRows.length - 1, {
+                innerRef,
+                highlighted: id != null && highlighted === id,
+              });
+            })}
           </>
         )}
       </div>
