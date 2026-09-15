@@ -23,7 +23,17 @@ const FILTERS: FilterPillDef<ChangeRequestRow>[] = [
   { key: "rejected", label: "Rejected", predicate: (c) => c.status === "rejected" },
 ];
 
-export function ChangeRequestsTable({ crs, projectId, projectRef }: { crs: ChangeRequestRow[]; projectId: string; projectRef: string }) {
+export function ChangeRequestsTable({
+  crs,
+  projectId,
+  projectRef,
+  canDecide,
+}: {
+  crs: ChangeRequestRow[];
+  projectId: string;
+  projectRef: string;
+  canDecide: boolean;
+}) {
   return (
     <FilterablePagedList
       rows={crs}
@@ -55,7 +65,7 @@ export function ChangeRequestsTable({ crs, projectId, projectRef }: { crs: Chang
           <Pill tone={STATUS_TONE[c.status] ?? "idle"} className="justify-self-start">
             {c.status.replace(/_/g, " ").toUpperCase()}
           </Pill>
-          {c.status === "raised" || c.status === "awaiting_signature" ? (
+          {canDecide && (c.status === "raised" || c.status === "awaiting_signature") ? (
             <DecideChangeRequestButtons crId={c.id} projectId={projectId} projectRef={projectRef} />
           ) : (
             <span />

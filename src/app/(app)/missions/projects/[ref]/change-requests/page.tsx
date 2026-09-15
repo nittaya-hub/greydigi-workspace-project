@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getProjectByRef, getProjectChangeRequests } from "@/lib/data/project";
+import { getCurrentPerson } from "@/lib/data/auth-guard";
 import { RaiseChangeRequestButton } from "./RaiseChangeRequestButton";
 import { ChangeRequestsTable } from "./ChangeRequestsTable";
 
@@ -16,6 +17,14 @@ export default async function ProjectChangeRequestsPage({
   if (!project) notFound();
 
   const crs = await getProjectChangeRequests(project.id);
+  const viewer = await getCurrentPerson();
+  // Matches requireMissionsLead in auth-guard.ts exactly -- deciding a CR
+  // is restricted to this mission's lead or a workspace admin, so the
+  // buttons only render where the action would actually succeed.
+  const canDecide =
+    viewer?.workspace_role === "workspace_admin" ||
+    viewer?.workspace_role === "delivery_lead" ||
+    (!!viewer && viewer.id === project.leadPersonId);
 
   return (
     <div className="flex flex-col gap-5">
@@ -31,7 +40,7 @@ export default async function ProjectChangeRequestsPage({
         />
       </div>
 
-      <ChangeRequestsTable crs={crs} projectId={project.id} projectRef={project.ref} />
+      <ChangeRequestsTable crs={crs} projectId={project.id} projectRef={project.ref} canDecide={canDecide} />
     </div>
   );
 }

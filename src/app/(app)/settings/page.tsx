@@ -66,9 +66,9 @@ export default async function SettingsPage() {
           </div>
         </Card>
 
-        <div id="spaces" className="scroll-mt-4">
+        <div id="cockpits" className="scroll-mt-4">
           <Card>
-            <CardHeader title="Spaces" note="ENABLED PER WORKSPACE" />
+            <CardHeader title="Cockpits" note="ENABLED PER WORKSPACE" />
             {(
               [
                 { key: "missions", label: "Missions", note: `${spaceCounts.delivery} PROJECTS` },
@@ -78,7 +78,7 @@ export default async function SettingsPage() {
             ).map((s, i, arr) => (
               <div
                 key={s.key}
-                id={`spaces-${s.key}`}
+                id={`cockpits-${s.key}`}
                 className={`scroll-mt-4 flex items-center gap-2.5 px-4 py-[11px] text-[12px] ${i < arr.length - 1 ? "border-b border-line-soft" : ""}`}
               >
                 <span className="flex-1 flex flex-col gap-0.5">

@@ -35,7 +35,7 @@ export default async function PrintDashboardPage() {
       </header>
 
       <div className="flex flex-col gap-1">
-        <h1 className="m-0 font-display font-extrabold text-[23px] tracking-[-0.02em] text-ink">Where work crosses spaces</h1>
+        <h1 className="m-0 font-display font-extrabold text-[23px] tracking-[-0.02em] text-ink">Where work crosses cockpits</h1>
         <p className="m-0 text-[12.5px] text-muted max-w-[66ch]">
           Every arrow is an explicit, audited relationship between records. None of these numbers are inferred.
         </p>

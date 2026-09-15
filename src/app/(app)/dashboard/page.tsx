@@ -14,7 +14,7 @@ export default async function CrossSpaceDashboardPage() {
   return (
     <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px] mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-5">
-        <PageHeading title="Where work crosses spaces" description="Every arrow is an explicit, audited relationship between records. None of these numbers are inferred." />
+        <PageHeading title="Where work crosses cockpits" description="Every arrow is an explicit, audited relationship between records. None of these numbers are inferred." />
         <div className="flex gap-1.5 flex-none">
           <ExportButton data={data} />
           <ExportPdfButton

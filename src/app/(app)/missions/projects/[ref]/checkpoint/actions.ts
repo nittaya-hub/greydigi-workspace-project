@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentPerson } from "@/lib/data/auth-guard";
+import { getCurrentPerson, requireMissionsLead } from "@/lib/data/auth-guard";
 import {
   getProjectProgressStats,
   getProjectDecisions,
@@ -237,8 +237,11 @@ export async function deleteBaselineMeasure(id: string, projectId: string, proje
  * delete path for this table anywhere in the app on purpose: once this
  * insert lands, nothing can change it again. */
 export async function publishCheckpointToHistory(projectId: string, projectRef: string, weekLabel: string) {
-  const person = await getCurrentPerson();
-  if (!person) throw new Error("Not signed in.");
+  // This mission's lead (or a workspace admin) only -- once published
+  // this snapshot is permanent and client-visible, matching the
+  // Decision Pack's own description of who creates a checkpoint ("the
+  // delivery lead, weekly").
+  const person = await requireMissionsLead(projectId);
   const trimmedLabel = weekLabel.trim();
   if (!trimmedLabel) throw new Error("A week label is required.");
   const supabase = await createClient();

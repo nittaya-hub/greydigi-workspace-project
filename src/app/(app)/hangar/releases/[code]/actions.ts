@@ -2,15 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentPerson } from "@/lib/data/auth-guard";
+import { requireHangarLead } from "@/lib/data/auth-guard";
 import { notifyWorkspace } from "@/lib/data/notify";
 
 /** Sets a release's status to 'ready'. The button that calls this is already
- * disabled while any exit criteria are open (see page.tsx), so this action
- * re-checks nothing beyond the update itself — RLS is the backstop. */
+ * disabled while any exit criteria are open (see page.tsx). Restricted to
+ * the Hangar lead or a workspace admin — marking a release ready is what
+ * tells everyone downstream it's safe to build on. */
 export async function markReleaseReady(releaseId: string, releaseCode: string) {
   const supabase = await createClient();
-  const person = await getCurrentPerson();
+  const person = await requireHangarLead();
 
   const { data: release } = await supabase.from("releases").select("id, name, product_id").eq("id", releaseId).maybeSingle();
   if (!release) throw new Error("Release not found.");

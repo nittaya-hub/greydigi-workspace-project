@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentPerson } from "@/lib/data/auth-guard";
+import { getCurrentPerson, requireHypercareLead } from "@/lib/data/auth-guard";
 import { notifyWorkspace } from "@/lib/data/notify";
 
 async function getIncidentContext(supabase: Awaited<ReturnType<typeof createClient>>, incidentId: string) {
@@ -47,9 +47,12 @@ export async function pauseClock(incidentId: string, incidentRef: string, formDa
   revalidatePath("/hypercare");
 }
 
+/** Restricted to the Hypercare lead or a workspace admin — resolving
+ * closes the SLA clock for good, so it isn't left to whoever happens to
+ * be looking at the incident. */
 export async function resolveIncident(incidentId: string, incidentRef: string) {
   const supabase = await createClient();
-  const person = await getCurrentPerson();
+  const person = await requireHypercareLead();
   const { incident, service } = await getIncidentContext(supabase, incidentId);
 
   const { error } = await supabase

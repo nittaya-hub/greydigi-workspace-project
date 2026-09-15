@@ -62,7 +62,7 @@ export default async function EngineeringPage() {
       <Card className="p-4 flex flex-col gap-1.5">
         <span className="font-mono text-[9px] tracking-[.09em] text-muted">WHY THIS MATTERS</span>
         <span className="text-[11.5px] text-muted leading-[1.55]">
-          Rebalancing needs the whole picture, which is why the three spaces share one person record instead of
+          Rebalancing needs the whole picture, which is why the four cockpits share one person record instead of
           each keeping their own.
         </span>
       </Card>

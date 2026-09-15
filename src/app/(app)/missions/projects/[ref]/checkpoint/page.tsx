@@ -12,6 +12,7 @@ import {
   getProjectWeeklyCommitments,
   getProjectBaselineMeasures,
 } from "@/lib/data/project";
+import { getCurrentPerson } from "@/lib/data/auth-guard";
 import {
   createProgressStat,
   reviewProgressStat,
@@ -48,6 +49,13 @@ export default async function CheckpointDataPage({ params }: { params: Promise<{
     getProjectWeeklyCommitments(project.id),
     getProjectBaselineMeasures(project.id),
   ]);
+  const viewer = await getCurrentPerson();
+  // Matches requireMissionsLead in auth-guard.ts -- publishing is
+  // restricted to this mission's lead or a workspace admin.
+  const canPublish =
+    viewer?.workspace_role === "workspace_admin" ||
+    viewer?.workspace_role === "delivery_lead" ||
+    (!!viewer && viewer.id === project.leadPersonId);
 
   async function addProgressStat(formData: FormData) {
     "use server";
@@ -90,7 +98,7 @@ export default async function CheckpointDataPage({ params }: { params: Promise<{
               View history →
             </Link>
           </div>
-          <PublishCheckpointButton projectId={project.id} projectRef={project.ref} />
+          {canPublish ? <PublishCheckpointButton projectId={project.id} projectRef={project.ref} /> : null}
         </div>
       </div>
 

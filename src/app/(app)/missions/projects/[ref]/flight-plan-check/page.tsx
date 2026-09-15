@@ -32,6 +32,11 @@ export default async function FlightPlanCheckPage({
   const supabase = await createClient();
   const viewer = await getCurrentPerson();
   const isWorkspaceAdmin = viewer?.workspace_role === "workspace_admin";
+  // Missions lead: workspace-admin, holds the workspace-wide Missions
+  // lead role, or is specifically this project's own assigned lead --
+  // matches requireMissionsLead in actions.ts exactly (auth-guard.ts).
+  const isMissionsLead =
+    isWorkspaceAdmin || viewer?.workspace_role === "delivery_lead" || (!!viewer && viewer.id === project.leadPersonId);
   const gateIds = project.gates.map((g) => g.id);
   const { data: rawConditions } = gateIds.length
     ? await supabase
@@ -123,14 +128,14 @@ export default async function FlightPlanCheckPage({
                       {c.status === "open" ? (
                         <span className="flex gap-1.5 justify-self-end">
                           <MarkConditionMetButton conditionId={c.id} projectId={project.id} projectRef={project.ref} />
-                          {isWorkspaceAdmin ? (
+                          {isMissionsLead ? (
                             <WaiveConditionButton conditionId={c.id} projectId={project.id} projectRef={project.ref} />
                           ) : null}
                         </span>
                       ) : (
                         <span className="flex items-center gap-1.5 justify-self-start">
                           <Pill tone={result === "PASS" ? "done" : "in_progress"}>{result}</Pill>
-                          {isWorkspaceAdmin ? (
+                          {isMissionsLead ? (
                             <RevertConditionButton conditionId={c.id} projectId={project.id} projectRef={project.ref} />
                           ) : null}
                         </span>
@@ -144,7 +149,7 @@ export default async function FlightPlanCheckPage({
           <Card className="p-4 flex flex-col gap-1.5">
             <span className="font-mono text-[9px] tracking-[.09em] text-muted">OVERRIDE POLICY</span>
             <span className="text-[11.5px] text-muted leading-[1.55]">
-              A failing condition can be overridden by a workspace admin with a written reason. The override is
+              A failing condition can be overridden by this mission's lead or a workspace admin, with a written reason. The override is
               stamped on the gate, shown on the project overview, and never hidden from the client update.
             </span>
           </Card>

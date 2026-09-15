@@ -29,7 +29,7 @@ export const WORKSPACE_NAV: NavItem[] = [{ label: "Overview", href: "/" }];
  *
  * Templates keeps its existing top-level route; it's just reachable
  * from here too. The Missions/Hangar/Hypercare rows and "Cockpits"
- * deep-link into the Spaces card on the settings page
+ * deep-link into the Cockpits card on the settings page
  * (src/app/(app)/settings/page.tsx). Manifest has no settings row yet —
  * it's a nav-only placeholder until its object model ships (Wave 3 of
  * the aironauts Decision Pack build order), and an "ON" row with no
@@ -40,7 +40,7 @@ export const SETTINGS_NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     label: "Workspace",
     items: [
       { label: "General", href: "/settings" },
-      { label: "Cockpits", href: "/settings#spaces" },
+      { label: "Cockpits", href: "/settings#cockpits" },
       { label: "SLA policies", href: "/settings/sla" },
       { label: "Client Management", href: "/settings/portal" },
       { label: "Branding", href: "/settings/branding" },
@@ -55,9 +55,9 @@ export const SETTINGS_NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       { label: "Submission types", href: "/settings/submissions" },
       { label: "Templates", href: "/templates" },
       { label: "Notifications", href: "/notifications" },
-      { label: "Missions", href: "/settings#spaces-missions" },
-      { label: "Hangar", href: "/settings#spaces-hangar" },
-      { label: "Hypercare", href: "/settings#spaces-hypercare" },
+      { label: "Missions", href: "/settings#cockpits-missions" },
+      { label: "Hangar", href: "/settings#cockpits-hangar" },
+      { label: "Hypercare", href: "/settings#cockpits-hypercare" },
     ],
   },
 ];

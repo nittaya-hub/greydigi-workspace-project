@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Card, CardHeader, StatTile } from "@/components/ui/Card";
 import { GateConditionRow } from "@/components/ui/GateConditionRow";
 import { getReleaseByCode } from "@/lib/data/product";
+import { getCurrentPerson } from "@/lib/data/auth-guard";
 import { MarkReadyButton } from "./MarkReadyButton";
 
 export default async function ReleaseDetailPage({ params }: { params: Promise<{ code: string }> }) {
@@ -10,6 +11,9 @@ export default async function ReleaseDetailPage({ params }: { params: Promise<{ 
   if (!release) notFound();
 
   const openCriteria = release.criteria.filter((c) => c.status === "open").length;
+  const viewer = await getCurrentPerson();
+  // Matches requireHangarLead in auth-guard.ts.
+  const canMarkReady = viewer?.workspace_role === "workspace_admin" || viewer?.workspace_role === "product_lead";
 
   return (
     <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-5 max-w-[820px] mx-auto">
@@ -22,7 +26,7 @@ export default async function ReleaseDetailPage({ params }: { params: Promise<{ 
           </span>
           <h1 className="m-0 font-display font-extrabold text-[20px] text-ink">Release {release.code}</h1>
         </div>
-        <MarkReadyButton releaseId={release.id} releaseCode={release.code} disabled={openCriteria > 0} />
+        {canMarkReady ? <MarkReadyButton releaseId={release.id} releaseCode={release.code} disabled={openCriteria > 0} /> : null}
       </div>
 
       <div className="grid grid-cols-3 gap-3">

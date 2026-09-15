@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Card, CardHeader, HeroPanel, Eyebrow } from "@/components/ui/Card";
 import { Pill } from "@/components/ui/Pill";
 import { getIncidentByRef, formatDuration, minutesUntil } from "@/lib/data/hypercare";
+import { getCurrentPerson } from "@/lib/data/auth-guard";
 import { PauseClockButton } from "./PauseClockButton";
 import { ResolveButton } from "./ResolveButton";
 
@@ -13,6 +14,9 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
   if (!incident) notFound();
 
   const breachMinutes = incident.breachAt ? minutesUntil(incident.breachAt) : null;
+  const viewer = await getCurrentPerson();
+  // Matches requireHypercareLead in auth-guard.ts.
+  const canResolve = viewer?.workspace_role === "workspace_admin" || viewer?.workspace_role === "hypercare_lead";
 
   return (
     <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-5 max-w-[820px] mx-auto">
@@ -44,7 +48,7 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
           </div>
           <div className="flex gap-1.5 mt-1">
             <PauseClockButton incidentId={incident.id} incidentRef={incident.ref} />
-            <ResolveButton incidentId={incident.id} incidentRef={incident.ref} />
+            {canResolve ? <ResolveButton incidentId={incident.id} incidentRef={incident.ref} /> : null}
           </div>
         </HeroPanel>
       ) : null}

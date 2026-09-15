@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { requireProjectAccess, requireWorkspaceAdmin } from "@/lib/data/auth-guard";
+import { requireProjectAccess, requireMissionsLead } from "@/lib/data/auth-guard";
 import { afterConditionWrite } from "@/lib/data/gate-conditions";
 
 /** Marks an open condition met. Any project member can do this — it
@@ -43,8 +43,9 @@ export async function markGateConditionMet(conditionId: string, projectId: strin
   await afterConditionWrite(supabase, projectId, projectRef);
 }
 
-/** Reverts a met/waived condition back to open — workspace-admin only,
- * with a written reason, for the "clicked the wrong one" case. This
+/** Reverts a met/waived condition back to open — this mission's lead or
+ * a workspace admin, with a written reason, for the "clicked the wrong
+ * one" case. This
  * un-clears whichever gate that condition belongs to (the same
  * fn_recompute_project_gates trigger that clears a gate when every
  * condition is met runs again here and correctly flips it back to held,
@@ -58,7 +59,7 @@ export async function revertGateCondition(conditionId: string, projectId: string
   const trimmed = reason.trim();
   if (!trimmed) throw new Error("A written reason is required to revert a condition.");
 
-  const person = await requireWorkspaceAdmin();
+  const person = await requireMissionsLead(projectId);
   const supabase = await createClient();
 
   const { data: condition } = await supabase
@@ -98,15 +99,15 @@ export async function revertGateCondition(conditionId: string, projectId: string
   await afterConditionWrite(supabase, projectId, projectRef);
 }
 
-/** Overrides a failing condition — workspace-admin only, with a written
- * reason, per the Flight plan check page's own stated policy ("A failing
- * condition can be overridden by a workspace admin with a written
- * reason. The override is stamped on the gate..."). */
+/** Overrides a failing condition — this mission's lead or a workspace
+ * admin, with a written reason, per the Flight plan check page's own
+ * stated policy ("A failing condition can be overridden ... with a
+ * written reason. The override is stamped on the gate..."). */
 export async function waiveGateCondition(conditionId: string, projectId: string, projectRef: string, reason: string) {
   const trimmed = reason.trim();
   if (!trimmed) throw new Error("A written reason is required to override a condition.");
 
-  const person = await requireWorkspaceAdmin();
+  const person = await requireMissionsLead(projectId);
   const supabase = await createClient();
 
   const { error } = await supabase

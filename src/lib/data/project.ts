@@ -11,6 +11,7 @@ export interface ProjectContext {
   clientName: string;
   goLiveTarget: string | null;
   leadName: string;
+  leadPersonId: string | null;
   health: HealthStatus;
   progressPct: number;
   phases: {
@@ -77,6 +78,7 @@ export async function getProjectByRef(ref: string): Promise<ProjectContext | nul
     clientName: client?.name ?? "—",
     goLiveTarget: project.go_live_target,
     leadName: lead?.full_name ?? "—",
+    leadPersonId: project.lead_person_id,
     health: (health as HealthStatus) ?? "on_plan",
     progressPct: (progress as number) ?? 0,
     phases: (phases ?? []).map((p) => ({

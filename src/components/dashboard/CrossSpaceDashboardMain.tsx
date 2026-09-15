@@ -16,7 +16,7 @@ export function CrossSpaceDashboardMain({ data }: { data: CrossSpaceDashboard })
       <Card>
         <div className="grid grid-cols-1 sm:grid-cols-[1fr_60px_1fr_60px_1fr] items-center p-5 gap-4 sm:gap-0">
           <div className="flex flex-col gap-2 p-4 border border-line rounded-[12px] bg-white">
-            <span className="font-mono text-[9px] text-coral">SPACE 01 MISSIONS</span>
+            <span className="font-mono text-[9px] text-coral">MISSIONS</span>
             <span className="font-display font-extrabold text-[26px]">{data.deliveryInFlight}</span>
             <span className="text-[11.5px] text-muted">projects in flight, {data.handoverQueue.length} at G5 awaiting handover</span>
           </div>
@@ -36,7 +36,7 @@ export function CrossSpaceDashboardMain({ data }: { data: CrossSpaceDashboard })
             <span className="font-mono text-[8.5px] text-muted">WITH SLA</span>
           </div>
           <div className="flex flex-col gap-2 p-4 border border-line rounded-[12px] bg-white">
-            <span className="font-mono text-[9px] text-muted">SPACE 03 HYPERCARE</span>
+            <span className="font-mono text-[9px] text-muted">HYPERCARE</span>
             <span className="font-display font-extrabold text-[26px]">{data.servicesLive}</span>
             <span className="text-[11.5px] text-muted">
               services live, {data.openIncidents} open incidents, {data.atRiskCount} at breach risk

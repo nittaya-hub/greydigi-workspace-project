@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentPerson } from "@/lib/data/auth-guard";
+import { getCurrentPerson, requireMissionsLead } from "@/lib/data/auth-guard";
 import { notifyWorkspace } from "@/lib/data/notify";
 
 export async function createChangeRequest(projectId: string, projectRef: string, formData: FormData) {
@@ -76,10 +76,11 @@ export async function createChangeRequest(projectId: string, projectRef: string,
  * decided about it. Either outcome is final: once approved or rejected a
  * CR isn't re-opened, matching the flight plan's own rule that change
  * requests are decided in a day, not left hanging (a mistaken decision
- * gets a brand-new CR, not a reopened one). */
+ * gets a brand-new CR, not a reopened one). Restricted to this mission's
+ * lead (or a workspace admin) — a CR carries real date/effort/price
+ * impact, not something a plain member should be able to wave through. */
 export async function decideChangeRequest(crId: string, projectId: string, projectRef: string, decision: "approved" | "rejected") {
-  const person = await getCurrentPerson();
-  if (!person) throw new Error("Not signed in.");
+  const person = await requireMissionsLead(projectId);
 
   const supabase = await createClient();
 
