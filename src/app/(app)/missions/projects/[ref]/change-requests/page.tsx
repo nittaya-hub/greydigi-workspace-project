@@ -3,8 +3,15 @@ import { getProjectByRef, getProjectChangeRequests } from "@/lib/data/project";
 import { RaiseChangeRequestButton } from "./RaiseChangeRequestButton";
 import { ChangeRequestsTable } from "./ChangeRequestsTable";
 
-export default async function ProjectChangeRequestsPage({ params }: { params: Promise<{ ref: string }> }) {
+export default async function ProjectChangeRequestsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ ref: string }>;
+  searchParams: Promise<{ raisedFrom?: string }>;
+}) {
   const { ref } = await params;
+  const { raisedFrom } = await searchParams;
   const project = await getProjectByRef(ref);
   if (!project) notFound();
 
@@ -16,7 +23,12 @@ export default async function ProjectChangeRequestsPage({ params }: { params: Pr
         <p className="m-0 text-[12.5px] text-muted max-w-[66ch]">
           Every CR names its impact on dates, effort and price before it can be sent for approval.
         </p>
-        <RaiseChangeRequestButton projectId={project.id} projectRef={project.ref} />
+        <RaiseChangeRequestButton
+          projectId={project.id}
+          projectRef={project.ref}
+          defaultRaisedFromRef={raisedFrom}
+          autoOpen={!!raisedFrom}
+        />
       </div>
 
       <ChangeRequestsTable crs={crs} projectId={project.id} projectRef={project.ref} />

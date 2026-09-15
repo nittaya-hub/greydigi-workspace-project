@@ -46,9 +46,26 @@ export default async function EscalationsPage() {
             <div className="px-4 py-3.5 flex flex-col gap-2">
               <span className="text-[11.5px] text-muted leading-[1.5]">{e.reason}</span>
               <span className="font-mono text-[9.5px] text-muted">ESCALATED TO {e.escalatedToName.toUpperCase()}</span>
-              <div className="flex gap-1.5 mt-1">
+              <div className="flex gap-1.5 mt-1 flex-wrap items-center">
                 <AcknowledgeButton escalationId={e.id} />
                 <EscalateFurtherButton escalationId={e.id} people={people} />
+                {/* The escape valve (Decision Pack, page 3): an escalation
+                    that turns out to be build work opens a change request
+                    on the mission this service came from, or a new
+                    mission when it doesn't fit there. */}
+                {e.originProjectRef ? (
+                  <Link
+                    href={`/missions/projects/${e.originProjectRef.toLowerCase()}/change-requests?raisedFrom=${encodeURIComponent(e.incidentRef ?? "")}`}
+                    className="text-[11px] font-semibold text-coral hover:underline"
+                  >
+                    Raise CR on {e.originProjectRef} →
+                  </Link>
+                ) : null}
+                {e.clientId ? (
+                  <Link href={`/clients/${e.clientId}`} className="text-[11px] font-semibold text-coral hover:underline">
+                    Start a new mission →
+                  </Link>
+                ) : null}
               </div>
             </div>
           </Card>

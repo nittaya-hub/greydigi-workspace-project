@@ -429,6 +429,12 @@ export interface EscalationRow {
   incidentRef: string | null;
   serviceName: string;
   escalatedToName: string;
+  /** The mission this service came from (services.origin_project_id) --
+   * the escape-valve target per the Decision Pack: "a hypercare
+   * escalation that turns out to be build work opens a change request
+   * or a new mission." Null only if the service predates that link. */
+  originProjectRef: string | null;
+  clientId: string | null;
 }
 
 export async function listEscalations(workspaceId: string, clientId?: string | null): Promise<EscalationRow[]> {
@@ -453,20 +459,31 @@ export async function listEscalations(workspaceId: string, clientId?: string | n
   const personIds = [...new Set(escalations.map((e) => e.escalated_to_person_id).filter((x): x is string => !!x))];
 
   const [{ data: services }, { data: incidents }, { data: people }] = await Promise.all([
-    supabase.from("services").select("id, name").in("id", serviceIds),
+    supabase.from("services").select("id, name, client_id, origin_project_id").in("id", serviceIds),
     incidentIds.length ? supabase.from("incidents").select("id, ref").in("id", incidentIds) : Promise.resolve({ data: [] as { id: string; ref: string }[] }),
     personIds.length ? supabase.from("people").select("id, full_name").in("id", personIds) : Promise.resolve({ data: [] as { id: string; full_name: string }[] }),
   ]);
-  const serviceNameById = new Map((services ?? []).map((s) => [s.id, s.name]));
+  const originProjectIds = [...new Set((services ?? []).map((s) => s.origin_project_id).filter((x): x is string => !!x))];
+  const { data: originProjects } = originProjectIds.length
+    ? await supabase.from("projects").select("id, ref").in("id", originProjectIds)
+    : { data: [] as { id: string; ref: string }[] };
+  const originRefById = new Map((originProjects ?? []).map((p) => [p.id, p.ref]));
+
+  const serviceById = new Map((services ?? []).map((s) => [s.id, s]));
   const incidentRefById = new Map((incidents ?? []).map((i) => [i.id, i.ref]));
   const nameById = new Map((people ?? []).map((p) => [p.id, p.full_name]));
 
-  return scopedEscalations.map((e) => ({
-    id: e.id,
-    reason: e.reason,
-    status: e.status,
-    incidentRef: e.incident_id ? (incidentRefById.get(e.incident_id) ?? null) : null,
-    serviceName: serviceNameById.get(e.service_id) ?? "—",
-    escalatedToName: e.escalated_to_person_id ? (nameById.get(e.escalated_to_person_id) ?? "—") : "—",
-  }));
+  return scopedEscalations.map((e) => {
+    const service = serviceById.get(e.service_id);
+    return {
+      id: e.id,
+      reason: e.reason,
+      status: e.status,
+      incidentRef: e.incident_id ? (incidentRefById.get(e.incident_id) ?? null) : null,
+      serviceName: service?.name ?? "—",
+      escalatedToName: e.escalated_to_person_id ? (nameById.get(e.escalated_to_person_id) ?? "—") : "—",
+      originProjectRef: service?.origin_project_id ? (originRefById.get(service.origin_project_id) ?? null) : null,
+      clientId: service?.client_id ?? null,
+    };
+  });
 }

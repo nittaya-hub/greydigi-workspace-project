@@ -5,8 +5,21 @@ import { Button } from "@/components/ui/Button";
 import { Modal, Field, fieldInputClass } from "@/components/ui/Modal";
 import { createChangeRequest } from "./actions";
 
-export function RaiseChangeRequestButton({ projectId, projectRef }: { projectId: string; projectRef: string }) {
-  const [open, setOpen] = useState(false);
+export function RaiseChangeRequestButton({
+  projectId,
+  projectRef,
+  defaultRaisedFromRef,
+  autoOpen,
+}: {
+  projectId: string;
+  projectRef: string;
+  /** Prefills "Raised from" -- set when arriving via the Hypercare
+   * escape valve (an escalation that turns out to be build work), so
+   * the link back to what triggered this CR isn't retyped by hand. */
+  defaultRaisedFromRef?: string;
+  autoOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(!!autoOpen);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -40,7 +53,7 @@ export function RaiseChangeRequestButton({ projectId, projectRef }: { projectId:
             <textarea name="description" rows={4} className={fieldInputClass} placeholder="What's changing, and why." />
           </Field>
           <Field label="RAISED FROM (OPTIONAL, E.G. INC-114)">
-            <input name="raisedFromRef" className={fieldInputClass} placeholder="INC-114" />
+            <input name="raisedFromRef" defaultValue={defaultRaisedFromRef} className={fieldInputClass} placeholder="INC-114" />
           </Field>
 
           <div className="grid grid-cols-3 gap-2.5">
