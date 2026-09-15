@@ -8,8 +8,13 @@ type Crumb = { label: string; href: string };
 
 function breadcrumbSegments(pathname: string, selectedClientName: string | null): Crumb[] {
   if (pathname === "/") {
-    const first = selectedClientName ? selectedClientName.toUpperCase() : "WORKSPACE";
-    return [{ label: `${first} / OVERVIEW`, href: "/" }];
+    // Master-admin root reads "WORKSPACE / MISSION CONTROL" — matches the
+    // Decision Pack's own entry-screen mock (page 4) exactly. A
+    // client-scoped root keeps its existing "{Client} / OVERVIEW" shape,
+    // which that mock doesn't cover.
+    return selectedClientName
+      ? [{ label: `${selectedClientName.toUpperCase()} / OVERVIEW`, href: "/" }]
+      : [{ label: "WORKSPACE / MISSION CONTROL", href: "/" }];
   }
   const rawSegments = pathname.split("/").filter(Boolean);
   let acc = "";

@@ -27,6 +27,11 @@ export interface WorkspaceOverview {
   clientActions: { count: number; detail: string };
   liveIncidents: { count: number; detail: string };
   releaseDependencies: { count: number; detail: string };
+  /** The Decision Pack's entry-screen "NEXT GATE" tile: the soonest-due
+   * held gate, by target date (not by how long it's been held — that's
+   * `blockedGates`/the decision queue's own oldest-first sort). Null
+   * when nothing is held. */
+  nextGate: { code: string; ref: string; daysUntil: number | null } | null;
   decisionQueue: DecisionQueueItem[];
   portfolioHealth: { total: number; byHealth: Record<HealthStatus, number> };
   spaceSummaries: {
@@ -153,6 +158,15 @@ export async function getWorkspaceOverview(workspaceId: string, clientId?: strin
 
   const heldGates = (gates ?? []).filter((g) => g.status === "held");
   const nextHeldGate = [...heldGates].sort((a, b) => (a.target_date ?? "").localeCompare(b.target_date ?? ""))[0];
+  const nextGate = nextHeldGate
+    ? {
+        code: nextHeldGate.code,
+        ref: projectById.get(nextHeldGate.project_id)?.ref ?? "",
+        daysUntil: nextHeldGate.target_date
+          ? Math.ceil((new Date(nextHeldGate.target_date).getTime() - Date.now()) / 86_400_000)
+          : null,
+      }
+    : null;
 
   // Every source used to cap at 3 and push in whatever order its own
   // query happened to return -- fine for one client's one project, but
@@ -243,6 +257,7 @@ export async function getWorkspaceOverview(workspaceId: string, clientId?: strin
     },
     liveIncidents: { count: incidents?.length ?? 0, detail: "" },
     releaseDependencies: { count: releaseDeps?.length ?? 0, detail: "" },
+    nextGate,
     decisionQueue,
     portfolioHealth: { total: projects?.length ?? 0, byHealth },
     spaceSummaries: {

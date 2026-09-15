@@ -27,14 +27,11 @@ export default async function PrintOverviewPage() {
     const { data: client } = await supabase.from("clients").select("name").eq("id", selectedClientId).maybeSingle();
     selectedClientName = client?.name ?? null;
   }
-  const { data: workspaceRow } = await supabase.from("workspaces").select("name").eq("id", workspaceId).maybeSingle();
-  const workspaceName = workspaceRow?.name ?? "Workspace";
-
   const branding = await getWorkspaceBranding(workspaceId);
   const hostLogoSrc = branding.logoDataUrl ?? "/greydigi-logo.png";
   const accentColor = readColorToken(branding.tokens, "color.brand.coral");
   const generatedOn = new Date().toLocaleDateString("en-SG", { year: "numeric", month: "long", day: "numeric" });
-  const pageTitle = selectedClientName ? `${selectedClientName} Overview` : `${workspaceName} Dashboard`;
+  const pageTitle = selectedClientName ? `${selectedClientName} Overview` : "Mission Control";
 
   return (
     <div
@@ -54,8 +51,8 @@ export default async function PrintOverviewPage() {
         <h1 className="m-0 font-display font-extrabold text-[23px] tracking-[-0.02em] text-ink">{pageTitle}</h1>
         <p className="m-0 text-[12.5px] text-muted max-w-[66ch]">
           {selectedClientName
-            ? "Three spaces read the same client, person and project records. Every number names its source and its formula."
-            : "Overview of everything, split by category — every project, every client."}
+            ? "Missions, Hangar and Hypercare read the same client, person and project records. Every number names its source and its formula."
+            : "Everything in flight, across all four cockpits. Health reads from gate slip, overdue critical work and unresolved client action. Never task counts."}
         </p>
       </div>
 

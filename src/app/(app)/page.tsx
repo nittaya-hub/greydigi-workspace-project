@@ -14,8 +14,8 @@ export default async function WorkspaceOverviewPage() {
     return (
       <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px] mx-auto">
         <PageHeading
-          title="Workspace"
-          description="Three spaces read the same client, person and project records. Every number names its source and its formula."
+          title="Mission Control"
+          description="Missions, Hangar and Hypercare read the same client, person and project records. Every number names its source and its formula."
         />
         <Card className="p-5">
           <p className="text-[12.5px] text-muted max-w-[60ch]">
@@ -35,20 +35,17 @@ export default async function WorkspaceOverviewPage() {
     const { data: client } = await supabase.from("clients").select("name").eq("id", selectedClientId).maybeSingle();
     selectedClientName = client?.name ?? null;
   }
-  const { data: workspaceRow } = await supabase.from("workspaces").select("name").eq("id", workspaceId).maybeSingle();
-  const workspaceName = workspaceRow?.name ?? "Workspace";
-
   const createProjectOptions = selectedClientName ? null : await getCreateProjectOptions(workspaceId);
 
   return (
     <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px] mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-5">
         <PageHeading
-          title={selectedClientName ? `${selectedClientName} Overview` : `${workspaceName} Dashboard`}
+          title={selectedClientName ? `${selectedClientName} Overview` : "Mission Control"}
           description={
             selectedClientName
-              ? "Three spaces read the same client, person and project records. Every number names its source and its formula."
-              : "Overview of everything, split by category — every project, every client."
+              ? "Missions, Hangar and Hypercare read the same client, person and project records. Every number names its source and its formula."
+              : "Everything in flight, across all four cockpits. Health reads from gate slip, overdue critical work and unresolved client action. Never task counts."
           }
         />
         <div className="flex gap-1.5 flex-none">

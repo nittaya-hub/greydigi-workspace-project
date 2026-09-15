@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Card, CardHeader, StatTile, HeroPanel, Eyebrow } from "@/components/ui/Card";
-import { Pill } from "@/components/ui/Pill";
 import { LinkButton } from "@/components/ui/Button";
 import { getWorkspaceOverview } from "@/lib/data/workspace";
 import { DecisionQueueCard } from "@/components/dashboard/DecisionQueueCard";
@@ -17,24 +16,23 @@ export async function WorkspaceOverviewMain({ workspaceId, selectedClientId }: {
 
   return (
     <>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <StatTile label="ACTIVE MISSIONS" value={overview.activeProjects} note={`Across ${overview.clientCount} clients`} href="/missions/projects" />
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <StatTile
-          label="BLOCKED GATES"
-          value={overview.blockedGates.count}
-          note={overview.blockedGates.detail || "None"}
-          accent={overview.blockedGates.count > 0}
+          label="DECISIONS"
+          value={overview.decisionQueue.length}
+          note={overview.decisionQueue[0] ? `Oldest ${overview.decisionQueue[0].age.toLowerCase()}` : "None waiting"}
+          accent={overview.decisionQueue.length > 0}
+        />
+        <StatTile
+          label="NEXT GATE"
+          value={overview.nextGate?.daysUntil !== null && overview.nextGate?.daysUntil !== undefined ? `${overview.nextGate.daysUntil}d` : "—"}
+          note={overview.nextGate ? `${overview.nextGate.ref} · ${overview.nextGate.code}` : "None held"}
           href="/missions/gates"
         />
         <StatTile label="CLIENT ACTIONS" value={overview.clientActions.count} note={overview.clientActions.detail} href="/missions/projects" />
-        <StatTile
-          label="LIVE INCIDENTS"
-          value={overview.liveIncidents.count}
-          note={overview.liveIncidents.count > 0 ? "Needs attention" : "None"}
-          accent={overview.liveIncidents.count > 0}
-          href="/hypercare/incidents"
-        />
-        <StatTile label="RELEASE DEPENDENCIES" value={overview.releaseDependencies.count} note="Missions waiting on Hangar" href="/hangar/roadmap" />
+        <StatTile label="CAPACITY" value="—" note="Not tracked yet" />
+        <StatTile label="VALUE AT RISK" value="—" note="Not tracked yet" />
+        <StatTile label="REUSE" value="—" note="Not tracked yet" href="/manifest" />
       </div>
 
       <div className="grid lg:grid-cols-[1.6fr_1fr] gap-4 items-start">
@@ -44,7 +42,10 @@ export async function WorkspaceOverviewMain({ workspaceId, selectedClientId }: {
 
         <div className="flex flex-col gap-4">
           <HeroPanel>
-            <Eyebrow className="text-muted-2">PORTFOLIO HEALTH</Eyebrow>
+            <div className="flex items-center justify-between">
+              <Eyebrow className="text-muted-2">PORTFOLIO HEALTH</Eyebrow>
+              <span className="font-mono text-[9px] text-muted-2">{overview.portfolioHealth.total} MISSIONS</span>
+            </div>
             <div className="flex items-baseline gap-2.5">
               <span className="font-display font-extrabold text-[30px]">
                 {byHealth.on_plan} / {overview.portfolioHealth.total}
@@ -70,20 +71,39 @@ export async function WorkspaceOverviewMain({ workspaceId, selectedClientId }: {
               <span>{byHealth.watch} WATCH</span>
             </div>
             <span className="text-[11.5px] text-muted-2 leading-[1.5]">
-              Health reads from gate slip, overdue critical work and unresolved client action. Never task counts.
+              Gate slip against the locked baseline, not percent complete.
             </span>
           </HeroPanel>
 
-          <Card className="p-4 flex flex-col gap-2.5">
+          {/* Capacity tracking (people, reserve, run-vs-mission split) has
+              no data model yet -- it's Hypercare's "protected capacity"
+              rule, Wave 4 of the Decision Pack build order. Honest empty
+              state rather than a fabricated bar. */}
+          <Card className="p-4 flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <span className="font-display font-extrabold text-[14px]">Methodology core</span>
-              <Pill tone="coral_outline">LOCKED</Pill>
+              <span className="font-display font-extrabold text-[13px]">Capacity, this week</span>
+              <span className="font-mono text-[9px] text-muted">NOT TRACKED YET</span>
             </div>
             <span className="text-[11.5px] text-muted leading-[1.55]">
-              Projects hold a versioned copy of the flight plan they cloned, so a template edit never moves work in flight.
+              Ships with the Hypercare cockpit rebuild — one queue per person, a protected reserve for run work, and
+              run work made visible against mission gate dates.
             </span>
-            <Link href="/templates" className="text-[11.5px] text-coral font-semibold">
-              View templates →
+          </Card>
+
+          {/* Manifest has no object model yet (Wave 3) -- 0 assets is the
+              honest count, matching the Manifest cockpit's own placeholder
+              page, not the illustrative "148 assets" in the mock. */}
+          <Card className="p-4 flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="font-display font-extrabold text-[13px]">Manifest</span>
+              <Eyebrow>WRITE-BACK</Eyebrow>
+            </div>
+            <span className="text-[11.5px] text-muted leading-[1.55]">
+              0 assets registered. No gate write-back yet — Manifest ships in Wave 3, once every gate close writes
+              its assets and calibration data back here.
+            </span>
+            <Link href="/manifest" className="text-[11.5px] text-coral font-semibold">
+              Open Manifest →
             </Link>
           </Card>
         </div>
@@ -103,20 +123,7 @@ export async function WorkspaceOverviewMain({ workspaceId, selectedClientId }: {
           </div>
         </Card>
         <Card>
-          <CardHeader title="Hangar" note="COCKPIT 02" />
-          <div className="px-4 py-3.5 flex flex-col gap-2.5">
-            <Row label="Products" value={overview.spaceSummaries.hangar.products} href="/hangar/products" />
-            <Row label="Features in build" value={overview.spaceSummaries.hangar.featuresInBuild} href="/hangar/features" />
-            <Row label="Missions waiting on Hangar" value={overview.spaceSummaries.hangar.deliveryWaiting} accent href="/hangar/roadmap" />
-          </div>
-          <div className="px-4 pb-3.5">
-            <LinkButton href="/hangar" variant="secondary" className="w-full">
-              Open Hangar
-            </LinkButton>
-          </div>
-        </Card>
-        <Card>
-          <CardHeader title="Hypercare" note="COCKPIT 03" />
+          <CardHeader title="Hypercare" note="COCKPIT 02" />
           <div className="px-4 py-3.5 flex flex-col gap-2.5">
             <Row label="Services live" value={overview.spaceSummaries.hypercare.servicesLive} href="/hypercare/services" />
             <Row label="Active incidents" value={overview.spaceSummaries.hypercare.activeIncidents} accent href="/hypercare/incidents" />
@@ -125,6 +132,19 @@ export async function WorkspaceOverviewMain({ workspaceId, selectedClientId }: {
           <div className="px-4 pb-3.5">
             <LinkButton href="/hypercare" variant="secondary" className="w-full">
               Open Hypercare
+            </LinkButton>
+          </div>
+        </Card>
+        <Card>
+          <CardHeader title="Hangar" note="COCKPIT 03" />
+          <div className="px-4 py-3.5 flex flex-col gap-2.5">
+            <Row label="Products" value={overview.spaceSummaries.hangar.products} href="/hangar/products" />
+            <Row label="Features in build" value={overview.spaceSummaries.hangar.featuresInBuild} href="/hangar/features" />
+            <Row label="Missions waiting on Hangar" value={overview.spaceSummaries.hangar.deliveryWaiting} accent href="/hangar/roadmap" />
+          </div>
+          <div className="px-4 pb-3.5">
+            <LinkButton href="/hangar" variant="secondary" className="w-full">
+              Open Hangar
             </LinkButton>
           </div>
         </Card>

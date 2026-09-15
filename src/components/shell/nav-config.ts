@@ -106,7 +106,7 @@ export const HYPERCARE_NAV: NavItem[] = [
  * Decision Pack's build order, not this one. */
 export const MANIFEST_NAV: NavItem[] = [{ label: "Overview", href: "/manifest" }];
 
-export type SpaceKey = "missions" | "hangar" | "hypercare" | "manifest";
+export type SpaceKey = "missions" | "hypercare" | "hangar" | "manifest";
 
 /** Labeled "X Dashboard" in the sidebar (the "COCKPITS" section header
  * itself reads "Dashboard Overview" — see Sidebar.tsx) — the underlying
@@ -115,10 +115,14 @@ export type SpaceKey = "missions" | "hangar" | "hypercare" | "manifest";
  * when a client is scoped (see getWorkspaceOverview's clientId param
  * and shell.ts's existing per-client count filtering). Manifest has no
  * client-scoped meaning (it's the company brain, not client work), so
- * Sidebar.tsx excludes it from the client-scoped view entirely. */
+ * Sidebar.tsx excludes it from the client-scoped view entirely.
+ *
+ * Order matches the Decision Pack's own cockpit numbering exactly (page
+ * 3: "01 Missions, 02 Hypercare, 03 Hangar, 04 Manifest") — the entry
+ * screen mock on page 4 lists the sidebar in this same order. */
 export const SPACES: { key: SpaceKey; label: string; nav: NavItem[] }[] = [
   { key: "missions", label: "Missions Dashboard", nav: MISSIONS_NAV },
-  { key: "hangar", label: "Hangar Dashboard", nav: HANGAR_NAV },
   { key: "hypercare", label: "Hypercare Dashboard", nav: HYPERCARE_NAV },
+  { key: "hangar", label: "Hangar Dashboard", nav: HANGAR_NAV },
   { key: "manifest", label: "Manifest Dashboard", nav: MANIFEST_NAV },
 ];
