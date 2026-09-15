@@ -260,7 +260,12 @@ export function Sidebar({ shell, onNavigate }: { shell: ShellData; onNavigate?: 
             <div className="font-mono text-[8.5px] tracking-[.1em] text-muted-2 px-2 pt-2.5 pb-[5px]">WORKSPACE</div>
             {WORKSPACE_NAV.map((item) => {
               const active = isWorkspaceCore && pathname === item.href;
-              const label = item.href === "/" ? `${shell.workspaceName} Dashboard` : item.label;
+              // Master-admin root reads "Mission Control" — matches the
+              // Decision Pack's own entry-screen mock (page 4) and the
+              // page heading/breadcrumb, which already say the same.
+              // Used to read "{workspace} Dashboard" (e.g. "greydigi
+              // Dashboard"), left over from before this rename.
+              const label = item.href === "/" ? "Mission Control" : item.label;
               return <NavLink key={item.href} item={{ ...item, label }} active={active} />;
             })}
             {shell.person?.isWorkspaceAdmin ? (
