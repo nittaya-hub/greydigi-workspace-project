@@ -23,6 +23,11 @@ export async function createProject(formData: FormData) {
   const templateVersionId = String(formData.get("templateVersionId") ?? "").trim();
   const leadPersonId = String(formData.get("leadPersonId") ?? "").trim() || null;
   const goLiveTarget = String(formData.get("goLiveTarget") ?? "").trim() || null;
+  // Set only via the Hangar "Sell to client" flow (Decision Pack, "a
+  // market product sold to a client opens a mission, carrying its scope
+  // and delivery template") -- never a plain form field a person fills
+  // in by hand.
+  const originProductId = String(formData.get("originProductId") ?? "").trim() || null;
 
   if (!clientId) throw new Error("Client is required.");
   if (!ref) throw new Error("Ref is required.");
@@ -42,6 +47,7 @@ export async function createProject(formData: FormData) {
       template_version_id: templateVersionId,
       lead_person_id: leadPersonId,
       go_live_target: goLiveTarget,
+      origin_product_id: originProductId,
     })
     .select("id")
     .single();

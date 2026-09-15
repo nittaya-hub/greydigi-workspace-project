@@ -498,6 +498,10 @@ export interface Database {
           status: ProjectStatus;
           lead_person_id: string | null;
           go_live_target: DateStr | null;
+          /** Which product this mission came from, when a Hangar sale
+           * opened it (0061_product_sale_opens_mission.sql) — null for a
+           * mission created by hand, same as always before. */
+          origin_product_id: string | null;
           created_at: Timestamptz;
         },
         {
@@ -511,6 +515,7 @@ export interface Database {
           status?: ProjectStatus;
           lead_person_id?: string | null;
           go_live_target?: DateStr | null;
+          origin_product_id?: string | null;
           created_at?: Timestamptz;
         }
       >;
@@ -1044,8 +1049,26 @@ export interface Database {
       >;
 
       products: CrudTable<
-        { id: string; workspace_id: string; name: string; description: string | null; created_at: Timestamptz },
-        { id?: string; workspace_id: string; name: string; description?: string | null; created_at?: Timestamptz }
+        {
+          id: string;
+          workspace_id: string;
+          name: string;
+          description: string | null;
+          /** The locked template version a sale of this product
+           * instantiates as a mission (0061_product_sale_opens_mission.sql).
+           * Null for anything not sold to a client (most Platform-track
+           * products, and any Market-track one before this is set up). */
+          delivery_template_version_id: string | null;
+          created_at: Timestamptz;
+        },
+        {
+          id?: string;
+          workspace_id: string;
+          name: string;
+          description?: string | null;
+          delivery_template_version_id?: string | null;
+          created_at?: Timestamptz;
+        }
       >;
       releases: CrudTable<
         {

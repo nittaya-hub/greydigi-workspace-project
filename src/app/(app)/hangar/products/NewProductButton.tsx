@@ -3,9 +3,11 @@
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { Modal, Field, fieldInputClass } from "@/components/ui/Modal";
+import { SelectField } from "@/components/ui/SelectField";
 import { createProduct } from "./actions";
+import type { TemplateVersionOption } from "@/lib/data/product";
 
-export function NewProductButton() {
+export function NewProductButton({ templateOptions }: { templateOptions: TemplateVersionOption[] }) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -39,6 +41,17 @@ export function NewProductButton() {
           <Field label="DESCRIPTION">
             <textarea name="description" rows={3} className={fieldInputClass} placeholder="Reusable capability, one line." />
           </Field>
+          <Field label="DELIVERY TEMPLATE (OPTIONAL, MARKET TRACK ONLY)">
+            <SelectField
+              name="deliveryTemplateVersionId"
+              defaultValue=""
+              options={[{ value: "", label: "None — internal / platform capability" }, ...templateOptions.map((t) => ({ value: t.id, label: t.label }))]}
+            />
+          </Field>
+          <p className="m-0 -mt-1 text-[10.5px] text-muted leading-[1.4]">
+            Set this only for a market product sold to clients — a sale then opens a mission that clones this
+            template, carrying the product's scope with it.
+          </p>
 
           {error ? <p className="text-[11.5px] text-block-fg leading-[1.5]">{error}</p> : null}
 

@@ -77,11 +77,21 @@ export interface ProductRow {
   description: string | null;
   featureCount: number;
   usedByCount: number;
+  /** The locked template version a sale of this product instantiates as
+   * a mission (Decision Pack, "a market product sold to a client opens
+   * a mission, carrying its scope and delivery template"). Null until
+   * attached -- most products, especially Platform-track ones, never
+   * get one, since they're never sold to a client. */
+  deliveryTemplateVersionId: string | null;
+  deliveryTemplateLabel: string | null;
 }
 
 export async function listProducts(workspaceId: string): Promise<ProductRow[]> {
   const supabase = await createClient();
-  const { data: products } = await supabase.from("products").select("id, name, description").eq("workspace_id", workspaceId);
+  const { data: products } = await supabase
+    .from("products")
+    .select("id, name, description, delivery_template_version_id")
+    .eq("workspace_id", workspaceId);
   if (!products || products.length === 0) return [];
 
   const productIds = products.map((p) => p.id);
@@ -99,6 +109,19 @@ export async function listProducts(workspaceId: string): Promise<ProductRow[]> {
   const featureCountByProduct = new Map<string, number>();
   for (const i of items ?? []) featureCountByProduct.set(i.product_id, (featureCountByProduct.get(i.product_id) ?? 0) + 1);
 
+  const templateVersionIds = [...new Set(products.map((p) => p.delivery_template_version_id).filter((x): x is string => !!x))];
+  const { data: versions } = templateVersionIds.length
+    ? await supabase.from("template_versions").select("id, template_id, version").in("id", templateVersionIds)
+    : { data: [] as { id: string; template_id: string; version: string }[] };
+  const templateIds = [...new Set((versions ?? []).map((v) => v.template_id))];
+  const { data: templates } = templateIds.length
+    ? await supabase.from("templates").select("id, name").in("id", templateIds)
+    : { data: [] as { id: string; name: string }[] };
+  const templateNameById = new Map((templates ?? []).map((t) => [t.id, t.name]));
+  const versionLabelById = new Map(
+    (versions ?? []).map((v) => [v.id, `${templateNameById.get(v.template_id) ?? "Template"} — ${v.version}`])
+  );
+
   return products.map((p) => {
     const releaseIdsForProduct = new Set(releaseByProduct.get(p.id) ?? []);
     const usedBy = new Set((deps ?? []).filter((d) => releaseIdsForProduct.has(d.release_id)).map((d) => d.project_id));
@@ -108,8 +131,35 @@ export async function listProducts(workspaceId: string): Promise<ProductRow[]> {
       description: p.description,
       featureCount: featureCountByProduct.get(p.id) ?? 0,
       usedByCount: usedBy.size,
+      deliveryTemplateVersionId: p.delivery_template_version_id,
+      deliveryTemplateLabel: p.delivery_template_version_id ? (versionLabelById.get(p.delivery_template_version_id) ?? null) : null,
     };
   });
+}
+
+export interface TemplateVersionOption {
+  id: string;
+  label: string;
+}
+
+/** Locked template versions available to attach as a product's delivery
+ * template -- the same "a project can only clone a locked version" rule
+ * missions/projects/create-project-data.ts already enforces, reused here
+ * rather than re-derived. */
+export async function listLockedTemplateVersions(workspaceId: string): Promise<TemplateVersionOption[]> {
+  const supabase = await createClient();
+  const { data: templates } = await supabase.from("templates").select("id, name").eq("workspace_id", workspaceId);
+  const templateIds = (templates ?? []).map((t) => t.id);
+  const { data: versions } = templateIds.length
+    ? await supabase
+        .from("template_versions")
+        .select("id, template_id, version")
+        .in("template_id", templateIds)
+        .eq("is_locked", true)
+        .order("version")
+    : { data: [] as { id: string; template_id: string; version: string }[] };
+  const nameById = new Map((templates ?? []).map((t) => [t.id, t.name]));
+  return (versions ?? []).map((v) => ({ id: v.id, label: `${nameById.get(v.template_id) ?? "Template"} — ${v.version}` }));
 }
 
 export interface FeatureRow {
