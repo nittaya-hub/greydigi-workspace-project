@@ -68,7 +68,12 @@ export const SETTINGS_NAV_GROUPS: { label: string; items: NavItem[] }[] = [
  * Decision Pack, "Four cockpits and one brain." */
 export const MISSIONS_NAV: NavItem[] = [
   { label: "Overview", href: "/missions" },
-  { label: "Missions", href: "/missions/projects" },
+  // "Projects" on purpose, not "Missions" -- the cockpit itself is
+  // already "Missions" (a duplicate label one level down reads as a
+  // mistake), and the underlying object is still the `projects` table
+  // with CLIENT-Pnn refs until that gets its own rename (deferred,
+  // same reasoning as the grandfathered ref prefix below).
+  { label: "Projects", href: "/missions/projects" },
   { label: "Tasks", href: "/missions/tasks" },
   { label: "Flight plans", href: "/missions/flight-plans" },
   { label: "Gates", href: "/missions/gates" },
