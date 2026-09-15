@@ -6,9 +6,11 @@ import { LinkButton } from "@/components/ui/Button";
 import { FlightPlanSpine } from "@/components/portal/FlightPlanSpine";
 import { getClientById } from "@/lib/data/clients";
 import { getCurrentWorkspaceId } from "@/lib/data/workspace";
+import { getSelectedClientId } from "@/lib/data/client-scope";
 import { PortalAccessButton } from "./PortalAccessButton";
 import { NewProjectButton } from "./NewProjectButton";
 import { HypercareEnabledToggle } from "./HypercareEnabledToggle";
+import { SwitchToClientButton } from "./SwitchToClientButton";
 import { listTemplateVersionOptions, listInternalPeopleOptions } from "./data";
 
 export default async function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -16,6 +18,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   const client = await getClientById(id);
   if (!client) notFound();
 
+  const selectedClientId = await getSelectedClientId();
   const workspaceId = await getCurrentWorkspaceId();
   const [templateVersions, leadOptions] = workspaceId
     ? await Promise.all([listTemplateVersionOptions(workspaceId), listInternalPeopleOptions(workspaceId)])
@@ -26,15 +29,16 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
 
   return (
     <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-5 max-w-[1000px] mx-auto">
-      <div className="flex items-end justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div className="flex flex-col gap-1.5">
           <span className="w-[34px] h-[3px] bg-coral rounded-[2px]" />
           {client.clientSince ? <span className="font-mono text-[9.5px] text-muted">CLIENT SINCE {client.clientSince}</span> : null}
           <h1 className="m-0 font-display font-extrabold text-[20px] text-ink">{client.name}</h1>
         </div>
-        <div className="flex items-center gap-4 flex-none">
+        <div className="flex flex-col sm:items-end gap-2 flex-none">
           <HypercareEnabledToggle clientId={client.id} initialEnabled={client.hypercareEnabled} />
-          <div className="flex gap-1.5">
+          <div className="flex flex-wrap gap-1.5">
+            <SwitchToClientButton clientId={client.id} isScoped={selectedClientId === client.id} />
             <LinkButton href={`/hypercare/clients/${client.id}/report-config`} variant="secondary">
               Hypercare report settings
             </LinkButton>
