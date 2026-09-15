@@ -71,8 +71,8 @@ export default async function SettingsPage() {
             <CardHeader title="Spaces" note="ENABLED PER WORKSPACE" />
             {(
               [
-                { key: "delivery", label: "Delivery", note: `${spaceCounts.delivery} PROJECTS` },
-                { key: "product", label: "Product", note: `${spaceCounts.product} PRODUCTS` },
+                { key: "missions", label: "Missions", note: `${spaceCounts.delivery} PROJECTS` },
+                { key: "hangar", label: "Hangar", note: `${spaceCounts.product} PRODUCTS` },
                 { key: "hypercare", label: "Hypercare", note: `${spaceCounts.hypercare} SERVICES` },
               ] as const
             ).map((s, i, arr) => (

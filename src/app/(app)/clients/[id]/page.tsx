@@ -46,7 +46,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
 
       <div className="grid grid-cols-3 gap-3">
         <StatTile
-          label="DELIVERY"
+          label="MISSIONS"
           value={client.projects.length}
           note={heldProjects[0] ? `${heldProjects[0].ref}, held at ${heldProjects[0].heldGateCode}` : undefined}
         />
@@ -83,8 +83,8 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
           <div className="flex flex-col">
             {client.projects.map((p) => (
               <div key={p.ref} className="flex gap-2.5 items-center px-4 py-[11px] border-b border-line-soft text-[12px]">
-                <Pill tone="waiting_on_client">DELIVERY</Pill>
-                <Link href={`/delivery/projects/${p.ref.toLowerCase()}`} className="flex-1 flex flex-col gap-0.5">
+                <Pill tone="waiting_on_client">MISSIONS</Pill>
+                <Link href={`/missions/projects/${p.ref.toLowerCase()}`} className="flex-1 flex flex-col gap-0.5">
                   <span className="text-[12.5px] font-semibold text-ink">{p.name}</span>
                   <span className="font-mono text-[9.5px] text-muted">
                     PHASE {p.phaseCode ?? "—"}
@@ -104,8 +104,8 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
             ))}
             {client.releaseDependencies.map((d, i) => (
               <div key={`${d.projectRef}-${d.releaseCode}-${i}`} className="flex gap-2.5 items-center px-4 py-[11px] border-b border-line-soft last:border-b-0 text-[12px]">
-                <Pill tone="dark">PRODUCT</Pill>
-                <Link href={`/product/releases/${d.releaseCode.toLowerCase()}`} className="flex-1 flex flex-col gap-0.5">
+                <Pill tone="dark">HANGAR</Pill>
+                <Link href={`/hangar/releases/${d.releaseCode.toLowerCase()}`} className="flex-1 flex flex-col gap-0.5">
                   <span className="text-[12.5px] font-semibold text-ink">{d.productName} — {d.releaseName}</span>
                   <span className="font-mono text-[9.5px] text-muted">
                     {d.releaseCode.toUpperCase()}, {d.status.replace(/_/g, " ").toUpperCase()}, waited on by {d.projectRef}
@@ -125,7 +125,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
               .filter((p) => p.phases.length > 0)
               .map((p, i, arr) => (
                 <div key={p.ref} className={`flex flex-col gap-2.5 px-4 py-3.5 ${i < arr.length - 1 ? "border-b border-line-soft" : ""}`}>
-                  <Link href={`/delivery/projects/${p.ref.toLowerCase()}`} className="text-[12.5px] font-semibold text-ink">
+                  <Link href={`/missions/projects/${p.ref.toLowerCase()}`} className="text-[12.5px] font-semibold text-ink">
                     {p.name}
                   </Link>
                   <FlightPlanSpine phases={p.phases} gates={p.gates} dark={false} />

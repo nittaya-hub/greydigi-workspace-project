@@ -11,7 +11,7 @@ function csvEscape(value: string | number): string {
 function toCsv(data: CrossSpaceDashboard): string {
   const rows: (string | number)[][] = [
     ["METRIC", "VALUE"],
-    ["Delivery in flight", data.deliveryInFlight],
+    ["Missions in flight", data.deliveryInFlight],
     ["Go live, 30 days", data.goLive30d],
     ["Services live", data.servicesLive],
     ["Open incidents", data.openIncidents],

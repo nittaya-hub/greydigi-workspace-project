@@ -15,8 +15,8 @@ const PAGE_SIZE = 20;
 
 const ROLE_OPTIONS: { value: WorkspaceRole; label: string }[] = [
   { value: "workspace_admin", label: "Workspace admin" },
-  { value: "delivery_lead", label: "Delivery lead" },
-  { value: "product_lead", label: "Product lead" },
+  { value: "delivery_lead", label: "Missions lead" },
+  { value: "product_lead", label: "Hangar lead" },
   { value: "hypercare_lead", label: "Hypercare lead" },
   { value: "member", label: "Member" },
 ];
@@ -161,8 +161,8 @@ export function UserAccessTable({ members, viewerIsAdmin }: { members: MemberRow
         <div style={{ gridTemplateColumns: COLS }} className="grid gap-2 px-4 py-2.5 bg-[#FCFCFA] border-b border-line-soft font-mono text-[9px] tracking-[.08em] text-muted">
           <span>PERSON</span>
           <span>ROLE</span>
-          <span>DELIVERY</span>
-          <span>PRODUCT</span>
+          <span>MISSIONS</span>
+          <span>HANGAR</span>
           <span>HYPERCARE</span>
           <span>ACTIVE</span>
           <span />

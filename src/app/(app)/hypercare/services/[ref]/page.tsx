@@ -41,9 +41,9 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
         <span className="font-mono text-[9px] tracking-[.09em] text-muted">ABOUT THIS SERVICE</span>
         {service.originProject ? (
           <>
-            <span className="text-[12px] text-ink leading-[1.55]">{service.originProject.description ?? "No description recorded on the delivery project."}</span>
+            <span className="text-[12px] text-ink leading-[1.55]">{service.originProject.description ?? "No description recorded on the missions project."}</span>
             <Link
-              href={`/delivery/projects/${service.originProject.ref.toLowerCase()}`}
+              href={`/missions/projects/${service.originProject.ref.toLowerCase()}`}
               className="font-mono text-[9.5px] text-coral hover:underline self-start mt-1"
             >
               ORIGIN PROJECT: {service.originProject.ref} — {service.originProject.name}
@@ -51,7 +51,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
           </>
         ) : (
           <span className="text-[12px] text-muted leading-[1.55]">
-            No origin delivery project on record for this service — created directly in Hypercare rather than
+            No origin missions project on record for this service — created directly in Hypercare rather than
             earned at G5 from a project.
           </span>
         )}

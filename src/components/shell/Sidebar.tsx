@@ -12,15 +12,17 @@ import { ClientSwitcher } from "@/components/shell/ClientSwitcher";
 import type { ShellData } from "@/lib/data/shell";
 
 const SPACE_COUNT_KEY: Record<SpaceKey, keyof ShellData["counts"]> = {
-  delivery: "delivery",
-  product: "product",
+  missions: "missions",
+  hangar: "hangar",
   hypercare: "hypercare",
+  manifest: "manifest",
 };
 
 function activeSpaceFromPath(pathname: string): SpaceKey | null {
-  if (pathname.startsWith("/delivery")) return "delivery";
-  if (pathname.startsWith("/product")) return "product";
+  if (pathname.startsWith("/missions")) return "missions";
+  if (pathname.startsWith("/hangar")) return "hangar";
   if (pathname.startsWith("/hypercare")) return "hypercare";
+  if (pathname.startsWith("/manifest")) return "manifest";
   return null;
 }
 
@@ -189,7 +191,9 @@ export function Sidebar({ shell, onNavigate }: { shell: ShellData; onNavigate?: 
   const activeSpace = activeSpaceFromPath(pathname);
   const settingsActive = activeSpace === null && isSettingsPath(pathname);
   const isWorkspaceCore = activeSpace === null && !settingsActive;
-  const spaces = shell.selectedClient && !shell.selectedClient.hypercareEnabled ? SPACES.filter((s) => s.key !== "hypercare") : SPACES;
+  const spaces = shell.selectedClient
+    ? SPACES.filter((s) => s.key !== "manifest" && (s.key !== "hypercare" || shell.selectedClient!.hypercareEnabled))
+    : SPACES;
 
   // Each section's sub-nav auto-expands while its route is active; the
   // chevron toggle can additionally force a section open or closed
@@ -212,14 +216,14 @@ export function Sidebar({ shell, onNavigate }: { shell: ShellData; onNavigate?: 
         <div className="flex items-center gap-[9px]">
           <Image
             src="/greydigi-logo.png"
-            alt="greydigi"
+            alt="aironauts"
             width={22}
             height={22}
             className="rounded-[6px] flex-none"
           />
-          <span className="font-display font-extrabold text-[14px] tracking-[-0.01em]">greydigi</span>
+          <span className="font-display font-extrabold text-[14px] tracking-[-0.01em]">aironauts&trade;</span>
           <span className="font-mono text-[9px] text-muted-2 border border-white/16 rounded-[4px] px-[5px] py-0.5">
-            WORKSPACE
+            MISSION CONTROL
           </span>
         </div>
         <ClientSwitcher
@@ -271,7 +275,7 @@ export function Sidebar({ shell, onNavigate }: { shell: ShellData; onNavigate?: 
           </>
         )}
 
-        <div className="font-mono text-[8.5px] tracking-[.1em] text-muted-2 px-2 pt-4 pb-[5px]">DASHBOARD OVERVIEW</div>
+        <div className="font-mono text-[8.5px] tracking-[.1em] text-muted-2 px-2 pt-4 pb-[5px]">COCKPITS</div>
         {spaces.map((space) => {
           const active = activeSpace === space.key;
           return (
@@ -287,7 +291,7 @@ export function Sidebar({ shell, onNavigate }: { shell: ShellData; onNavigate?: 
           );
         })}
 
-        {activeSpace === "delivery" ? <ProjectMiniNav /> : null}
+        {activeSpace === "missions" ? <ProjectMiniNav /> : null}
       </nav>
 
       <div className="mt-auto px-4 pt-3.5 pb-[18px] border-t border-white/8 flex items-center gap-[9px]">

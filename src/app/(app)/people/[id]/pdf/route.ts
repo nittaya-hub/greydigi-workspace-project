@@ -53,7 +53,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       emptyNote: "No work items yet.",
       columns: [
         { header: "STAGE", width: "14%", muted: true, render: (r) => r.stage.toUpperCase() },
-        { header: "SPACE", width: "12%", muted: true, render: (r) => r.space.toUpperCase() },
+        { header: "SPACE", width: "12%", muted: true, render: (r) => (r.space === "delivery" ? "MISSIONS" : "HANGAR") },
         { header: "REF", width: "12%", render: (r) => r.ref },
         { header: "TITLE", width: "28%", render: (r) => r.title },
         { header: "STATUS", width: "16%", muted: true, render: (r) => r.status.replace("_", " ").toUpperCase() },

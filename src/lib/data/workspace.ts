@@ -11,7 +11,7 @@ import type { HealthStatus } from "@/lib/supabase/database.types";
 // can move to embeds later if the extra round trips ever matter.
 
 export interface DecisionQueueItem {
-  space: "delivery" | "hypercare" | "product" | "cross";
+  space: "missions" | "hypercare" | "hangar" | "cross";
   what: string;
   detail: string;
   on: string;
@@ -30,8 +30,8 @@ export interface WorkspaceOverview {
   decisionQueue: DecisionQueueItem[];
   portfolioHealth: { total: number; byHealth: Record<HealthStatus, number> };
   spaceSummaries: {
-    delivery: { projects: number; nextGate: string | null; nextGateTarget: string | null };
-    product: { products: number; featuresInBuild: number; nextRelease: string | null; deliveryWaiting: number };
+    missions: { projects: number; nextGate: string | null; nextGateTarget: string | null };
+    hangar: { products: number; featuresInBuild: number; nextRelease: string | null; deliveryWaiting: number };
     hypercare: { servicesLive: number; activeIncidents: number; requestBacklog: number };
   };
 }
@@ -172,13 +172,13 @@ export async function getWorkspaceOverview(workspaceId: string, clientId?: strin
     rawQueue.push({
       waitedMs: Date.now() - new Date(sourceIso).getTime(),
       item: {
-        space: "delivery",
+        space: "missions",
         what: `${g.code} held`,
         detail: `${project?.ref ?? ""} ${project?.name ?? ""}`.trim(),
         on: project ? (clientById.get(project.client_id) ?? "—") : "—",
         age: age.label,
         ageTone: age.tone,
-        href: project ? `/delivery/projects/${project.ref.toLowerCase()}/flight-plan-check` : "/delivery/gates",
+        href: project ? `/missions/projects/${project.ref.toLowerCase()}/flight-plan-check` : "/missions/gates",
       },
     });
   }
@@ -246,12 +246,12 @@ export async function getWorkspaceOverview(workspaceId: string, clientId?: strin
     decisionQueue,
     portfolioHealth: { total: projects?.length ?? 0, byHealth },
     spaceSummaries: {
-      delivery: {
+      missions: {
         projects: projects?.length ?? 0,
         nextGate: nextHeldGate?.code ?? null,
         nextGateTarget: nextHeldGate?.target_date ?? null,
       },
-      product: {
+      hangar: {
         products: products?.length ?? 0,
         featuresInBuild: (roadmapItems ?? []).filter((r) => r.status === "in_progress").length,
         nextRelease: (releases ?? []).find((r) => r.status !== "shipped")?.code ?? null,

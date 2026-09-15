@@ -19,7 +19,7 @@ export default async function ClientDashboardPage({ params }: { params: Promise<
         <h1 className="m-0 font-display font-extrabold text-[20px] text-ink">{client.name} — Client dashboard</h1>
         <p className="m-0 text-[12.5px] text-muted max-w-[66ch]">
           The Hypercare-space view this client sees on their portal — incident and SLA status only, built from the
-          same bounded block library as Delivery. Nothing shows until published.
+          same bounded block library as Missions. Nothing shows until published.
         </p>
       </div>
       <Card className="p-4">

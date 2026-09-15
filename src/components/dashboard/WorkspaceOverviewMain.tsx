@@ -18,15 +18,15 @@ export async function WorkspaceOverviewMain({ workspaceId, selectedClientId }: {
   return (
     <>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <StatTile label="ACTIVE PROJECTS" value={overview.activeProjects} note={`Across ${overview.clientCount} clients`} href="/delivery/projects" />
+        <StatTile label="ACTIVE MISSIONS" value={overview.activeProjects} note={`Across ${overview.clientCount} clients`} href="/missions/projects" />
         <StatTile
           label="BLOCKED GATES"
           value={overview.blockedGates.count}
           note={overview.blockedGates.detail || "None"}
           accent={overview.blockedGates.count > 0}
-          href="/delivery/gates"
+          href="/missions/gates"
         />
-        <StatTile label="CLIENT ACTIONS" value={overview.clientActions.count} note={overview.clientActions.detail} href="/delivery/projects" />
+        <StatTile label="CLIENT ACTIONS" value={overview.clientActions.count} note={overview.clientActions.detail} href="/missions/projects" />
         <StatTile
           label="LIVE INCIDENTS"
           value={overview.liveIncidents.count}
@@ -34,7 +34,7 @@ export async function WorkspaceOverviewMain({ workspaceId, selectedClientId }: {
           accent={overview.liveIncidents.count > 0}
           href="/hypercare/incidents"
         />
-        <StatTile label="RELEASE DEPENDENCIES" value={overview.releaseDependencies.count} note="Delivery projects waiting on product" href="/product/roadmap" />
+        <StatTile label="RELEASE DEPENDENCIES" value={overview.releaseDependencies.count} note="Missions waiting on Hangar" href="/hangar/roadmap" />
       </div>
 
       <div className="grid lg:grid-cols-[1.6fr_1fr] gap-4 items-start">
@@ -91,32 +91,32 @@ export async function WorkspaceOverviewMain({ workspaceId, selectedClientId }: {
 
       <div className="grid sm:grid-cols-3 gap-4">
         <Card>
-          <CardHeader title="Delivery" note="SPACE 01" />
+          <CardHeader title="Missions" note="COCKPIT 01" />
           <div className="px-4 py-3.5 flex flex-col gap-2.5">
-            <Row label="Projects in flight" value={overview.spaceSummaries.delivery.projects} href="/delivery/projects" />
-            <Row label="Next held gate" value={overview.spaceSummaries.delivery.nextGate ?? "None"} href="/delivery/gates" />
+            <Row label="Missions in flight" value={overview.spaceSummaries.missions.projects} href="/missions/projects" />
+            <Row label="Next held gate" value={overview.spaceSummaries.missions.nextGate ?? "None"} href="/missions/gates" />
           </div>
           <div className="px-4 pb-3.5">
-            <LinkButton href="/delivery" variant="secondary" className="w-full">
-              Open Delivery
+            <LinkButton href="/missions" variant="secondary" className="w-full">
+              Open Missions
             </LinkButton>
           </div>
         </Card>
         <Card>
-          <CardHeader title="Product" note="SPACE 02" />
+          <CardHeader title="Hangar" note="COCKPIT 02" />
           <div className="px-4 py-3.5 flex flex-col gap-2.5">
-            <Row label="Products" value={overview.spaceSummaries.product.products} href="/product/products" />
-            <Row label="Features in build" value={overview.spaceSummaries.product.featuresInBuild} href="/product/features" />
-            <Row label="Delivery waiting on product" value={overview.spaceSummaries.product.deliveryWaiting} accent href="/product/roadmap" />
+            <Row label="Products" value={overview.spaceSummaries.hangar.products} href="/hangar/products" />
+            <Row label="Features in build" value={overview.spaceSummaries.hangar.featuresInBuild} href="/hangar/features" />
+            <Row label="Missions waiting on Hangar" value={overview.spaceSummaries.hangar.deliveryWaiting} accent href="/hangar/roadmap" />
           </div>
           <div className="px-4 pb-3.5">
-            <LinkButton href="/product" variant="secondary" className="w-full">
-              Open Product
+            <LinkButton href="/hangar" variant="secondary" className="w-full">
+              Open Hangar
             </LinkButton>
           </div>
         </Card>
         <Card>
-          <CardHeader title="Hypercare" note="SPACE 03" />
+          <CardHeader title="Hypercare" note="COCKPIT 03" />
           <div className="px-4 py-3.5 flex flex-col gap-2.5">
             <Row label="Services live" value={overview.spaceSummaries.hypercare.servicesLive} href="/hypercare/services" />
             <Row label="Active incidents" value={overview.spaceSummaries.hypercare.activeIncidents} accent href="/hypercare/incidents" />

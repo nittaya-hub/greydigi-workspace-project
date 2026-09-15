@@ -44,7 +44,7 @@ export async function afterConditionWrite(
     }
   }
 
-  revalidatePath(`/delivery/projects/${projectRef.toLowerCase()}/flight-plan-check`);
-  revalidatePath(`/delivery/projects/${projectRef.toLowerCase()}`);
+  revalidatePath(`/missions/projects/${projectRef.toLowerCase()}/flight-plan-check`);
+  revalidatePath(`/missions/projects/${projectRef.toLowerCase()}`);
   revalidatePath("/hypercare/services");
 }

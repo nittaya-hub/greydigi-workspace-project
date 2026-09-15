@@ -14,7 +14,7 @@ interface MiniProject {
   linkedServiceRef: string | null;
 }
 
-const PROJECT_REF_RE = /^\/delivery\/projects\/([^/]+)/;
+const PROJECT_REF_RE = /^\/missions\/projects\/([^/]+)/;
 
 /**
  * The "PROJECT" sidebar section (design source SHELL: Overview, Tasks and
@@ -69,7 +69,7 @@ export function ProjectMiniNav() {
 
   if (!ref || !project || project.ref.toLowerCase() !== ref.toLowerCase()) return null;
 
-  const base = `/delivery/projects/${project.ref.toLowerCase()}`;
+  const base = `/missions/projects/${project.ref.toLowerCase()}`;
   // Mirrors ProjectLayout's own `tabs` array exactly (delivery/projects/
   // [ref]/layout.tsx) — this used to list only 3 of the project's 10
   // pages, so clicking any of the other 7 tabs left the sidebar showing

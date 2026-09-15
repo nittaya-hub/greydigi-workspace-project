@@ -8,8 +8,8 @@ import { inviteMember, type InviteResult } from "./actions";
 
 const ROLES = [
   { value: "member", label: "Member" },
-  { value: "delivery_lead", label: "Delivery lead" },
-  { value: "product_lead", label: "Product lead" },
+  { value: "delivery_lead", label: "Missions lead" },
+  { value: "product_lead", label: "Hangar lead" },
   { value: "hypercare_lead", label: "Hypercare lead" },
   { value: "workspace_admin", label: "Workspace admin" },
 ];

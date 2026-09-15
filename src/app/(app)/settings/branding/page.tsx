@@ -32,7 +32,7 @@ export default async function BrandingSettingsPage() {
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-5">
         <PageHeading
           title="Branding"
-          description="The logo, colors, and PDF template every export in this system uses — Delivery reports, client-facing PDFs, Excel exports. Upload a new theme package whenever the brand changes; every export picks it up immediately, no code change needed."
+          description="The logo, colors, and PDF template every export in this system uses — Missions reports, client-facing PDFs, Excel exports. Upload a new theme package whenever the brand changes; every export picks it up immediately, no code change needed."
         />
         <UploadBrandingButton />
       </div>

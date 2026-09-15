@@ -88,7 +88,7 @@ export function ClientProjectsRollup({
         ) : null}
 
         {product?.published && product.blocks.length > 0 ? (
-          <DashboardPortalView title="PRODUCT" blocks={product.blocks} data={product.data} />
+          <DashboardPortalView title="HANGAR" blocks={product.blocks} data={product.data} />
         ) : null}
       </main>
     </div>

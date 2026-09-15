@@ -9,14 +9,14 @@ import { ExportPdfButton } from "@/components/pdf/ExportPdfButton";
 
 const ROLE_LABEL: Record<string, string> = {
   workspace_admin: "WORKSPACE ADMIN",
-  delivery_lead: "DELIVERY LEAD",
-  product_lead: "PRODUCT LEAD",
+  delivery_lead: "MISSIONS LEAD",
+  product_lead: "HANGAR LEAD",
   hypercare_lead: "HYPERCARE LEAD",
   member: "MEMBER",
   client: "CLIENT",
 };
 
-const SPACE_LABEL: Record<PersonWorkItem["space"], string> = { delivery: "DELIVERY", product: "PRODUCT" };
+const SPACE_LABEL: Record<PersonWorkItem["space"], string> = { delivery: "MISSIONS", product: "HANGAR" };
 
 function WorkList({ items, emptyLabel }: { items: PersonWorkItem[]; emptyLabel: string }) {
   if (items.length === 0) {

@@ -23,13 +23,13 @@ export default async function ServicesListPage() {
     <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px] mx-auto">
       <PageHeading
         title="Services"
-        description="Created at G5 from the delivery project. Never created by hand for a live client system."
+        description="Created at G5 from the missions project. Never created by hand for a live client system."
       />
       <Card>
         {services.length === 0 ? (
           <EmptyState
             title="No live services yet."
-            description="The first service appears when a delivery project clears G5. Nothing here is created by hand."
+            description="The first service appears when a missions project clears G5. Nothing here is created by hand."
           />
         ) : (
           <>

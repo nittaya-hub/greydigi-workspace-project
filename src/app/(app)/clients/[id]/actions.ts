@@ -244,7 +244,7 @@ export async function createProjectForClient(clientId: string, formData: FormDat
   // just cloned above -- without this, a project starts with an empty
   // Tasks and milestones tab, and any task added by hand has no phase to
   // group under ("Phase — Unassigned") since there's no default checklist
-  // at all. Mirrors src/app/(app)/delivery/projects/actions.ts::createProject.
+  // at all. Mirrors src/app/(app)/missions/projects/actions.ts::createProject.
   const { data: templateTasks } = await supabase
     .from("template_tasks")
     .select("template_phase_id, title, is_critical_path")
@@ -285,15 +285,15 @@ export async function createProjectForClient(clientId: string, formData: FormDat
       kind: "project_created",
       title: `New project: ${name}`,
       body: `${person.full_name} created ${ref} ${name} for ${clientRow?.name ?? "a client"}.`,
-      relatedUrl: `/delivery/projects/${ref.toLowerCase()}`,
+      relatedUrl: `/missions/projects/${ref.toLowerCase()}`,
     },
     { excludePersonId: person.id }
   );
 
   revalidatePath(`/clients/${clientId}`);
   revalidatePath("/clients");
-  revalidatePath("/delivery/projects");
-  revalidatePath("/delivery");
+  revalidatePath("/missions/projects");
+  revalidatePath("/missions");
   revalidatePath("/");
 }
 

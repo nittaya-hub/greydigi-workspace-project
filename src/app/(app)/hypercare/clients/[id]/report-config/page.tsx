@@ -44,7 +44,7 @@ export default async function HypercareReportConfigPage({ params }: { params: Pr
       </div>
       <PageHeading
         title={`${client.name} — Hypercare report settings`}
-        description="What a published weekly report can show, and the no-login links you've sent out so far. Separate from Delivery's Client view config on purpose."
+        description="What a published weekly report can show, and the no-login links you've sent out so far. Separate from Missions' Client view config on purpose."
       />
 
       <Card>

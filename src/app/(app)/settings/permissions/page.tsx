@@ -41,11 +41,11 @@ const TIERS: { name: string; can: string[]; cannot: string[] }[] = [
     ],
   },
   {
-    name: "Product access (space_roles, separate from the tiers above)",
+    name: "Hangar access (space_roles, separate from the tiers above)",
     can: [
-      "Anyone granted Product access (via the toggle on the People page) gets full CRUD on Products, Roadmap, Releases, and Engineering — workspace-wide, not per-project, since Product is a reusable capability library, not owned by one client.",
+      "Anyone granted Hangar access (via the toggle on the People page) gets full CRUD on Products, Roadmap, Releases, and Engineering — workspace-wide, not per-project, since Hangar is a reusable capability library, not owned by one client.",
     ],
-    cannot: ["Someone without this grant sees nothing in the Product space, regardless of any project they're on."],
+    cannot: ["Someone without this grant sees nothing in the Hangar space, regardless of any project they're on."],
   },
 ];
 
@@ -56,7 +56,7 @@ export default async function PermissionsSettingsPage() {
       <div className="flex flex-col gap-5">
         <PageHeading title="Permissions" />
         <Card>
-          <EmptyState title="Workspace admins only." description="This page shows every project-level and Product access grant in the workspace." />
+          <EmptyState title="Workspace admins only." description="This page shows every project-level and Hangar access grant in the workspace." />
         </Card>
       </div>
     );
@@ -99,7 +99,7 @@ export default async function PermissionsSettingsPage() {
     <div className="flex flex-col gap-5">
       <PageHeading
         title="Permissions"
-        description="What each access tier can and can't do, and every project-level or Product grant currently in effect. Visible to workspace admins only."
+        description="What each access tier can and can't do, and every project-level or Hangar grant currently in effect. Visible to workspace admins only."
       />
 
       <div className="grid md:grid-cols-2 gap-4">
@@ -139,7 +139,7 @@ export default async function PermissionsSettingsPage() {
       </div>
 
       <div className="flex flex-col gap-2">
-        <Eyebrow>PRODUCT ACCESS GRANTS · {productRows.length} TOTAL</Eyebrow>
+        <Eyebrow>HANGAR ACCESS GRANTS · {productRows.length} TOTAL</Eyebrow>
         <ProductGrantsTable rows={productRows} />
       </div>
     </div>

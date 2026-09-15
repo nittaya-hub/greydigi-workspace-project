@@ -74,7 +74,7 @@ export async function getPersonProfile(personId: string): Promise<PersonProfile 
       title: t.title,
       status: t.status,
       contextName: project ? `${project.ref} · ${project.name}` : "—",
-      href: project ? `/delivery/projects/${project.ref.toLowerCase()}/tasks` : "/delivery",
+      href: project ? `/missions/projects/${project.ref.toLowerCase()}/tasks` : "/missions",
       dueDate: t.due_date,
     };
   });
@@ -87,7 +87,7 @@ export async function getPersonProfile(personId: string): Promise<PersonProfile 
       title: t.title,
       status: t.status,
       contextName: release ? `${release.code} · ${release.name}` : "Unassigned release",
-      href: release ? `/product/releases/${release.code.toLowerCase()}` : "/product/engineering",
+      href: release ? `/hangar/releases/${release.code.toLowerCase()}` : "/hangar/engineering",
       dueDate: null,
     };
   });

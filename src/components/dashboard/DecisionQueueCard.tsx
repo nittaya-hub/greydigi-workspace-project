@@ -11,13 +11,13 @@ const QUEUE_COLS = "84px 1fr 130px 90px";
 const VISIBLE_DEFAULT = 5;
 
 const SPACE_PILL: Record<string, { bg: string; fg: string }> = {
-  delivery: { bg: "bg-coral-tint", fg: "text-coral-strong" },
+  missions: { bg: "bg-coral-tint", fg: "text-coral-strong" },
   hypercare: { bg: "bg-block-bg", fg: "text-block-fg" },
-  product: { bg: "bg-neutral-bg", fg: "text-ink" },
+  hangar: { bg: "bg-neutral-bg", fg: "text-ink" },
   cross: { bg: "bg-idle-bg", fg: "text-muted" },
 };
 
-/** The 5 longest-waiting items across all three spaces, oldest first —
+/** The 5 longest-waiting items across all four cockpits, oldest first —
  * getWorkspaceOverview already merges and sorts held gates, incidents
  * and untriaged submissions by real wait time instead of "whichever 3
  * came back from each source's own query," so this scales the same way
@@ -31,7 +31,7 @@ export function DecisionQueueCard({ items }: { items: DecisionQueueItem[] }) {
 
   return (
     <>
-      <CardHeader title="Needs a decision" note="ONE QUEUE, ALL THREE SPACES" />
+      <CardHeader title="Needs a decision" note="ONE QUEUE, ALL FOUR COCKPITS" />
       {items.length === 0 ? (
         <div className="py-10 px-4 text-center text-[12.5px] text-muted">Nothing waiting on a decision.</div>
       ) : (

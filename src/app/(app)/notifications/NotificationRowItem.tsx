@@ -12,7 +12,7 @@ import { archiveNotification, markNotificationRead } from "./actions";
 function sourceTag(kind: string): { label: string; tone: "coral" | "neutral" } | null {
   const category = notificationCategory(kind);
   if (category === "hypercare") return { label: "HYPERCARE", tone: "coral" };
-  if (category === "delivery") return { label: "DELIVERY", tone: "neutral" };
+  if (category === "delivery") return { label: "MISSIONS", tone: "neutral" };
   return null;
 }
 

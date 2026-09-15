@@ -8,10 +8,10 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
     <div className="min-h-dvh bg-canvas flex items-center justify-center px-4">
       <div className="bg-white border border-line rounded-[12px] max-w-[380px] w-full p-7 flex flex-col gap-5">
         <div className="flex items-center gap-2">
-          <Image src="/greydigi-logo.png" alt="greydigi" width={26} height={26} className="rounded-[6px]" />
-          <span className="font-display font-extrabold text-[16px]">greydigi</span>
+          <Image src="/greydigi-logo.png" alt="aironauts" width={26} height={26} className="rounded-[6px]" />
+          <span className="font-display font-extrabold text-[16px]">aironauts&trade;</span>
           <span className="font-mono text-[9px] text-muted border border-line rounded-[4px] px-[5px] py-0.5">
-            WORKSPACE
+            MISSION CONTROL
           </span>
         </div>
         <div className="flex flex-col gap-1">

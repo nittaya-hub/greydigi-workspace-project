@@ -51,7 +51,7 @@ export function Eyebrow({ children, className }: { children: ReactNode; classNam
 
 /** `.tile` — a single stat card: eyebrow, big number, small note. Pass
  * `href` to make the whole tile a link to wherever that number's detail
- * lives (e.g. "BLOCKED GATES" → /delivery/gates) — plain browser/Next
+ * lives (e.g. "BLOCKED GATES" → /missions/gates) — plain browser/Next
  * navigation, so the back button returns here exactly as it left it.
  * Omit `href` for a purely informational tile (e.g. inside a preview
  * panel that isn't itself a real page to link to). */

@@ -2,8 +2,8 @@ import { PageHeading, Card } from "@/components/ui/Card";
 import { getCurrentWorkspaceId } from "@/lib/data/workspace";
 import { getSelectedClientId } from "@/lib/data/client-scope";
 import { createClient } from "@/lib/supabase/server";
-import { CreateProjectButton } from "@/app/(app)/delivery/projects/CreateProjectButton";
-import { getCreateProjectOptions } from "@/app/(app)/delivery/projects/create-project-data";
+import { CreateProjectButton } from "@/app/(app)/missions/projects/CreateProjectButton";
+import { getCreateProjectOptions } from "@/app/(app)/missions/projects/create-project-data";
 import { WorkspaceOverviewMain } from "@/components/dashboard/WorkspaceOverviewMain";
 import { ExportPdfButton } from "@/components/pdf/ExportPdfButton";
 

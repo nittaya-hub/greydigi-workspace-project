@@ -214,7 +214,7 @@ export async function duplicateTemplateVersion(versionId: string): Promise<strin
  * is locked, same rule as every other template edit (see
  * toggleGateConditionSignature below). Only affects this template version;
  * projects already cloned from it keep their own project_phases copy
- * (see createProject in src/app/(app)/delivery/projects/actions.ts) and
+ * (see createProject in src/app/(app)/missions/projects/actions.ts) and
  * are edited independently, not through this action. */
 export async function updatePhaseDuration(phaseId: string, versionId: string, durationLabel: string, showDurationLabel: boolean) {
   const supabase = await createClient();

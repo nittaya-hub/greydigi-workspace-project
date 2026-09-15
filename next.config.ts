@@ -17,6 +17,17 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/*": ["node_modules/@sparticuz/chromium/bin/**/*"],
   },
+  // "Delivery" -> "Missions" and "Product" -> "Hangar" (aironauts Decision
+  // Pack, "Four cockpits and one brain"). Old bookmarks/links into either
+  // space should keep working rather than 404 once the routes move.
+  async redirects() {
+    return [
+      { source: "/delivery", destination: "/missions", permanent: true },
+      { source: "/delivery/:path*", destination: "/missions/:path*", permanent: true },
+      { source: "/product", destination: "/hangar", permanent: true },
+      { source: "/product/:path*", destination: "/hangar/:path*", permanent: true },
+    ];
+  },
 };
 
 export default nextConfig;

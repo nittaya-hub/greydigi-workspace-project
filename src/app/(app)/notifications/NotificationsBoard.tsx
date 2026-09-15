@@ -11,13 +11,13 @@ const PAGE_SIZE = 20;
 
 const CATEGORY_LABEL: Record<NotificationCategory, string> = {
   hypercare: "HYPERCARE",
-  delivery: "DELIVERY",
+  delivery: "MISSIONS",
   other: "OTHER",
 };
 
 type FilterKey = "all" | "action" | "archived" | NotificationCategory;
 
-/** Search box + category filter pills (Action needed / Delivery /
+/** Search box + category filter pills (Action needed / Missions /
  * Hypercare / Other) + 20-per-page pagination, replacing the old fixed
  * "Action needed" / "Changed" two-card split — filtering by pill covers
  * the same "action needed first" need while also letting the team file

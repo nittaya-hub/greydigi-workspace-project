@@ -11,7 +11,7 @@ export default async function ClientsPage() {
   return (
     <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px] mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-5">
-        <PageHeading title="Clients" description="Delivery projects, product dependencies and hypercare services all point here." />
+        <PageHeading title="Clients" description="Missions projects, hangar dependencies and hypercare services all point here." />
         <AddClientButton />
       </div>
 

@@ -22,10 +22,13 @@ export interface ShellData {
   selectedClient: ShellClientOption | null;
   clientOptions: ShellClientOption[];
   counts: {
-    delivery: number;
-    product: number;
+    missions: number;
+    hangar: number;
     hypercare: number;
     hypercareUrgent: number;
+    /** No object model exists yet for Manifest (Wave 3 of the Decision
+     * Pack build order) — always 0 rather than a fabricated count. */
+    manifest: number;
     clients: number;
     people: number;
     templates: number;
@@ -34,10 +37,11 @@ export interface ShellData {
 }
 
 const EMPTY_COUNTS: ShellData["counts"] = {
-  delivery: 0,
-  product: 0,
+  missions: 0,
+  hangar: 0,
   hypercare: 0,
   hypercareUrgent: 0,
+  manifest: 0,
   clients: 0,
   people: 0,
   templates: 0,
@@ -52,10 +56,14 @@ const EMPTY_SHELL: ShellData = {
   counts: EMPTY_COUNTS,
 };
 
+// Display labels only — the underlying workspace_role enum values
+// (delivery_lead/product_lead) are unchanged in this pass. Renaming the
+// enum itself is Wave 1's authorization-model consolidation, done as its
+// own staged migration, not here.
 const ROLE_LABEL: Record<string, string> = {
   workspace_admin: "WORKSPACE ADMIN",
-  delivery_lead: "DELIVERY LEAD",
-  product_lead: "PRODUCT LEAD",
+  delivery_lead: "MISSIONS LEAD",
+  product_lead: "HANGAR LEAD",
   hypercare_lead: "HYPERCARE LEAD",
   member: "MEMBER",
   client: "CLIENT",
@@ -73,8 +81,8 @@ function initialsFrom(name: string) {
  * should render an empty workspace, not crash the shell.
  *
  * Client scoping: when the `selected_client_id` cookie names a client
- * (src/lib/data/client-scope.ts), Delivery and Hypercare counts filter to
- * that client's projects/services. Product stays workspace-wide — it has
+ * (src/lib/data/client-scope.ts), Missions and Hypercare counts filter to
+ * that client's projects/services. Hangar stays workspace-wide — it has
  * no client_id in the schema by design (a product is a reusable capability
  * promoted once two client projects need the same thing, not owned by one
  * client), so a client filter there would be fabricated, not real scoping.
@@ -135,8 +143,8 @@ export async function getShellData(): Promise<ShellData> {
     if (selectedClient) openSubmissionsQuery = openSubmissionsQuery.eq("client_id", selectedClient.id);
 
     const [
-      { count: deliveryCount },
-      { count: productCount },
+      { count: missionsCount },
+      { count: hangarCount },
       { count: incidentCount },
       { count: hypercareUrgentCount },
       { count: clientsCount },
@@ -203,10 +211,11 @@ export async function getShellData(): Promise<ShellData> {
       selectedClient,
       clientOptions,
       counts: {
-        delivery: deliveryCount ?? 0,
-        product: productCount ?? 0,
+        missions: missionsCount ?? 0,
+        hangar: hangarCount ?? 0,
         hypercare: hypercareCount,
         hypercareUrgent: hypercareUrgentCount ?? 0,
+        manifest: 0,
         clients: clientsCount ?? 0,
         people: peopleCount ?? 0,
         templates: templatesCount ?? 0,

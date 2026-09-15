@@ -61,7 +61,7 @@ export function ProductGrantsTable({ rows }: { rows: ProductGrantRow[] }) {
       rows={rows}
       searchPlaceholder="Search by person..."
       searchMatch={(r, q) => r.fullName.toLowerCase().includes(q)}
-      emptyTitle="Nobody has Product access yet."
+      emptyTitle="Nobody has Hangar access yet."
       emptyDescription="Grant it from a person's row on the People page."
       itemNounSingular="GRANT"
       itemNounPlural="GRANTS"

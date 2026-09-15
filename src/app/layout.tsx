@@ -24,8 +24,8 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "greydigi workspace",
-  description: "Delivery, Product and Hypercare in one workspace.",
+  title: "aironauts™ Mission Control",
+  description: "Missions, Hypercare, Hangar and Manifest in one system.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
