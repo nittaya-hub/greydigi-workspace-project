@@ -2,13 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentPerson } from "@/lib/data/auth-guard";
+import { requireWorkspaceAdmin } from "@/lib/data/auth-guard";
 import { notifyWorkspace } from "@/lib/data/notify";
 import type { ClientSubmissionKind } from "@/lib/supabase/database.types";
 import type { SubmissionTaxonomyField } from "@/lib/data/submission-taxonomies";
 
 export async function renameWorkspace(workspaceId: string, name: string) {
   if (!name.trim()) throw new Error("Name cannot be empty.");
+  const admin = await requireWorkspaceAdmin();
+  if (workspaceId !== admin.workspace_id) throw new Error("Workspace not found.");
   const supabase = await createClient();
   const { error } = await supabase.from("workspaces").update({ name: name.trim() }).eq("id", workspaceId);
   if (error) throw new Error(error.message);
@@ -22,8 +24,9 @@ export async function saveGeneralSettings(
 ) {
   if (!fields.name.trim()) throw new Error("Name cannot be empty.");
   if (!fields.businessHours.trim()) throw new Error("Business hours cannot be empty.");
+  const person = await requireWorkspaceAdmin();
+  if (workspaceId !== person.workspace_id) throw new Error("Workspace not found.");
   const supabase = await createClient();
-  const person = await getCurrentPerson();
   const { error } = await supabase
     .from("workspaces")
     .update({ name: fields.name.trim(), business_hours: fields.businessHours.trim() })
@@ -53,8 +56,9 @@ export async function savePortalSettings(
   if (!Number.isFinite(fields.defaultShareExpiryDays) || fields.defaultShareExpiryDays < 1) {
     throw new Error("Default share link expiry must be at least 1 day.");
   }
+  const person = await requireWorkspaceAdmin();
+  if (workspaceId !== person.workspace_id) throw new Error("Workspace not found.");
   const supabase = await createClient();
-  const person = await getCurrentPerson();
   const { error } = await supabase
     .from("workspaces")
     .update({
@@ -84,8 +88,9 @@ export async function toggleIntegration(
   integrationName: string,
   connect: boolean
 ) {
+  const person = await requireWorkspaceAdmin();
+  if (workspaceId !== person.workspace_id) throw new Error("Workspace not found.");
   const supabase = await createClient();
-  const person = await getCurrentPerson();
   const { error } = await supabase
     .from("workspace_integrations")
     .update({
@@ -122,8 +127,18 @@ export async function updateSlaPolicy(
   if (!Number.isFinite(fields.resolveTargetMinutes) || fields.resolveTargetMinutes < 1) {
     throw new Error("Resolve target must be a positive number of minutes.");
   }
+  const person = await requireWorkspaceAdmin();
+  if (workspaceId !== person.workspace_id) throw new Error("Workspace not found.");
   const supabase = await createClient();
-  const person = await getCurrentPerson();
+  // Flat queries, not an embedded select -- hand-written database.types.ts
+  // doesn't carry accurate Relationships (see lib/data/workspace.ts's own
+  // note on this), so an embedded select here would silently lose
+  // type-checking rather than error.
+  const { data: policy } = await supabase.from("sla_policies").select("service_id").eq("id", policyId).maybeSingle();
+  if (!policy) throw new Error("SLA policy not found in this workspace.");
+  const { data: service } = await supabase.from("services").select("workspace_id").eq("id", policy.service_id).maybeSingle();
+  if (!service || service.workspace_id !== person.workspace_id) throw new Error("SLA policy not found in this workspace.");
+
   const { error } = await supabase
     .from("sla_policies")
     .update({
@@ -158,8 +173,9 @@ export async function addSubmissionTaxonomyOption(
   if (!value) throw new Error("Enter a value.");
   if (!label) throw new Error("Enter a label.");
 
+  const person = await requireWorkspaceAdmin();
+  if (workspaceId !== person.workspace_id) throw new Error("Workspace not found.");
   const supabase = await createClient();
-  const person = await getCurrentPerson();
   const { count } = await supabase
     .from("submission_taxonomy_options")
     .select("id", { count: "exact", head: true })
@@ -199,6 +215,8 @@ export async function updateSubmissionTaxonomyOption(
   const label = fields.label.trim();
   if (!label) throw new Error("Label cannot be empty.");
 
+  const person = await requireWorkspaceAdmin();
+  if (workspaceId !== person.workspace_id) throw new Error("Workspace not found.");
   const supabase = await createClient();
   const { error } = await supabase
     .from("submission_taxonomy_options")

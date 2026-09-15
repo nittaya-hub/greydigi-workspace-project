@@ -45,6 +45,13 @@ export async function grantPortalAccess(clientId: string, formData: FormData): P
   const password = generatePassword();
   const supabaseAdmin = createAdminClient();
 
+  // client_roles has no RLS write policy at all (only select), so this
+  // insert runs on the service-role client below with no DB-level tenant
+  // check -- this is the only thing stopping a workspace A admin from
+  // granting portal access to a client that belongs to workspace B.
+  const { data: clientCheck } = await supabaseAdmin.from("clients").select("id").eq("id", clientId).eq("workspace_id", admin.workspace_id).maybeSingle();
+  if (!clientCheck) return { ok: false, message: "Client not found in this workspace." };
+
   const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
     email,
     password,
@@ -165,6 +172,13 @@ export async function createProjectForClient(clientId: string, formData: FormDat
   if (!person) throw new Error("Not signed in.");
 
   const supabase = await createClient();
+
+  // The new project's own workspace_id is correctly set below, but
+  // nothing stops clientId itself from pointing at a different
+  // workspace's client -- which would attach this project to a foreign
+  // client and surface it in that client's own portal.
+  const { data: clientCheck } = await supabase.from("clients").select("id").eq("id", clientId).eq("workspace_id", person.workspace_id).maybeSingle();
+  if (!clientCheck) throw new Error("Client not found in this workspace.");
 
   const { data: project, error: projectError } = await supabase
     .from("projects")
@@ -302,13 +316,13 @@ export async function createProjectForClient(clientId: string, formData: FormDat
  * client can be mid-onboarding with no service yet but HyperCare still on. */
 export async function toggleHypercareEnabled(clientId: string, enabled: boolean) {
   const supabase = await createClient();
-  const person = await getCurrentPerson();
-  if (!person) throw new Error("Not signed in.");
+  const person = await requireWorkspaceAdmin();
 
   const { data: client, error } = await supabase
     .from("clients")
     .update({ hypercare_enabled: enabled })
     .eq("id", clientId)
+    .eq("workspace_id", person.workspace_id)
     .select("name")
     .single();
   if (error) throw new Error(error.message);

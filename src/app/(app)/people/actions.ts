@@ -13,8 +13,15 @@ import type { WorkspaceRole } from "@/lib/supabase/database.types";
  * unlike Delivery's per-project grant, this is a simple per-space
  * on/off toggle, admin-only. */
 export async function toggleProductAccess(personId: string, grant: boolean) {
-  await requireWorkspaceAdmin();
+  const admin = await requireWorkspaceAdmin();
   const supabase = await createClient();
+
+  // space_roles' own RLS write policy only checks that the *caller* is a
+  // workspace_admin somewhere, not that personId belongs to the caller's
+  // workspace (0020_project_membership_rbac.sql) -- this is the actual
+  // tenant boundary until that policy is fixed.
+  const { data: target } = await supabase.from("people").select("workspace_id").eq("id", personId).maybeSingle();
+  if (!target || target.workspace_id !== admin.workspace_id) throw new Error("Person not found in this workspace.");
 
   if (grant) {
     const { data: existing } = await supabase
@@ -43,10 +50,16 @@ const EDITABLE_ROLES = new Set<WorkspaceRole>(["workspace_admin", "delivery_lead
  * no UPDATE policy at all, since every existing write to it already goes
  * through this same admin-guarded, service-role path rather than RLS. */
 export async function updateMemberRole(personId: string, workspaceRole: WorkspaceRole) {
-  await requireWorkspaceAdmin();
+  const admin = await requireWorkspaceAdmin();
   if (!EDITABLE_ROLES.has(workspaceRole)) throw new Error("Invalid role.");
 
+  // The service-role client bypasses RLS entirely, so this check is the
+  // only thing stopping a workspace_admin in one workspace from changing
+  // (or escalating) a person's role in a different workspace.
   const supabaseAdmin = createAdminClient();
+  const { data: target } = await supabaseAdmin.from("people").select("workspace_id").eq("id", personId).maybeSingle();
+  if (!target || target.workspace_id !== admin.workspace_id) throw new Error("Person not found in this workspace.");
+
   const { error } = await supabaseAdmin.from("people").update({ workspace_role: workspaceRole }).eq("id", personId);
   if (error) throw new Error(error.message);
 
@@ -57,8 +70,11 @@ export async function updateMemberRole(personId: string, workspaceRole: Workspac
 /** The active/inactive toggle. A soft flag only for now — see
  * 0029_people_active_flag.sql for why this doesn't yet block sign-in. */
 export async function setMemberActive(personId: string, isActive: boolean) {
-  await requireWorkspaceAdmin();
+  const admin = await requireWorkspaceAdmin();
   const supabaseAdmin = createAdminClient();
+  const { data: target } = await supabaseAdmin.from("people").select("workspace_id").eq("id", personId).maybeSingle();
+  if (!target || target.workspace_id !== admin.workspace_id) throw new Error("Person not found in this workspace.");
+
   const { error } = await supabaseAdmin.from("people").update({ is_active: isActive }).eq("id", personId);
   if (error) throw new Error(error.message);
 
@@ -78,9 +94,13 @@ export async function removeMemberAccess(personId: string) {
   if (personId === admin.id) throw new Error("You can't remove your own access.");
 
   const supabaseAdmin = createAdminClient();
-  const { data: person, error: fetchError } = await supabaseAdmin.from("people").select("auth_user_id").eq("id", personId).maybeSingle();
+  const { data: person, error: fetchError } = await supabaseAdmin
+    .from("people")
+    .select("auth_user_id, workspace_id")
+    .eq("id", personId)
+    .maybeSingle();
   if (fetchError) throw new Error(fetchError.message);
-  if (!person) throw new Error("Person not found.");
+  if (!person || person.workspace_id !== admin.workspace_id) throw new Error("Person not found in this workspace.");
 
   if (person.auth_user_id) {
     const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(person.auth_user_id);

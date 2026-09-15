@@ -23,6 +23,21 @@ export async function addProjectMember(projectId: string, projectRef: string, fo
 
   const supabase = await createClient();
   const actor = await getCurrentPerson();
+  if (!actor) throw new Error("Not signed in.");
+
+  // A project_members row grants real project access via
+  // fn_my_accessible_project_ids()/fn_my_admin_project_ids() (0020_
+  // project_membership_rbac.sql), which don't themselves check that the
+  // grantee's workspace matches the project's -- this is the only thing
+  // stopping a project admin from handing an out-of-workspace person a
+  // foothold into this project.
+  const [{ data: project }, { data: targetPerson }] = await Promise.all([
+    supabase.from("projects").select("workspace_id").eq("id", projectId).maybeSingle(),
+    supabase.from("people").select("workspace_id").eq("id", personId).maybeSingle(),
+  ]);
+  if (!project || !targetPerson || targetPerson.workspace_id !== project.workspace_id) {
+    throw new Error("Person not found in this workspace.");
+  }
 
   const { data: existing } = await supabase
     .from("project_members")
