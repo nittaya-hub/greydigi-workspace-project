@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Card, CardHeader, StatTile, HeroPanel, Eyebrow } from "@/components/ui/Card";
+import { Card, CardHeader, StatTile, Eyebrow } from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/Button";
 import { getWorkspaceOverview } from "@/lib/data/workspace";
 import { DecisionQueueCard } from "@/components/dashboard/DecisionQueueCard";
@@ -41,16 +41,20 @@ export async function WorkspaceOverviewMain({ workspaceId, selectedClientId }: {
         </Card>
 
         <div className="flex flex-col gap-4">
-          <HeroPanel>
+          {/* White card, matching the two cards below it exactly (the
+              Decision Pack's own entry-screen mock, page 4, shows all
+              three right-column cards in the same plain white style —
+              not the app's dark "hero" treatment used elsewhere). */}
+          <Card className="p-4 flex flex-col gap-2.5">
             <div className="flex items-center justify-between">
-              <Eyebrow className="text-muted-2">PORTFOLIO HEALTH</Eyebrow>
-              <span className="font-mono text-[9px] text-muted-2">{overview.portfolioHealth.total} MISSIONS</span>
+              <span className="font-display font-extrabold text-[13px]">Portfolio health</span>
+              <span className="font-mono text-[9px] text-muted">{overview.portfolioHealth.total} MISSIONS</span>
             </div>
             <div className="flex items-baseline gap-2.5">
-              <span className="font-display font-extrabold text-[30px]">
+              <span className="font-display font-extrabold text-[26px] text-ink tracking-[-0.03em]">
                 {byHealth.on_plan} / {overview.portfolioHealth.total}
               </span>
-              <span className="text-[12px] text-muted-2">on plan</span>
+              <span className="text-[11px] text-muted">on plan</span>
             </div>
             <div className="flex gap-1">
               {(["on_plan", "watch", "blocked"] as const).flatMap((key) =>
@@ -58,22 +62,22 @@ export async function WorkspaceOverviewMain({ workspaceId, selectedClientId }: {
                   <span
                     key={`${key}-${i}`}
                     className={`flex-1 h-1.5 rounded-[3px] ${
-                      key === "on_plan" ? "bg-[#EDEEF1]" : key === "watch" ? "bg-[#E8A94D]" : "bg-coral"
+                      key === "on_plan" ? "bg-ink" : key === "watch" ? "bg-[#E8A94D]" : "bg-coral"
                     }`}
                   />
                 ))
               )}
-              {overview.portfolioHealth.total === 0 ? <span className="flex-1 h-1.5 rounded-[3px] bg-white/15" /> : null}
+              {overview.portfolioHealth.total === 0 ? <span className="flex-1 h-1.5 rounded-[3px] bg-line" /> : null}
             </div>
-            <div className="flex justify-between font-mono text-[9px] text-muted-2">
+            <div className="flex justify-between font-mono text-[9px] text-muted">
               <span>{byHealth.on_plan} ON PLAN</span>
               <span>{byHealth.blocked} BLOCKED</span>
               <span>{byHealth.watch} WATCH</span>
             </div>
-            <span className="text-[11.5px] text-muted-2 leading-[1.5]">
+            <span className="text-[11.5px] text-muted leading-[1.55]">
               Gate slip against the locked baseline, not percent complete.
             </span>
-          </HeroPanel>
+          </Card>
 
           {/* Capacity tracking (people, reserve, run-vs-mission split) has
               no data model yet -- it's Hypercare's "protected capacity"
