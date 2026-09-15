@@ -59,7 +59,7 @@ export async function signInWithPassword(
   // Same reasoning as clearing this on sign-out: the client-scope cookie
   // lives for a year, so a browser that last had a client selected would
   // otherwise land back inside that client's scoped view instead of the
-  // master "greydigi Dashboard" every fresh sign-in — including one that
+  // master "Mission Control" every fresh sign-in — including one that
   // never went through the sign-out button (a session that simply expired
   // and got re-authenticated here). The CEO's own ask was explicit: the
   // first page after login must always be the all-clients dashboard.

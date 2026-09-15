@@ -101,28 +101,33 @@ export const HYPERCARE_NAV: NavItem[] = [
 ];
 
 /** The company brain — assets, decisions, accuracy/calibration, written
- * back from the other three cockpits on gate close. Nav-only shell in
- * this pass; the object model and write-back rule are Wave 3 of the
- * Decision Pack's build order, not this one. */
-export const MANIFEST_NAV: NavItem[] = [{ label: "Overview", href: "/manifest" }];
+ * back from the other three cockpits on gate close (0062_manifest.sql). */
+export const MANIFEST_NAV: NavItem[] = [
+  { label: "Overview", href: "/manifest" },
+  { label: "Assets", href: "/manifest/assets" },
+  { label: "Decisions", href: "/manifest/decisions" },
+  { label: "Calibration", href: "/manifest/calibration" },
+];
 
 export type SpaceKey = "missions" | "hypercare" | "hangar" | "manifest";
 
-/** Labeled "X Dashboard" in the sidebar (the "COCKPITS" section header
- * itself reads "Dashboard Overview" — see Sidebar.tsx) — the underlying
- * data differs by mode, not the labels: workspace-wide across every
- * client/project in Master Admin mode, filtered to one client's data
- * when a client is scoped (see getWorkspaceOverview's clientId param
- * and shell.ts's existing per-client count filtering). Manifest has no
- * client-scoped meaning (it's the company brain, not client work), so
- * Sidebar.tsx excludes it from the client-scoped view entirely.
+/** Labeled by the cockpit's own name, exactly as the Decision Pack's
+ * entry-screen mock shows it (page 4's sidebar: "Missions", "Hypercare",
+ * "Hangar", "Manifest" — no "Dashboard" suffix anywhere; that was a
+ * leftover from before this rename) — the underlying data differs by
+ * mode, not the labels: workspace-wide across every client/project in
+ * Master Admin mode, filtered to one client's data when a client is
+ * scoped (see getWorkspaceOverview's clientId param and shell.ts's
+ * existing per-client count filtering). Manifest has no client-scoped
+ * meaning (it's the company brain, not client work), so Sidebar.tsx
+ * excludes it from the client-scoped view entirely.
  *
  * Order matches the Decision Pack's own cockpit numbering exactly (page
  * 3: "01 Missions, 02 Hypercare, 03 Hangar, 04 Manifest") — the entry
  * screen mock on page 4 lists the sidebar in this same order. */
 export const SPACES: { key: SpaceKey; label: string; nav: NavItem[] }[] = [
-  { key: "missions", label: "Missions Dashboard", nav: MISSIONS_NAV },
-  { key: "hypercare", label: "Hypercare Dashboard", nav: HYPERCARE_NAV },
-  { key: "hangar", label: "Hangar Dashboard", nav: HANGAR_NAV },
-  { key: "manifest", label: "Manifest Dashboard", nav: MANIFEST_NAV },
+  { key: "missions", label: "Missions", nav: MISSIONS_NAV },
+  { key: "hypercare", label: "Hypercare", nav: HYPERCARE_NAV },
+  { key: "hangar", label: "Hangar", nav: HANGAR_NAV },
+  { key: "manifest", label: "Manifest", nav: MANIFEST_NAV },
 ];

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card, CardHeader, StatTile, Eyebrow } from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/Button";
 import { getWorkspaceOverview } from "@/lib/data/workspace";
+import { getManifestSummary } from "@/lib/data/manifest";
 import { DecisionQueueCard } from "@/components/dashboard/DecisionQueueCard";
 
 /** Everything on the master overview page (`src/app/(app)/page.tsx`)
@@ -11,7 +12,7 @@ import { DecisionQueueCard } from "@/components/dashboard/DecisionQueueCard";
  * its own data rather than taking it as a prop so both callers stay a
  * one-line `<WorkspaceOverviewMain ... />`. */
 export async function WorkspaceOverviewMain({ workspaceId, selectedClientId }: { workspaceId: string; selectedClientId: string | null }) {
-  const overview = await getWorkspaceOverview(workspaceId, selectedClientId);
+  const [overview, manifest] = await Promise.all([getWorkspaceOverview(workspaceId, selectedClientId), getManifestSummary(workspaceId)]);
   const { byHealth } = overview.portfolioHealth;
 
   return (
@@ -32,7 +33,12 @@ export async function WorkspaceOverviewMain({ workspaceId, selectedClientId }: {
         <StatTile label="CLIENT ACTIONS" value={overview.clientActions.count} note={overview.clientActions.detail} href="/missions/projects" />
         <StatTile label="CAPACITY" value="—" note="Not tracked yet" />
         <StatTile label="VALUE AT RISK" value="—" note="Not tracked yet" />
-        <StatTile label="REUSE" value="—" note="Not tracked yet" href="/manifest" />
+        <StatTile
+          label="REUSE"
+          value={manifest.totalReuseCount}
+          note={`${manifest.assetCount} asset${manifest.assetCount === 1 ? "" : "s"} registered`}
+          href="/manifest/assets"
+        />
       </div>
 
       <div className="grid lg:grid-cols-[1.6fr_1fr] gap-4 items-start">
@@ -94,17 +100,18 @@ export async function WorkspaceOverviewMain({ workspaceId, selectedClientId }: {
             </span>
           </Card>
 
-          {/* Manifest has no object model yet (Wave 3) -- 0 assets is the
-              honest count, matching the Manifest cockpit's own placeholder
-              page, not the illustrative "148 assets" in the mock. */}
+          {/* Real numbers now (0062_manifest.sql) -- calibration is
+              written automatically by a gate-close trigger, assets/
+              decisions are curated. See /manifest for the breakdown. */}
           <Card className="p-4 flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <span className="font-display font-extrabold text-[13px]">Manifest</span>
               <Eyebrow>WRITE-BACK</Eyebrow>
             </div>
             <span className="text-[11.5px] text-muted leading-[1.55]">
-              0 assets registered. No gate write-back yet — Manifest ships in Wave 3, once every gate close writes
-              its assets and calibration data back here.
+              {manifest.assetCount} asset{manifest.assetCount === 1 ? "" : "s"}, {manifest.totalReuseCount} total
+              reuse. {manifest.calibrationThisWeek} gate{manifest.calibrationThisWeek === 1 ? "" : "s"} closed this
+              week with its calibration recorded. {manifest.decisionCount} decision{manifest.decisionCount === 1 ? "" : "s"} logged.
             </span>
             <Link href="/manifest" className="text-[11.5px] text-coral font-semibold">
               Open Manifest →

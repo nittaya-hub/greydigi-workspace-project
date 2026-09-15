@@ -38,6 +38,7 @@ export type ClientSubmissionKind = "issue" | "change_request" | "question";
 export type ClientSubmissionStatus = "open" | "in_progress" | "resolved";
 export type TaskVisibility = "internal" | "external";
 export type ProjectMemberRole = "project_admin" | "member";
+export type ManifestAssetKind = "agent" | "connector" | "prompt" | "document_template";
 export type DashboardSpace = "delivery" | "hypercare" | "product";
 export type DashboardBlockType = "text" | "image" | "flight_plan" | "documents" | "embed" | "metric" | "chart";
 export type ClientActionKind =
@@ -1329,6 +1330,95 @@ export interface Database {
           resolved_at?: Timestamptz | null;
         }
       >;
+
+      manifest_assets: CrudTable<
+        {
+          id: string;
+          workspace_id: string;
+          name: string;
+          kind: ManifestAssetKind;
+          description: string | null;
+          reuse_count: number;
+          created_by_person_id: string | null;
+          created_at: Timestamptz;
+        },
+        {
+          id?: string;
+          workspace_id: string;
+          name: string;
+          kind: ManifestAssetKind;
+          description?: string | null;
+          reuse_count?: number;
+          created_by_person_id?: string | null;
+          created_at?: Timestamptz;
+        }
+      >;
+      manifest_asset_usages: CrudTable<
+        {
+          id: string;
+          workspace_id: string;
+          asset_id: string;
+          project_id: string;
+          note: string | null;
+          logged_by_person_id: string | null;
+          used_at: Timestamptz;
+        },
+        {
+          id?: string;
+          workspace_id: string;
+          asset_id: string;
+          project_id: string;
+          note?: string | null;
+          logged_by_person_id?: string | null;
+          used_at?: Timestamptz;
+        }
+      >;
+      manifest_decisions: CrudTable<
+        {
+          id: string;
+          workspace_id: string;
+          project_id: string;
+          decision: string;
+          objection: string | null;
+          resolution: string;
+          created_by_person_id: string | null;
+          created_at: Timestamptz;
+        },
+        {
+          id?: string;
+          workspace_id: string;
+          project_id: string;
+          decision: string;
+          objection?: string | null;
+          resolution: string;
+          created_by_person_id?: string | null;
+          created_at?: Timestamptz;
+        }
+      >;
+      manifest_calibration: CrudTable<
+        {
+          id: string;
+          workspace_id: string;
+          project_id: string;
+          project_gate_id: string;
+          gate_code: string;
+          target_date: DateStr | null;
+          cleared_at: Timestamptz;
+          slip_days: number | null;
+          created_at: Timestamptz;
+        },
+        {
+          id?: string;
+          workspace_id: string;
+          project_id: string;
+          project_gate_id: string;
+          gate_code: string;
+          target_date?: DateStr | null;
+          cleared_at: Timestamptz;
+          slip_days?: number | null;
+          created_at?: Timestamptz;
+        }
+      >;
     };
     Views: Record<string, never>;
     Functions: {
@@ -1432,6 +1522,7 @@ export interface Database {
       project_member_role: ProjectMemberRole;
       dashboard_space: DashboardSpace;
       dashboard_block_type: DashboardBlockType;
+      manifest_asset_kind: ManifestAssetKind;
     };
   };
 }

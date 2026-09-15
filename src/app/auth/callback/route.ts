@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       // Magic-link and Google sign-in both land here — clear the
       // year-long client-scope cookie on every fresh login, same as the
       // password path and sign-out, so this browser always opens on the
-      // master "greydigi Dashboard" first, not whichever client was
+      // master "Mission Control" first, not whichever client was
       // scoped last time.
       const response = NextResponse.redirect(`${origin}${next.startsWith("/") ? next : "/"}`);
       response.cookies.delete(SELECTED_CLIENT_COOKIE);
