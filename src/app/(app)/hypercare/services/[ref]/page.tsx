@@ -2,7 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card, StatTile } from "@/components/ui/Card";
 import { getServiceByRef } from "@/lib/data/hypercare";
+import { getServiceAgreement, getCurrentEntitlementPeriod, getRunBook, listServiceChanges, listImprovementItems } from "@/lib/data/hypercare-blueprint";
 import { LogIncidentButton } from "../../incidents/LogIncidentButton";
+import { AgreementCard } from "./AgreementCard";
+import { EntitlementCard } from "./EntitlementCard";
+import { RunBookCard } from "./RunBookCard";
+import { ServiceChangesCard } from "./ServiceChangesCard";
+import { ImprovementItemsCard } from "./ImprovementItemsCard";
 
 const SEVERITY_LABEL: Record<string, string> = { sev1: "P1", sev2: "P2", sev3: "P3" };
 
@@ -16,6 +22,14 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
   const { ref } = await params;
   const service = await getServiceByRef(ref);
   if (!service) notFound();
+
+  const [agreement, entitlementPeriod, runBook, serviceChanges, improvementItems] = await Promise.all([
+    getServiceAgreement(service.id),
+    getCurrentEntitlementPeriod(service.id),
+    getRunBook(service.id),
+    listServiceChanges(service.id),
+    listImprovementItems(service.id),
+  ]);
 
   return (
     <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-5 max-w-[900px] mx-auto">
@@ -31,7 +45,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
         <LogIncidentButton services={[]} lockedService={{ id: service.id, ref: service.ref, name: service.name }} />
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <StatTile label="SLA POLICY" value={service.slaPolicy?.name ?? "—"} note={service.slaPolicy ? `Resolve target ${Math.round(service.slaPolicy.resolveMinutes / 60)}h` : undefined} />
         <StatTile label="OPEN" value={service.openIncidents} accent={service.openIncidents > 0} />
         <StatTile label="HEALTH" value={service.health.replace("_", " ")} accent={service.health !== "healthy"} />
@@ -82,6 +96,12 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
           </div>
         </Card>
       ) : null}
+
+      <AgreementCard serviceId={service.id} serviceRef={service.ref} agreement={agreement} />
+      <EntitlementCard serviceId={service.id} serviceRef={service.ref} period={entitlementPeriod} />
+      <RunBookCard serviceId={service.id} serviceRef={service.ref} runBook={runBook} />
+      <ServiceChangesCard serviceId={service.id} serviceRef={service.ref} changes={serviceChanges} />
+      <ImprovementItemsCard serviceId={service.id} serviceRef={service.ref} items={improvementItems} />
     </div>
   );
 }

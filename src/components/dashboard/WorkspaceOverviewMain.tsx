@@ -110,8 +110,10 @@ export async function WorkspaceOverviewMain({ workspaceId, selectedClientId }: {
             </div>
             <span className="text-[11.5px] text-muted leading-[1.55]">
               {manifest.assetCount} asset{manifest.assetCount === 1 ? "" : "s"}, {manifest.totalReuseCount} total
-              reuse. {manifest.calibrationThisWeek} gate{manifest.calibrationThisWeek === 1 ? "" : "s"} closed this
-              week with its calibration recorded. {manifest.decisionCount} decision{manifest.decisionCount === 1 ? "" : "s"} logged.
+              reuse. {manifest.calibrationThisWeek} mission gate{manifest.calibrationThisWeek === 1 ? "" : "s"} and{" "}
+              {manifest.hangarGatesThisWeek} Hangar stage gate{manifest.hangarGatesThisWeek === 1 ? "" : "s"} closed this week.{" "}
+              {manifest.hypercareOpenImprovementItems} open improvement item{manifest.hypercareOpenImprovementItems === 1 ? "" : "s"} from
+              Hypercare.
             </span>
             <Link href="/manifest" className="text-[11.5px] text-coral font-semibold">
               Open Manifest →

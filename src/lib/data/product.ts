@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import type { ProductTrack, ProductStageGate } from "@/lib/supabase/database.types";
 
 export interface ProductOverview {
   productCount: number;
@@ -435,4 +436,116 @@ export async function getEngineeringLoad(workspaceId: string): Promise<Engineeri
     })
     .filter((r) => r.totalDays > 0)
     .sort((a, b) => b.totalDays - a.totalDays);
+}
+
+const STAGE_GATE_ORDER: ProductStageGate[] = ["G1", "G2", "G3", "G4", "G5"];
+
+export interface ProductGateHistoryRow {
+  stageGate: ProductStageGate;
+  reachedAt: string;
+  reachedByName: string | null;
+}
+
+export interface ProductDetail {
+  id: string;
+  name: string;
+  description: string | null;
+  track: ProductTrack | null;
+  deliveryTemplateVersionId: string | null;
+  deliveryTemplateLabel: string | null;
+  stageGate: ProductStageGate | null;
+  businessCase: { problem: string | null; buyer: string | null; price: string | null; size: string | null };
+  buildScope: string | null;
+  killCriteria: string | null;
+  designPartner: { projectId: string | null; projectRef: string | null; outcome: string | null };
+  launchReady: { pricing: string | null; collateralUrl: string | null; supportModel: string | null };
+  gateHistory: ProductGateHistoryRow[];
+  featureCount: number;
+  usedByCount: number;
+}
+
+/** Everything the Hangar product detail page needs — track, the G1-G5
+ * spine and its evidence fields, and the append-only gate history that
+ * doubles as this product's own half of Manifest write-back (see
+ * product_gate_history, 0063_hangar_product_first_class.sql). */
+export async function getProductDetail(id: string): Promise<ProductDetail | null> {
+  const supabase = await createClient();
+  const { data: product } = await supabase
+    .from("products")
+    .select(
+      "id, name, description, track, delivery_template_version_id, stage_gate, business_case_problem, business_case_buyer, business_case_price, business_case_size, build_scope, kill_criteria, design_partner_project_id, design_partner_outcome, pricing, collateral_url, support_model"
+    )
+    .eq("id", id)
+    .maybeSingle();
+  if (!product) return null;
+
+  const [{ data: templateVersion }, { data: designPartnerProject }, { data: history }, { data: features }, { data: releases }] = await Promise.all([
+    product.delivery_template_version_id
+      ? supabase.from("template_versions").select("id, template_id, version").eq("id", product.delivery_template_version_id).maybeSingle()
+      : Promise.resolve({ data: null as { id: string; template_id: string; version: string } | null }),
+    product.design_partner_project_id
+      ? supabase.from("projects").select("ref").eq("id", product.design_partner_project_id).maybeSingle()
+      : Promise.resolve({ data: null as { ref: string } | null }),
+    supabase
+      .from("product_gate_history")
+      .select("stage_gate, reached_at, reached_by_person_id")
+      .eq("product_id", id)
+      .order("reached_at"),
+    supabase.from("roadmap_items").select("id").eq("product_id", id),
+    supabase.from("releases").select("id").eq("product_id", id),
+  ]);
+
+  let templateLabel: string | null = null;
+  if (templateVersion) {
+    const { data: template } = await supabase.from("templates").select("name").eq("id", templateVersion.template_id).maybeSingle();
+    templateLabel = `${template?.name ?? "Template"} — ${templateVersion.version}`;
+  }
+
+  const reachedByIds = [...new Set((history ?? []).map((h) => h.reached_by_person_id).filter((x): x is string => !!x))];
+  const { data: reachedByPeople } = reachedByIds.length
+    ? await supabase.from("people").select("id, full_name").in("id", reachedByIds)
+    : { data: [] as { id: string; full_name: string }[] };
+  const nameById = new Map((reachedByPeople ?? []).map((p) => [p.id, p.full_name]));
+
+  const releaseIds = (releases ?? []).map((r) => r.id);
+  const { data: deps } = releaseIds.length
+    ? await supabase.from("project_release_dependencies").select("project_id").in("release_id", releaseIds)
+    : { data: [] as { project_id: string }[] };
+
+  return {
+    id: product.id,
+    name: product.name,
+    description: product.description,
+    track: product.track,
+    deliveryTemplateVersionId: product.delivery_template_version_id,
+    deliveryTemplateLabel: templateLabel,
+    stageGate: product.stage_gate,
+    businessCase: {
+      problem: product.business_case_problem,
+      buyer: product.business_case_buyer,
+      price: product.business_case_price,
+      size: product.business_case_size,
+    },
+    buildScope: product.build_scope,
+    killCriteria: product.kill_criteria,
+    designPartner: {
+      projectId: product.design_partner_project_id,
+      projectRef: designPartnerProject?.ref ?? null,
+      outcome: product.design_partner_outcome,
+    },
+    launchReady: { pricing: product.pricing, collateralUrl: product.collateral_url, supportModel: product.support_model },
+    gateHistory: (history ?? []).map((h) => ({
+      stageGate: h.stage_gate,
+      reachedAt: h.reached_at,
+      reachedByName: h.reached_by_person_id ? (nameById.get(h.reached_by_person_id) ?? null) : null,
+    })),
+    featureCount: (features ?? []).length,
+    usedByCount: new Set((deps ?? []).map((d) => d.project_id)).size,
+  };
+}
+
+export function nextProductStageGate(current: ProductStageGate | null): ProductStageGate | null {
+  if (!current) return "G1";
+  const idx = STAGE_GATE_ORDER.indexOf(current);
+  return idx >= 0 && idx < STAGE_GATE_ORDER.length - 1 ? STAGE_GATE_ORDER[idx + 1] : null;
 }

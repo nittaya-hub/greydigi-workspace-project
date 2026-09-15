@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { PageHeading, Card, EmptyState } from "@/components/ui/Card";
 import { TableHead, TableRow, CellStack } from "@/components/ui/Table";
 import { getCurrentWorkspaceId } from "@/lib/data/workspace";
@@ -45,7 +46,14 @@ export default async function ProductsListPage() {
             </TableHead>
             {products.map((p, i) => (
               <TableRow cols={COLS} key={p.id} last={i === products.length - 1}>
-                <CellStack primary={p.name} secondary={p.description ?? undefined} />
+                <CellStack
+                  primary={
+                    <Link href={`/hangar/products/${p.id}`} className="hover:text-coral">
+                      {p.name}
+                    </Link>
+                  }
+                  secondary={p.description ?? undefined}
+                />
                 <span className="font-mono text-[9.5px] text-muted">{p.featureCount}</span>
                 <span className="font-mono text-[9.5px] text-muted">{p.usedByCount}</span>
                 {p.deliveryTemplateVersionId ? (

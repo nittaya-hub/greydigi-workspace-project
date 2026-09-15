@@ -39,6 +39,10 @@ export type ClientSubmissionStatus = "open" | "in_progress" | "resolved";
 export type TaskVisibility = "internal" | "external";
 export type ProjectMemberRole = "project_admin" | "member";
 export type ManifestAssetKind = "agent" | "connector" | "prompt" | "document_template";
+export type ProductTrack = "platform" | "market";
+export type ProductStageGate = "G1" | "G2" | "G3" | "G4" | "G5";
+export type ServiceChangeStatus = "open" | "done";
+export type ImprovementItemStatus = "open" | "done";
 export type DashboardSpace = "delivery" | "hypercare" | "product";
 export type DashboardBlockType = "text" | "image" | "flight_plan" | "documents" | "embed" | "metric" | "chart";
 export type ClientActionKind =
@@ -1060,6 +1064,19 @@ export interface Database {
            * Null for anything not sold to a client (most Platform-track
            * products, and any Market-track one before this is set up). */
           delivery_template_version_id: string | null;
+          track: ProductTrack | null;
+          business_case_problem: string | null;
+          business_case_buyer: string | null;
+          business_case_price: string | null;
+          business_case_size: string | null;
+          build_scope: string | null;
+          kill_criteria: string | null;
+          design_partner_project_id: string | null;
+          design_partner_outcome: string | null;
+          pricing: string | null;
+          collateral_url: string | null;
+          support_model: string | null;
+          stage_gate: ProductStageGate | null;
           created_at: Timestamptz;
         },
         {
@@ -1068,7 +1085,38 @@ export interface Database {
           name: string;
           description?: string | null;
           delivery_template_version_id?: string | null;
+          track?: ProductTrack | null;
+          business_case_problem?: string | null;
+          business_case_buyer?: string | null;
+          business_case_price?: string | null;
+          business_case_size?: string | null;
+          build_scope?: string | null;
+          kill_criteria?: string | null;
+          design_partner_project_id?: string | null;
+          design_partner_outcome?: string | null;
+          pricing?: string | null;
+          collateral_url?: string | null;
+          support_model?: string | null;
+          stage_gate?: ProductStageGate | null;
           created_at?: Timestamptz;
+        }
+      >;
+      product_gate_history: CrudTable<
+        {
+          id: string;
+          workspace_id: string;
+          product_id: string;
+          stage_gate: ProductStageGate;
+          reached_at: Timestamptz;
+          reached_by_person_id: string | null;
+        },
+        {
+          id?: string;
+          workspace_id: string;
+          product_id: string;
+          stage_gate: ProductStageGate;
+          reached_at?: Timestamptz;
+          reached_by_person_id?: string | null;
         }
       >;
       releases: CrudTable<
@@ -1331,6 +1379,159 @@ export interface Database {
         }
       >;
 
+      service_agreements: CrudTable<
+        {
+          id: string;
+          workspace_id: string;
+          service_id: string;
+          tier: string;
+          term_months: number | null;
+          fee: string | null;
+          entitlement_included_units: number;
+          renewal_date: DateStr | null;
+          source_ref: string | null;
+          created_at: Timestamptz;
+        },
+        {
+          id?: string;
+          workspace_id: string;
+          service_id: string;
+          tier: string;
+          term_months?: number | null;
+          fee?: string | null;
+          entitlement_included_units?: number;
+          renewal_date?: DateStr | null;
+          source_ref?: string | null;
+          created_at?: Timestamptz;
+        }
+      >;
+      entitlement_periods: CrudTable<
+        {
+          id: string;
+          workspace_id: string;
+          service_id: string;
+          period_start: DateStr;
+          period_end: DateStr;
+          included_units: number;
+          overage_billed: boolean;
+          overage_absorbed: boolean;
+          created_at: Timestamptz;
+        },
+        {
+          id?: string;
+          workspace_id: string;
+          service_id: string;
+          period_start: DateStr;
+          period_end: DateStr;
+          included_units?: number;
+          overage_billed?: boolean;
+          overage_absorbed?: boolean;
+          created_at?: Timestamptz;
+        }
+      >;
+      run_books: CrudTable<
+        {
+          id: string;
+          workspace_id: string;
+          service_id: string;
+          dependencies: string | null;
+          recovery_steps: string | null;
+          owner_person_id: string | null;
+          escalation_path: string | null;
+          updated_at: Timestamptz;
+          created_at: Timestamptz;
+        },
+        {
+          id?: string;
+          workspace_id: string;
+          service_id: string;
+          dependencies?: string | null;
+          recovery_steps?: string | null;
+          owner_person_id?: string | null;
+          escalation_path?: string | null;
+          updated_at?: Timestamptz;
+          created_at?: Timestamptz;
+        }
+      >;
+      scheduled_health_checks: CrudTable<
+        {
+          id: string;
+          workspace_id: string;
+          service_id: string;
+          run_book_id: string | null;
+          performed_at: Timestamptz;
+          performed_by_person_id: string | null;
+          notes: string | null;
+          found_issue: boolean;
+        },
+        {
+          id?: string;
+          workspace_id: string;
+          service_id: string;
+          run_book_id?: string | null;
+          performed_at?: Timestamptz;
+          performed_by_person_id?: string | null;
+          notes?: string | null;
+          found_issue?: boolean;
+        }
+      >;
+      service_changes: CrudTable<
+        {
+          id: string;
+          workspace_id: string;
+          service_id: string;
+          title: string;
+          description: string | null;
+          effort_band: string | null;
+          billable: boolean;
+          status: ServiceChangeStatus;
+          source_incident_id: string | null;
+          source_request_id: string | null;
+          created_by_person_id: string | null;
+          created_at: Timestamptz;
+          completed_at: Timestamptz | null;
+        },
+        {
+          id?: string;
+          workspace_id: string;
+          service_id: string;
+          title: string;
+          description?: string | null;
+          effort_band?: string | null;
+          billable?: boolean;
+          status?: ServiceChangeStatus;
+          source_incident_id?: string | null;
+          source_request_id?: string | null;
+          created_by_person_id?: string | null;
+          created_at?: Timestamptz;
+          completed_at?: Timestamptz | null;
+        }
+      >;
+      improvement_items: CrudTable<
+        {
+          id: string;
+          workspace_id: string;
+          service_id: string;
+          pattern: string;
+          frequency: number;
+          proposed_fix: string | null;
+          status: ImprovementItemStatus;
+          created_by_person_id: string | null;
+          created_at: Timestamptz;
+        },
+        {
+          id?: string;
+          workspace_id: string;
+          service_id: string;
+          pattern: string;
+          frequency?: number;
+          proposed_fix?: string | null;
+          status?: ImprovementItemStatus;
+          created_by_person_id?: string | null;
+          created_at?: Timestamptz;
+        }
+      >;
+
       manifest_assets: CrudTable<
         {
           id: string;
@@ -1422,6 +1623,7 @@ export interface Database {
     };
     Views: Record<string, never>;
     Functions: {
+      fn_entitlement_consumed: { Args: { p_entitlement_period_id: string }; Returns: number };
       fn_project_health: { Args: { p_project_id: string }; Returns: HealthStatus };
       fn_project_progress_pct: { Args: { p_project_id: string }; Returns: number };
       fn_service_health: { Args: { p_service_id: string }; Returns: ServiceHealth };
@@ -1523,6 +1725,10 @@ export interface Database {
       dashboard_space: DashboardSpace;
       dashboard_block_type: DashboardBlockType;
       manifest_asset_kind: ManifestAssetKind;
+      product_track: ProductTrack;
+      product_stage_gate: ProductStageGate;
+      service_change_status: ServiceChangeStatus;
+      improvement_item_status: ImprovementItemStatus;
     };
   };
 }
