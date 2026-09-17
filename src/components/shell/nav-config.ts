@@ -112,6 +112,7 @@ export const MANIFEST_NAV: NavItem[] = [
   { label: "Assets", href: "/manifest/assets" },
   { label: "Decisions", href: "/manifest/decisions" },
   { label: "Calibration", href: "/manifest/calibration" },
+  { label: "Agents", href: "/manifest/agents" },
 ];
 
 export type SpaceKey = "missions" | "hypercare" | "hangar" | "manifest";

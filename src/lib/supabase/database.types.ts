@@ -53,6 +53,9 @@ export type ClientActionKind =
   | "confirm_decision"
   | "sign_artefact";
 export type ClientActionStatus = "pending" | "in_progress" | "completed" | "overdue";
+export type AgentConnectorType = "external_api" | "n8n_workflow";
+export type AgentConnectionStatus = "not_configured" | "needs_verification" | "verified" | "failed";
+export type AgentDeploymentStatus = "draft" | "ready" | "active" | "paused" | "retired";
 
 type Timestamptz = string;
 type DateStr = string;
@@ -1618,6 +1621,100 @@ export interface Database {
           cleared_at: Timestamptz;
           slip_days?: number | null;
           created_at?: Timestamptz;
+        }
+      >;
+      agent_definitions: CrudTable<
+        {
+          id: string;
+          workspace_id: string;
+          name: string;
+          purpose: string;
+          task_template: string;
+          owner_person_id: string | null;
+          approved: boolean;
+          created_by: string | null;
+          created_at: Timestamptz;
+        },
+        {
+          id?: string;
+          workspace_id: string;
+          name: string;
+          purpose: string;
+          task_template: string;
+          owner_person_id?: string | null;
+          approved?: boolean;
+          created_by?: string | null;
+          created_at?: Timestamptz;
+        }
+      >;
+      agent_connections: CrudTable<
+        {
+          id: string;
+          workspace_id: string;
+          name: string;
+          connector_type: AgentConnectorType;
+          endpoint_url: string | null;
+          auth_method: string | null;
+          secret_ref: string | null;
+          status: AgentConnectionStatus;
+          created_by: string | null;
+          created_at: Timestamptz;
+        },
+        {
+          id?: string;
+          workspace_id: string;
+          name: string;
+          connector_type: AgentConnectorType;
+          endpoint_url?: string | null;
+          auth_method?: string | null;
+          secret_ref?: string | null;
+          status?: AgentConnectionStatus;
+          created_by?: string | null;
+          created_at?: Timestamptz;
+        }
+      >;
+      agent_deployments: CrudTable<
+        {
+          id: string;
+          workspace_id: string;
+          agent_definition_id: string;
+          connection_id: string | null;
+          project_id: string | null;
+          scope_description: string | null;
+          can_read: boolean;
+          can_create_drafts: boolean;
+          can_change_records: boolean;
+          can_publish: boolean;
+          schedule_description: string | null;
+          timezone: string | null;
+          owner_person_id: string | null;
+          reviewer_person_id: string | null;
+          budget_note: string | null;
+          status: AgentDeploymentStatus;
+          created_by: string | null;
+          created_at: Timestamptz;
+          updated_at: Timestamptz;
+        },
+        {
+          id?: string;
+          workspace_id: string;
+          agent_definition_id: string;
+          connection_id?: string | null;
+          project_id?: string | null;
+          scope_description?: string | null;
+          can_read?: boolean;
+          can_create_drafts?: boolean;
+          can_change_records?: boolean;
+          can_publish?: boolean;
+          schedule_description?: string | null;
+          timezone?: string | null;
+          owner_person_id?: string | null;
+          reviewer_person_id?: string | null;
+          budget_note?: string | null;
+          status?: AgentDeploymentStatus;
+          created_by?: string | null;
+          created_at?: Timestamptz;
+          updated_at?: Timestamptz;
         }
       >;
     };
