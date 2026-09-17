@@ -62,6 +62,23 @@
 -- supabase/reset_and_reseed_nk_live.sql first if you want a clean slate
 -- (it also removes the fictional demo client) before running this file.
 --
+-- UPDATED again against the SG schema build map (dev team status, compiled
+-- by Cowork, live-verified on production after the 4 Sep merge; status as
+-- at 7 September 2026, week 3 of 10, updated 7 September 2026): this
+-- corrects NK-P1-T04's claim that Tony's answers to kickoff questions 9-15
+-- "unblocked product mapping" -- per this newer, more precise source, six
+-- of Tony's answers are still needed to close the order-to-kitchen mapping
+-- (M6), so a new task NK-P1-T17 tracks that specifically. NK-P1-T06 moves
+-- from idle to in_progress: the costing engine (M4 -- six calculation
+-- functions, three views) is built and tested, 139 of 139 tests passing
+-- and matching Tony's file exactly on nine Singapore golden cases, while
+-- purchasing/planning tables (M5) and kitchen documents (M7) haven't
+-- started. The 8 Sep client_update's body is corrected in place (not
+-- re-dated) to drop the same now-contradicted claim and add the real
+-- test/row-count numbers -- it is the same real checkpoint event, described
+-- more precisely, not a new one. Cutover and go-live dates are unchanged
+-- (16/19 October).
+--
 -- Placeholder emails: the source deck names Nutrition Kitchen's people
 -- (L.T. Low, Tony, Shirley). L.T. Low's real address is now confirmed by
 -- the signed SOW-2026-001/002 (ltlow@nutritionkitchensg.com) and used
@@ -358,9 +375,9 @@ begin
     (v_project_id, v_pp04_id, 'NK-P1-T01', 'Counterparts and deputies named, both sides', null, 'done', false, null, '2026-08-25', v_orhan_id),
     (v_project_id, v_pp04_id, 'NK-P1-T02', 'Scope boundary accepted, in scope against out of scope', null, 'done', false, null, '2026-08-25', v_orhan_id),
     (v_project_id, v_pp04_id, 'NK-P1-T03', 'Mobilise: environments provisioned, day-one access issued', 'Shopify and Recurly API credentials, Xero connection, FMP read access, environments, supplier master, data processing agreement.', 'done', true, null, '2026-08-30', v_jun_id),
-    (v_project_id, v_pp04_id, 'NK-P1-T04', 'Managed database and schema sign-off with Tony', 'Live on production since 4 September. Tony''s answers to kickoff questions 9-15 are in, unblocking product mapping -- continuity cover on the schema is tracked separately as NK-P1-T13.', 'done', true, null, '2026-09-06', v_jun_id),
-    (v_project_id, v_pp04_id, 'NK-P1-T05', 'Shopify and Recurly order ingestion: landing then mapping', 'Landing live; mapping into the kitchen''s master rows (package, day, slot, delivery zone) is under way. No manual export step from either source, per SOW-2026-001 success criteria.', 'in_progress', true, null, '2026-09-13', v_manh_id),
-    (v_project_id, v_pp04_id, 'NK-P1-T06', 'BOM explosion, nested costing, PO drafting', 'Purchase orders, demand counts, and production runs, seeded from the Procurement and Production Planning workbooks. Queued next once T05 closes.', 'idle', true, null, '2026-09-20', v_manh_id),
+    (v_project_id, v_pp04_id, 'NK-P1-T04', 'Managed database and schema sign-off with Tony', 'Live on production since 4 September: the 16-table reference schema (M3), hardening found while loading real data (M3a, 32 indexes and constraint fixes), and Tony''s data loaded (M3-seed, 40,336 rows across 14 tables, every load self-checked). Continuity cover on the schema is tracked separately as NK-P1-T13.', 'done', true, null, '2026-09-06', v_jun_id),
+    (v_project_id, v_pp04_id, 'NK-P1-T05', 'Shopify and Recurly order ingestion: landing then mapping', 'Landing live since 4 September. Mapping into the kitchen''s master rows (package, day, slot, delivery zone) was specified 7 September, and the slot-code lookup is built on a branch. Six of Tony''s answers are still needed to close the product mapping -- tracked as NK-P1-T17. No manual export step from either source, per SOW-2026-001 success criteria.', 'in_progress', true, null, '2026-09-13', v_manh_id),
+    (v_project_id, v_pp04_id, 'NK-P1-T06', 'BOM explosion, nested costing, PO drafting', 'The costing engine is built and tested: six calculation functions and three views (recipe cost, meal cost, nested BOM explosion, nutrition), 139 of 139 tests passing and matching Tony''s file exactly on nine Singapore golden cases. Purchase orders, demand counts, and production runs -- seeded from the Procurement and Production Planning workbooks -- are next.', 'in_progress', true, null, '2026-09-20', v_manh_id),
     (v_project_id, v_pp04_id, 'NK-P1-T07', 'Xero write-back and supplier records', null, 'idle', false, null, '2026-09-27', v_manh_id),
     (v_project_id, v_pp04_id, 'NK-P1-T08', 'Approval gate, aironauts dashboard, multi-user access', 'Named approvers for the approval gate confirmed by NK, W4 to W5. Supplier fallback handling active per SOW-2026-001 section 2.', 'idle', false, null, '2026-09-27', v_jun_id),
     (v_project_id, v_pp04_id, 'NK-P1-T09', 'PO dispatch and kitchen documents', 'The eleven documents: POs, receiving card, production sheet, recipe book, packing sheet, defrost plan, consumer labels, Xero bill batch, weekly Excel backup, spend/price/consumption exports.', 'idle', false, null, '2026-10-04', v_jun_id),
@@ -370,7 +387,8 @@ begin
     (v_project_id, v_pp04_id, 'NK-P1-T13', 'Continuity cover on the schema', 'A second name alongside Tony -- schema knowledge cannot sit with one person. The nearest open item as of the 8 Sep checkpoint, still unnamed.', 'waiting_on_client', true, null, '2026-09-18', v_lt_id),
     (v_project_id, v_pp04_id, 'NK-P1-T14', 'Supplier contacts and current lead times', 'Needed for PO drafting in T06 and dispatch in T07/T09. Routed through Nutrition Kitchen''s procurement team, tracked against L.T. as the accountable owner.', 'waiting_on_client', false, null, '2026-09-18', v_lt_id),
     (v_project_id, v_pp04_id, 'NK-P1-T15', 'Kitchen and procurement resource for W7 and W8', 'The heaviest ask in the plan -- both parallel weeks need real kitchen and procurement time, not one or the other.', 'waiting_on_client', false, null, '2026-09-18', v_lt_id),
-    (v_project_id, v_pp04_id, 'NK-P1-T16', 'Confirm Singapore audit dates', 'Per SOW-2026-001 section 4: cutover moves to the first Friday clear of the Client''s Singapore audit once those dates are confirmed. 16 October holds as the working target until this is confirmed either way.', 'waiting_on_client', true, null, '2026-09-25', v_lt_id)
+    (v_project_id, v_pp04_id, 'NK-P1-T16', 'Confirm Singapore audit dates', 'Per SOW-2026-001 section 4: cutover moves to the first Friday clear of the Client''s Singapore audit once those dates are confirmed. 16 October holds as the working target until this is confirmed either way.', 'waiting_on_client', true, null, '2026-09-25', v_lt_id),
+    (v_project_id, v_pp04_id, 'NK-P1-T17', 'Six outstanding answers for the product mapping', 'Blocks closing NK-P1-T05''s order-to-kitchen mapping (M6). The slot-code lookup is already built on a branch and waiting on these six answers from Tony to finish mapping orders into package/day/slot/delivery-zone rows.', 'waiting_on_client', true, null, '2026-09-11', v_tony_id)
   on conflict (project_id, ref) do update set
     title = excluded.title, description = excluded.description, status = excluded.status,
     is_critical_path = excluded.is_critical_path, client_visible_date = excluded.client_visible_date,
@@ -428,6 +446,15 @@ begin
     select 1 from client_updates where project_id = v_project_id and title = 'Week 3 checkpoint: schema sign-off done, order ingestion under way'
   );
 
+  -- Corrected in place against the dev team's own SG schema build map: the
+  -- claim that Tony's answers "came back this week" and fully unblocked
+  -- mapping was premature -- six answers are still outstanding, tracked as
+  -- NK-P1-T17. This is the same real checkpoint event, described precisely
+  -- with the dev team's own numbers, not a new dated entry.
+  update client_updates set
+    body = 'Five migrations are on production since 4 September, and the costing engine matches Tony''s file exactly on every golden case: 139 of 139 tests pass on nine Singapore golden cases. Schema sign-off landed a week early, so nothing built on top of it has moved. Order ingestion is live; mapping into your kitchen''s master rows (package, day, slot, delivery zone) was specified 7 September, with the slot-code lookup already built. Six of Tony''s answers are still needed to close that mapping. BOM explosion and nested costing are built and tested; purchasing/planning tables and the kitchen documents are queued next. Cutover still holds at Friday 16 October, first live release Monday 19 October.'
+  where project_id = v_project_id and title = 'Week 3 checkpoint: schema sign-off done, order ingestion under way';
+
   insert into documents (workspace_id, project_id, name, kind, version, visibility)
   select v_workspace_id, null, 'aironauts (tm) Flight Plan', 'methodology', 'v0.6', 'internal'
   where not exists (
@@ -475,6 +502,16 @@ begin
     'pending', v_lt_id, '2026-09-18 00:00:00+00', '2026-09-08 00:00:00+00'
   where not exists (
     select 1 from client_actions where project_id = v_project_id and title = 'Continuity cover on the schema'
+  );
+
+  -- New per the SG schema build map (status as at 7 Sep): the item now
+  -- actually blocking build progress, ahead of continuity cover above.
+  insert into client_actions (project_id, kind, title, description, status, assigned_person_id, due_at, created_at)
+  select v_project_id, 'provide_information', 'Six outstanding answers for the product mapping',
+    'Tony to answer six remaining questions so orders can be mapped into package/day/slot/delivery-zone rows. The slot-code lookup is already built and waiting on these.',
+    'pending', v_tony_id, '2026-09-11 00:00:00+00', '2026-09-07 00:00:00+00'
+  where not exists (
+    select 1 from client_actions where project_id = v_project_id and title = 'Six outstanding answers for the product mapping'
   );
 
   insert into client_view_configs (project_id) values (v_project_id)
