@@ -11,6 +11,7 @@ import {
   getProjectWeeklyCommitments,
   getProjectBaselineMeasures,
   getCheckpointSourceFiles,
+  getProjectTimeline,
 } from "@/lib/data/project";
 import { getCurrentPerson } from "@/lib/data/auth-guard";
 import { createProgressStat, createDecision, createCommitment, createBaselineMeasure } from "./actions";
@@ -21,18 +22,20 @@ import { EditableCommitmentRow } from "./EditableCommitmentRow";
 import { EditableMeasureRow } from "./EditableMeasureRow";
 import { UploadCheckpointSourceButton } from "./UploadCheckpointSourceButton";
 import { CheckpointSourceFileRow } from "./CheckpointSourceFileRow";
+import { TimelineGrid } from "./TimelineGrid";
 
 export default async function CheckpointDataPage({ params }: { params: Promise<{ ref: string }> }) {
   const { ref } = await params;
   const project = await getProjectByRef(ref);
   if (!project) notFound();
 
-  const [stats, decisions, commitments, measures, sourceFiles] = await Promise.all([
+  const [stats, decisions, commitments, measures, sourceFiles, timeline] = await Promise.all([
     getProjectProgressStats(project.id),
     getProjectDecisions(project.id),
     getProjectWeeklyCommitments(project.id),
     getProjectBaselineMeasures(project.id),
     getCheckpointSourceFiles(project.id),
+    getProjectTimeline(project.id),
   ]);
   const viewer = await getCurrentPerson();
   // Matches requireMissionsLead in auth-guard.ts -- every add/edit/
@@ -63,7 +66,7 @@ export default async function CheckpointDataPage({ params }: { params: Promise<{
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <p className="m-0 text-[12.5px] text-muted max-w-[70ch]">
           Raw content for the fortnightly client checkpoint — the same numbers, decisions and commitments that go
           into the checkpoint deck. None of this is computed automatically: type in the latest figures here, then
@@ -71,8 +74,8 @@ export default async function CheckpointDataPage({ params }: { params: Promise<{
           published — turn on the matching toggle on{" "}
           <span className="font-semibold text-ink">Client view config</span> once a section is ready to show.
         </p>
-        <div className="flex flex-col items-end gap-2 flex-none">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col items-stretch sm:items-end gap-2 flex-none">
+          <div className="flex flex-wrap items-center gap-2">
             <ExportPdfButton
               href={`/missions/projects/${project.ref.toLowerCase()}/checkpoint/pdf`}
               fallbackFilename={`${project.ref}-checkpoint.pdf`}
@@ -80,7 +83,7 @@ export default async function CheckpointDataPage({ params }: { params: Promise<{
             />
             <Link
               href={`/missions/projects/${project.ref.toLowerCase()}/checkpoint/history`}
-              className="font-mono text-[10px] tracking-[.04em] text-coral hover:underline whitespace-nowrap"
+              className="font-mono text-[10px] tracking-[.04em] text-coral hover:underline whitespace-nowrap min-h-[40px] inline-flex items-center"
             >
               View history →
             </Link>
@@ -88,6 +91,14 @@ export default async function CheckpointDataPage({ params }: { params: Promise<{
           {canEdit ? <PublishCheckpointButton projectId={project.id} projectRef={project.ref} /> : null}
         </div>
       </div>
+
+      <Card className="p-4">
+        <div className="mb-3">
+          <span className="block text-[12.5px] font-semibold text-ink">Timeline</span>
+          <span className="block font-mono text-[9.5px] text-muted">TEN WEEKS, THREE GATES — WHERE WE STAND, BY TASK GROUP</span>
+        </div>
+        <TimelineGrid data={timeline} projectId={project.id} projectRef={project.ref} canEdit={canEdit} />
+      </Card>
 
       <Card className="p-4">
         <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
@@ -129,7 +140,7 @@ export default async function CheckpointDataPage({ params }: { params: Promise<{
           )}
         </div>
         {canEdit ? (
-          <form action={addProgressStat} className="grid grid-cols-[1fr_1fr_1.4fr_auto] gap-2 items-end">
+          <form action={addProgressStat} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1.4fr_auto] gap-2 items-end">
             <Field label="LABEL">
               <input name="label" required className={fieldInputClass} placeholder="Migrations done" />
             </Field>
@@ -161,7 +172,7 @@ export default async function CheckpointDataPage({ params }: { params: Promise<{
           )}
         </div>
         {canEdit ? (
-          <form action={addDecision} className="grid grid-cols-2 gap-2">
+          <form action={addDecision} className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <Field label="TITLE">
               <input name="title" required className={fieldInputClass} placeholder="Continuity cover on the schema" />
             </Field>
@@ -174,7 +185,7 @@ export default async function CheckpointDataPage({ params }: { params: Promise<{
             <Field label="DUE (OPTIONAL)">
               <input name="due_label" className={fieldInputClass} placeholder="W4" />
             </Field>
-            <Button variant="primary" type="submit" className="col-span-2 flex-none justify-self-start">
+            <Button variant="primary" type="submit" className="col-span-1 sm:col-span-2 flex-none justify-self-start w-full sm:w-auto">
               Add decision
             </Button>
           </form>
@@ -197,7 +208,7 @@ export default async function CheckpointDataPage({ params }: { params: Promise<{
         </div>
         {canEdit ? (
           <form action={addCommitment} className="flex flex-col gap-2">
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <Field label="PERIOD">
                 <input name="period_label" required className={fieldInputClass} placeholder="This week, 7 to 11 September" />
               </Field>
@@ -239,7 +250,7 @@ export default async function CheckpointDataPage({ params }: { params: Promise<{
           )}
         </div>
         {canEdit ? (
-          <form action={addBaselineMeasure} className="grid grid-cols-[1.3fr_1fr_1fr_1fr_auto] gap-2 items-end">
+          <form action={addBaselineMeasure} className="grid grid-cols-1 sm:grid-cols-[1.3fr_1fr_1fr_1fr_auto] gap-2 items-end">
             <Field label="MEASURE">
               <input name="measure_name" required className={fieldInputClass} placeholder="Hands-on time, order receipt to approved PO" />
             </Field>

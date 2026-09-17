@@ -740,6 +740,97 @@ export async function getCheckpointSourceFiles(projectId: string): Promise<Check
   });
 }
 
+export interface TimelineStatusOption {
+  id: string;
+  label: string;
+  colorHex: string;
+  style: "filled" | "outline";
+  sortOrder: number;
+}
+
+export interface TimelineRow {
+  id: string;
+  label: string;
+  sortOrder: number;
+  visible: boolean;
+  reviewedAt: string | null;
+  reviewedByName: string | null;
+  /** Indexed 0..weekCount-1 — the assigned status id for that week, or
+   * null for a blank cell. Always weekCount long, so the UI never has
+   * to guess whether a week is simply unset. */
+  cells: (string | null)[];
+}
+
+export interface ProjectTimelineData {
+  weekCount: number;
+  week1StartDate: string | null;
+  statuses: TimelineStatusOption[];
+  rows: TimelineRow[];
+}
+
+/** The hand-curated Gantt on the Checkpoint data tab (deck page 4) --
+ * deliberately separate from src/lib/timeline/gantt.ts's auto-derived
+ * one (Overview tab, client portal), which stays real-task-only by
+ * design. Nothing here is seeded automatically: an empty statuses list
+ * means a person hasn't set up this project's colour palette yet (see
+ * seedDefaultTimelineStatuses in checkpoint/actions.ts) -- a plain data
+ * read should never have the side effect of inserting rows. */
+export async function getProjectTimeline(projectId: string): Promise<ProjectTimelineData> {
+  const supabase = await createClient();
+
+  const [{ data: settings }, { data: statusRows }, { data: rowRows }] = await Promise.all([
+    supabase.from("project_timeline_settings").select("week_count, week1_start_date").eq("project_id", projectId).maybeSingle(),
+    supabase.from("project_timeline_statuses").select("id, label, color_hex, style, sort_order").eq("project_id", projectId).order("sort_order"),
+    supabase
+      .from("project_timeline_rows")
+      .select("id, label, sort_order, visible, reviewed_at, reviewed_by")
+      .eq("project_id", projectId)
+      .order("sort_order"),
+  ]);
+
+  const weekCount = settings?.week_count ?? 10;
+  const statuses: TimelineStatusOption[] = (statusRows ?? []).map((s) => ({
+    id: s.id,
+    label: s.label,
+    colorHex: s.color_hex,
+    style: s.style,
+    sortOrder: s.sort_order,
+  }));
+
+  const rows = rowRows ?? [];
+  const reviewerIds = [...new Set(rows.map((r) => r.reviewed_by).filter((x): x is string => !!x))];
+  const { data: reviewers } = reviewerIds.length
+    ? await supabase.from("people").select("id, full_name").in("id", reviewerIds)
+    : { data: [] as { id: string; full_name: string }[] };
+  const reviewerNameById = new Map((reviewers ?? []).map((p) => [p.id, p.full_name] as const));
+
+  const rowIds = rows.map((r) => r.id);
+  const { data: cellRows } = rowIds.length
+    ? await supabase.from("project_timeline_cells").select("row_id, week_index, status_id").in("row_id", rowIds)
+    : { data: [] as { row_id: string; week_index: number; status_id: string | null }[] };
+  const cellsByRow = new Map<string, (string | null)[]>();
+  for (const r of rows) cellsByRow.set(r.id, new Array(weekCount).fill(null));
+  for (const c of cellRows ?? []) {
+    const arr = cellsByRow.get(c.row_id);
+    if (arr && c.week_index < weekCount) arr[c.week_index] = c.status_id;
+  }
+
+  return {
+    weekCount,
+    week1StartDate: settings?.week1_start_date ?? null,
+    statuses,
+    rows: rows.map((r) => ({
+      id: r.id,
+      label: r.label,
+      sortOrder: r.sort_order,
+      visible: r.visible,
+      reviewedAt: r.reviewed_at,
+      reviewedByName: r.reviewed_by ? reviewerNameById.get(r.reviewed_by) ?? null : null,
+      cells: cellsByRow.get(r.id) ?? new Array(weekCount).fill(null),
+    })),
+  };
+}
+
 export interface ClientUpdateRow {
   id: string;
   title: string;

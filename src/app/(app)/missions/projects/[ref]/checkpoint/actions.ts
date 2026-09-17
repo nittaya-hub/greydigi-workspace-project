@@ -11,6 +11,18 @@ import {
 } from "@/lib/data/project";
 import type { Json } from "@/lib/supabase/database.types";
 
+/** The deck's own five (page 4 legend) — done/in progress/next/planned/
+ * go-live window. Seeded once, on request, never automatically: a
+ * plain data read should never have the side effect of inserting rows
+ * (see getProjectTimeline's own comment). */
+const DEFAULT_TIMELINE_STATUSES: { label: string; colorHex: string; style: "filled" | "outline" }[] = [
+  { label: "Done", colorHex: "#22C55E", style: "filled" },
+  { label: "In progress", colorHex: "#F2583E", style: "filled" },
+  { label: "Next", colorHex: "#1F2738", style: "filled" },
+  { label: "Planned", colorHex: "#CBD5E1", style: "filled" },
+  { label: "Go-live window", colorHex: "#F2583E", style: "outline" },
+];
+
 function basePath(projectRef: string) {
   return `/missions/projects/${projectRef.toLowerCase()}`;
 }
@@ -495,4 +507,216 @@ export async function duplicateCheckpointSnapshot(snapshotId: string, projectId:
   ]);
 
   revalidatePath(`${basePath(projectRef)}/checkpoint`);
+}
+
+/* =========================================================================
+   TIMELINE (Gantt) — hand-curated, week-by-week, deck page 4.
+   Every mutation here is the same tier as the rest of this file:
+   requireMissionsLead(projectId). Editing a row's label or any of its
+   cells resets that row's reviewed_at/reviewed_by, same reasoning as
+   every other Checkpoint section.
+   ========================================================================= */
+
+export async function seedDefaultTimelineStatuses(projectId: string, projectRef: string) {
+  await requireMissionsLead(projectId);
+  const supabase = await createClient();
+
+  const { count } = await supabase
+    .from("project_timeline_statuses")
+    .select("id", { count: "exact", head: true })
+    .eq("project_id", projectId);
+  if (count && count > 0) return;
+
+  const { error } = await supabase.from("project_timeline_statuses").insert(
+    DEFAULT_TIMELINE_STATUSES.map((s, i) => ({
+      project_id: projectId,
+      label: s.label,
+      color_hex: s.colorHex,
+      style: s.style,
+      sort_order: i,
+    }))
+  );
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`${basePath(projectRef)}/checkpoint`);
+}
+
+export async function saveTimelineSettings(projectId: string, projectRef: string, formData: FormData) {
+  await requireMissionsLead(projectId);
+  const supabase = await createClient();
+
+  const weekCountRaw = requiredString(formData, "week_count");
+  const weekCount = Math.max(1, Math.min(52, Number(weekCountRaw) || 10));
+  const week1StartDate = optionalString(formData, "week1_start_date");
+
+  const { error } = await supabase
+    .from("project_timeline_settings")
+    .upsert({ project_id: projectId, week_count: weekCount, week1_start_date: week1StartDate, updated_at: new Date().toISOString() });
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`${basePath(projectRef)}/checkpoint`);
+}
+
+export async function createTimelineStatus(projectId: string, projectRef: string, formData: FormData) {
+  await requireMissionsLead(projectId);
+  const supabase = await createClient();
+
+  const { data: existing } = await supabase
+    .from("project_timeline_statuses")
+    .select("sort_order")
+    .eq("project_id", projectId)
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const { error } = await supabase.from("project_timeline_statuses").insert({
+    project_id: projectId,
+    label: requiredString(formData, "label"),
+    color_hex: requiredString(formData, "color_hex"),
+    style: formData.get("style") === "outline" ? "outline" : "filled",
+    sort_order: (existing?.sort_order ?? -1) + 1,
+  });
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`${basePath(projectRef)}/checkpoint`);
+}
+
+export async function updateTimelineStatus(id: string, projectId: string, projectRef: string, formData: FormData) {
+  await requireMissionsLead(projectId);
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("project_timeline_statuses")
+    .update({
+      label: requiredString(formData, "label"),
+      color_hex: requiredString(formData, "color_hex"),
+      style: formData.get("style") === "outline" ? "outline" : "filled",
+    })
+    .eq("id", id)
+    .eq("project_id", projectId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`${basePath(projectRef)}/checkpoint`);
+}
+
+/** Cells pointing at this status are left in place with status_id set
+ * null (the column's own "on delete set null") -- they read as blank
+ * rather than silently disappearing as a row. */
+export async function deleteTimelineStatus(id: string, projectId: string, projectRef: string) {
+  await requireMissionsLead(projectId);
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("project_timeline_statuses").delete().eq("id", id).eq("project_id", projectId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`${basePath(projectRef)}/checkpoint`);
+}
+
+export async function createTimelineRow(projectId: string, projectRef: string, formData: FormData) {
+  await requireMissionsLead(projectId);
+  const supabase = await createClient();
+
+  const { data: existing } = await supabase
+    .from("project_timeline_rows")
+    .select("sort_order")
+    .eq("project_id", projectId)
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const { error } = await supabase.from("project_timeline_rows").insert({
+    project_id: projectId,
+    label: requiredString(formData, "label"),
+    sort_order: (existing?.sort_order ?? -1) + 1,
+  });
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`${basePath(projectRef)}/checkpoint`);
+  revalidatePath(`${basePath(projectRef)}/client-view-config`);
+}
+
+export async function updateTimelineRowLabel(id: string, projectId: string, projectRef: string, formData: FormData) {
+  await requireMissionsLead(projectId);
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("project_timeline_rows")
+    .update({ label: requiredString(formData, "label"), reviewed_at: null, reviewed_by: null })
+    .eq("id", id)
+    .eq("project_id", projectId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`${basePath(projectRef)}/checkpoint`);
+  revalidatePath(`${basePath(projectRef)}/client-view-config`);
+}
+
+export async function toggleTimelineRowVisible(id: string, projectId: string, projectRef: string, visible: boolean) {
+  await requireMissionsLead(projectId);
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("project_timeline_rows").update({ visible }).eq("id", id).eq("project_id", projectId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`${basePath(projectRef)}/checkpoint`);
+  revalidatePath(`${basePath(projectRef)}/client-view-config`);
+}
+
+export async function reviewTimelineRow(id: string, projectId: string, projectRef: string) {
+  const person = await requireMissionsLead(projectId);
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("project_timeline_rows")
+    .update({ reviewed_at: new Date().toISOString(), reviewed_by: person.id })
+    .eq("id", id)
+    .eq("project_id", projectId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`${basePath(projectRef)}/checkpoint`);
+  revalidatePath(`${basePath(projectRef)}/client-view-config`);
+}
+
+export async function deleteTimelineRow(id: string, projectId: string, projectRef: string) {
+  await requireMissionsLead(projectId);
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("project_timeline_rows").delete().eq("id", id).eq("project_id", projectId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`${basePath(projectRef)}/checkpoint`);
+  revalidatePath(`${basePath(projectRef)}/client-view-config`);
+}
+
+/** One cell = one (row, week). statusId null clears it back to blank.
+ * Setting a cell resets its row's reviewed_at -- the row's reviewed
+ * state covers everything in it, including every week's colour. */
+export async function setTimelineCell(
+  rowId: string,
+  projectId: string,
+  projectRef: string,
+  weekIndex: number,
+  statusId: string | null
+) {
+  await requireMissionsLead(projectId);
+  const supabase = await createClient();
+
+  if (statusId) {
+    const { error } = await supabase
+      .from("project_timeline_cells")
+      .upsert({ row_id: rowId, week_index: weekIndex, status_id: statusId, updated_at: new Date().toISOString() }, { onConflict: "row_id,week_index" });
+    if (error) throw new Error(error.message);
+  } else {
+    const { error } = await supabase.from("project_timeline_cells").delete().eq("row_id", rowId).eq("week_index", weekIndex);
+    if (error) throw new Error(error.message);
+  }
+
+  const { error: resetError } = await supabase
+    .from("project_timeline_rows")
+    .update({ reviewed_at: null, reviewed_by: null })
+    .eq("id", rowId)
+    .eq("project_id", projectId);
+  if (resetError) throw new Error(resetError.message);
+
+  revalidatePath(`${basePath(projectRef)}/checkpoint`);
+  revalidatePath(`${basePath(projectRef)}/client-view-config`);
 }

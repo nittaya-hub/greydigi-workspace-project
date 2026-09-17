@@ -21,7 +21,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     <button
       ref={ref}
       className={clsx(
-        "inline-flex items-center justify-center rounded-[9px] px-[13px] py-[9px] text-[11.5px] transition-colors disabled:opacity-50 disabled:pointer-events-none",
+        "inline-flex items-center justify-center rounded-[9px] px-[13px] py-[9px] text-[11.5px] transition-colors disabled:opacity-50 disabled:pointer-events-none min-h-[40px] touch-manipulation",
         VARIANT_CLASSES[variant],
         className
       )}
@@ -45,7 +45,7 @@ export function LinkButton({
     <Link
       href={href}
       className={clsx(
-        "inline-flex items-center justify-center rounded-[9px] px-[13px] py-[9px] text-[11.5px] font-semibold transition-colors",
+        "inline-flex items-center justify-center rounded-[9px] px-[13px] py-[9px] text-[11.5px] font-semibold transition-colors min-h-[40px] touch-manipulation",
         VARIANT_CLASSES[variant],
         className
       )}

@@ -839,6 +839,78 @@ export interface Database {
           created_at?: Timestamptz;
         }
       >;
+      project_timeline_settings: CrudTable<
+        {
+          project_id: string;
+          week_count: number;
+          week1_start_date: DateStr | null;
+          updated_at: Timestamptz;
+        },
+        {
+          project_id: string;
+          week_count?: number;
+          week1_start_date?: DateStr | null;
+          updated_at?: Timestamptz;
+        }
+      >;
+      project_timeline_statuses: CrudTable<
+        {
+          id: string;
+          project_id: string;
+          label: string;
+          color_hex: string;
+          style: "filled" | "outline";
+          sort_order: number;
+          created_at: Timestamptz;
+        },
+        {
+          id?: string;
+          project_id: string;
+          label: string;
+          color_hex: string;
+          style?: "filled" | "outline";
+          sort_order?: number;
+          created_at?: Timestamptz;
+        }
+      >;
+      project_timeline_rows: CrudTable<
+        {
+          id: string;
+          project_id: string;
+          label: string;
+          sort_order: number;
+          visible: boolean;
+          reviewed_at: Timestamptz | null;
+          reviewed_by: string | null;
+          created_at: Timestamptz;
+        },
+        {
+          id?: string;
+          project_id: string;
+          label: string;
+          sort_order?: number;
+          visible?: boolean;
+          reviewed_at?: Timestamptz | null;
+          reviewed_by?: string | null;
+          created_at?: Timestamptz;
+        }
+      >;
+      project_timeline_cells: CrudTable<
+        {
+          id: string;
+          row_id: string;
+          week_index: number;
+          status_id: string | null;
+          updated_at: Timestamptz;
+        },
+        {
+          id?: string;
+          row_id: string;
+          week_index: number;
+          status_id?: string | null;
+          updated_at?: Timestamptz;
+        }
+      >;
       documents: CrudTable<
         {
           id: string;
