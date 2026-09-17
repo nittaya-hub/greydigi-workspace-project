@@ -7,17 +7,6 @@ import { notifyWorkspace } from "@/lib/data/notify";
 import type { ClientSubmissionKind } from "@/lib/supabase/database.types";
 import type { SubmissionTaxonomyField } from "@/lib/data/submission-taxonomies";
 
-export async function renameWorkspace(workspaceId: string, name: string) {
-  if (!name.trim()) throw new Error("Name cannot be empty.");
-  const admin = await requireWorkspaceAdmin();
-  if (workspaceId !== admin.workspace_id) throw new Error("Workspace not found.");
-  const supabase = await createClient();
-  const { error } = await supabase.from("workspaces").update({ name: name.trim() }).eq("id", workspaceId);
-  if (error) throw new Error(error.message);
-  revalidatePath("/settings");
-  revalidatePath("/");
-}
-
 export async function saveGeneralSettings(
   workspaceId: string,
   fields: { name: string; businessHours: string }
