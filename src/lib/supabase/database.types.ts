@@ -91,6 +91,7 @@ export interface Database {
           business_hours: string;
           default_share_expiry_days: number;
           portal_welcome_message: string | null;
+          share_portal_link_enabled: boolean;
           created_at: Timestamptz;
         },
         {
@@ -100,6 +101,7 @@ export interface Database {
           business_hours?: string;
           default_share_expiry_days?: number;
           portal_welcome_message?: string | null;
+          share_portal_link_enabled?: boolean;
           created_at?: Timestamptz;
         }
       >;

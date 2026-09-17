@@ -69,6 +69,19 @@ export async function getCurrentWorkspaceId(): Promise<string | null> {
   }
 }
 
+/** Off by default, per workspace — set from Settings > Client Management
+ * > Client portal. Gates whether Client view config surfaces the
+ * "Share the client portal" copy-link card at all. */
+export async function isSharePortalLinkEnabled(workspaceId: string): Promise<boolean> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("workspaces")
+    .select("share_portal_link_enabled")
+    .eq("id", workspaceId)
+    .maybeSingle();
+  return data?.share_portal_link_enabled ?? false;
+}
+
 /** `clientId` scopes the whole overview to one client — projects,
  * gates, client actions, and services all filter to it (Product stays
  * workspace-wide throughout: it has no client_id in the schema, by

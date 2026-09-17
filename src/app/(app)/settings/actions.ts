@@ -51,7 +51,7 @@ export async function saveGeneralSettings(
 
 export async function savePortalSettings(
   workspaceId: string,
-  fields: { defaultShareExpiryDays: number; portalWelcomeMessage: string }
+  fields: { defaultShareExpiryDays: number; portalWelcomeMessage: string; sharePortalLinkEnabled: boolean }
 ) {
   if (!Number.isFinite(fields.defaultShareExpiryDays) || fields.defaultShareExpiryDays < 1) {
     throw new Error("Default share link expiry must be at least 1 day.");
@@ -64,6 +64,7 @@ export async function savePortalSettings(
     .update({
       default_share_expiry_days: fields.defaultShareExpiryDays,
       portal_welcome_message: fields.portalWelcomeMessage.trim() || null,
+      share_portal_link_enabled: fields.sharePortalLinkEnabled,
     })
     .eq("id", workspaceId);
   if (error) throw new Error(error.message);

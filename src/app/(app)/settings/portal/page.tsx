@@ -13,16 +13,18 @@ export default async function PortalSettingsPage() {
   const workspaceId = await getCurrentWorkspaceId();
   let defaultShareExpiryDays = 30;
   let portalWelcomeMessage = "";
+  let sharePortalLinkEnabled = false;
 
   if (workspaceId) {
     const supabase = await createClient();
     const { data: workspace } = await supabase
       .from("workspaces")
-      .select("default_share_expiry_days, portal_welcome_message")
+      .select("default_share_expiry_days, portal_welcome_message, share_portal_link_enabled")
       .eq("id", workspaceId)
       .maybeSingle();
     defaultShareExpiryDays = workspace?.default_share_expiry_days ?? 30;
     portalWelcomeMessage = workspace?.portal_welcome_message ?? "";
+    sharePortalLinkEnabled = workspace?.share_portal_link_enabled ?? false;
   }
 
   async function save(formData: FormData) {
@@ -31,6 +33,7 @@ export default async function PortalSettingsPage() {
     await savePortalSettings(workspaceId, {
       defaultShareExpiryDays: Number(formData.get("defaultShareExpiryDays") ?? 30),
       portalWelcomeMessage: String(formData.get("portalWelcomeMessage") ?? ""),
+      sharePortalLinkEnabled: formData.get("sharePortalLinkEnabled") === "on",
     });
   }
 
@@ -65,6 +68,16 @@ export default async function PortalSettingsPage() {
                 className="border border-line bg-white rounded-[9px] px-[11px] py-[9px] text-[12.5px] disabled:opacity-60 w-[140px]"
               />
             </Field>
+            <label className="flex items-center gap-2.5 text-[12.5px] text-ink pt-1">
+              <input
+                type="checkbox"
+                name="sharePortalLinkEnabled"
+                defaultChecked={sharePortalLinkEnabled}
+                disabled={!workspaceId}
+                className="w-[18px] h-[18px]"
+              />
+              Show the &ldquo;Share the client portal&rdquo; copy-link card on every project&apos;s Client view config page
+            </label>
           </div>
         </Card>
 

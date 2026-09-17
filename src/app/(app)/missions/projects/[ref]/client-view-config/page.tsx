@@ -7,6 +7,7 @@ import { getProjectByRef, getClientViewConfig, getProjectBranding, getProjectSha
 import { getWorkspaceBranding } from "@/lib/data/branding";
 import { getPortalProject } from "@/lib/data/portal";
 import { getCurrentPerson } from "@/lib/data/auth-guard";
+import { isSharePortalLinkEnabled } from "@/lib/data/workspace";
 import { unpublishClientView } from "./actions";
 import { ClientViewFieldToggle } from "./ClientViewFieldToggle";
 import { PublishClientViewButton } from "./PublishClientViewButton";
@@ -80,6 +81,7 @@ export default async function ClientViewConfigPage({ params }: { params: Promise
   const viewer = await getCurrentPerson();
   const isWorkspaceAdmin = viewer?.workspace_role === "workspace_admin";
   const shareLinks = isWorkspaceAdmin ? await getProjectShareLinks(project.id) : [];
+  const showSharePortalLinkCard = await isSharePortalLinkEnabled(project.workspaceId);
 
   async function createLink() {
     "use server";
@@ -121,20 +123,22 @@ export default async function ClientViewConfigPage({ params }: { params: Promise
         </div>
       </div>
 
-      <Card className="p-4 flex flex-col gap-3">
-        <div className="flex flex-col gap-1.5">
-          <span className="font-mono text-[9px] tracking-[.09em] text-muted">SHARE THE CLIENT PORTAL — ALWAYS LIVE</span>
-          <CopyPortalLinkButton projectRef={project.ref} />
-        </div>
-        <div className="flex items-center gap-2.5 pt-1 border-t border-line-soft">
-          <Pill tone={config?.publishedAt ? "done" : "waiting_on_client"}>{config?.publishedAt ? "PUBLISHED" : "NEVER PUBLISHED"}</Pill>
-          <span className="text-[11.5px] text-muted">
-            {config?.publishedAt
-              ? `P·1's no-login snapshot was last published ${config.publishedAt}.`
-              : "P·1, the no-login share link, will show nothing until you publish for the first time."}
-          </span>
-        </div>
-      </Card>
+      {showSharePortalLinkCard ? (
+        <Card className="p-4 flex flex-col gap-3">
+          <div className="flex flex-col gap-1.5">
+            <span className="font-mono text-[9px] tracking-[.09em] text-muted">SHARE THE CLIENT PORTAL — ALWAYS LIVE</span>
+            <CopyPortalLinkButton projectRef={project.ref} />
+          </div>
+          <div className="flex items-center gap-2.5 pt-1 border-t border-line-soft">
+            <Pill tone={config?.publishedAt ? "done" : "waiting_on_client"}>{config?.publishedAt ? "PUBLISHED" : "NEVER PUBLISHED"}</Pill>
+            <span className="text-[11.5px] text-muted">
+              {config?.publishedAt
+                ? `P·1's no-login snapshot was last published ${config.publishedAt}.`
+                : "P·1, the no-login share link, will show nothing until you publish for the first time."}
+            </span>
+          </div>
+        </Card>
+      ) : null}
 
       {isWorkspaceAdmin ? (
         <Card className="p-4 flex flex-col gap-3">
