@@ -145,25 +145,34 @@ export async function saveDeploymentDraft(input: DeploymentDraftInput) {
 }
 
 /** The one action every "Run test" / "Activate" button in the wizard
- * ultimately calls. It always throws today — there is no supported
+ * ultimately calls. Always refuses today — there is no supported
  * connector adapter yet, no chosen real agent, and no confirmed payer
  * for provider usage (the two open questions from the blueprint's
  * section 20.2/20.3). This function is the single place that gate lives,
  * so turning it on later is a one-line change instead of hunting for
  * every button that needed to respect it. Per section 5.4: say
- * "integration required," don't pretend. */
-export async function activateDeployment(_deploymentId: string): Promise<never> {
-  throw new Error(
-    "Integration required: no supported connector adapter is wired up yet, and no agent/provider has been chosen. This deployment can be saved as a draft, but not tested or activated."
-  );
+ * "integration required," don't pretend.
+ *
+ * Returns a result instead of throwing -- a thrown Server Action error
+ * that reaches the client through Next's Server Components render path
+ * gets its message redacted in a production build (generic "Server
+ * Components render" text plus a digest, no way for the button to show
+ * the real explanation). A returned value is never subject to that. */
+export async function activateDeployment(_deploymentId: string): Promise<{ ok: false; message: string }> {
+  return {
+    ok: false,
+    message:
+      "Integration required: no supported connector adapter is wired up yet, and no agent/provider has been chosen. This deployment can be saved as a draft, but not tested or activated.",
+  };
 }
 
 /** Same gate as activateDeployment, for the wizard's "Run test" step —
  * kept as a separate function (not just a shared button) so a real
  * adapter can implement task-testing and activation on different
  * timelines later without one unblocking the other by accident. */
-export async function runTaskTest(_deploymentId: string): Promise<never> {
-  throw new Error(
-    "Integration required: there is no supported connector adapter to run a task against yet. Choose a real agent and connector before a task test is possible."
-  );
+export async function runTaskTest(_deploymentId: string): Promise<{ ok: false; message: string }> {
+  return {
+    ok: false,
+    message: "Integration required: there is no supported connector adapter to run a task against yet. Choose a real agent and connector before a task test is possible.",
+  };
 }

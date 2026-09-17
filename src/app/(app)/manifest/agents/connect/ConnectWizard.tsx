@@ -170,12 +170,12 @@ export function ConnectWizard({
     setError(null);
     setNotice(null);
     startTransition(async () => {
-      try {
-        if (!deploymentId) throw new Error("Save a draft first.");
-        await runTaskTest(deploymentId);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not run test.");
+      if (!deploymentId) {
+        setError("Save a draft first.");
+        return;
       }
+      const result = await runTaskTest(deploymentId);
+      if (!result.ok) setError(result.message);
     });
   }
 
@@ -183,12 +183,12 @@ export function ConnectWizard({
     setError(null);
     setNotice(null);
     startTransition(async () => {
-      try {
-        if (!deploymentId) throw new Error("Save a draft first.");
-        await activateDeployment(deploymentId);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not activate.");
+      if (!deploymentId) {
+        setError("Save a draft first.");
+        return;
       }
+      const result = await activateDeployment(deploymentId);
+      if (!result.ok) setError(result.message);
     });
   }
 

@@ -93,14 +93,6 @@ export default async function CheckpointDataPage({ params }: { params: Promise<{
       </div>
 
       <Card className="p-4">
-        <div className="mb-3">
-          <span className="block text-[12.5px] font-semibold text-ink">Timeline</span>
-          <span className="block font-mono text-[9.5px] text-muted">TEN WEEKS, THREE GATES — WHERE WE STAND, BY TASK GROUP</span>
-        </div>
-        <TimelineGrid data={timeline} projectId={project.id} projectRef={project.ref} canEdit={canEdit} />
-      </Card>
-
-      <Card className="p-4">
         <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
           <div>
             <span className="block text-[12.5px] font-semibold text-ink">Source documents</span>
@@ -123,6 +115,14 @@ export default async function CheckpointDataPage({ params }: { params: Promise<{
           &ldquo;Run auto-map&rdquo; reads a file and fills in the sections below by itself — it needs a real AI provider connected first,
           so today it explains that instead of pretending to work. Until then, read the file and type the numbers in below by hand.
         </p>
+      </Card>
+
+      <Card className="p-4">
+        <div className="mb-3">
+          <span className="block text-[12.5px] font-semibold text-ink">Timeline</span>
+          <span className="block font-mono text-[9.5px] text-muted">TEN WEEKS, THREE GATES — WHERE WE STAND, BY TASK GROUP</span>
+        </div>
+        <TimelineGrid data={timeline} projectId={project.id} projectRef={project.ref} canEdit={canEdit} />
       </Card>
 
       <Card className="p-4">

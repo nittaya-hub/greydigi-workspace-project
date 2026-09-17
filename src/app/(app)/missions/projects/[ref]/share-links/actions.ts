@@ -4,6 +4,7 @@ import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentPerson } from "@/lib/data/auth-guard";
+import { getShareLinkAudit, type ShareLinkAuditRow } from "@/lib/data/project";
 
 function newToken() {
   return randomBytes(5).toString("base64url").toLowerCase();
@@ -68,4 +69,12 @@ export async function regenerateShareLink(linkId: string, projectRef: string) {
     .eq("id", linkId);
   if (error) throw new Error(error.message);
   revalidatePath(`/missions/projects/${projectRef.toLowerCase()}/client-view-config`);
+}
+
+/** The last 20 views (when, and a rough IP city/country) for one link —
+ * "Every view is logged" is right there in the client-view-config copy,
+ * but until now nothing actually surfaced that log. */
+export async function fetchShareLinkAudit(linkId: string): Promise<ShareLinkAuditRow[]> {
+  await requireWorkspaceAdmin();
+  return getShareLinkAudit(linkId);
 }

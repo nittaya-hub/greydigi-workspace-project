@@ -385,11 +385,22 @@ export async function deleteCheckpointSourceFile(id: string, projectId: string, 
  * per-document cost. Say "Integration required," per the same pattern
  * already used for the agent registry (0066), rather than pretending
  * this can run. */
-export async function runCheckpointAutoMap(_sourceFileId: string, projectId: string): Promise<never> {
-  await requireMissionsLead(projectId);
-  throw new Error(
-    "Integration required: reading this file and mapping it into the sections above needs a real AI provider (e.g. an Anthropic API key), which isn't configured yet. The file is saved — add the key, then this can run for real."
-  );
+/** Returns a result instead of throwing -- a thrown Server Action error
+ * that reaches the client through Next's Server Components render path
+ * gets its message redacted in a production build (generic "Server
+ * Components render" text plus a digest, no way for the button to show
+ * the real explanation). A returned value is never subject to that. */
+export async function runCheckpointAutoMap(_sourceFileId: string, projectId: string): Promise<{ ok: false; message: string }> {
+  try {
+    await requireMissionsLead(projectId);
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : "Not authorized." };
+  }
+  return {
+    ok: false,
+    message:
+      "Integration required: reading this file and mapping it into the sections above needs a real AI provider (e.g. an Anthropic API key), which isn't configured yet. The file is saved — add the key, then this can run for real.",
+  };
 }
 
 /** Freezes today's REVIEWED checkpoint data (same reviewed_at is not

@@ -42,11 +42,8 @@ export function CheckpointSourceFileRow({
                 onClick={() => {
                   setError(null);
                   startTransition(async () => {
-                    try {
-                      await runCheckpointAutoMap(file.id, projectId);
-                    } catch (err) {
-                      setError(err instanceof Error ? err.message : "Could not run auto-map.");
-                    }
+                    const result = await runCheckpointAutoMap(file.id, projectId);
+                    if (!result.ok) setError(result.message);
                   });
                 }}
               >
