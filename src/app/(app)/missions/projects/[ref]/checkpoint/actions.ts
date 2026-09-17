@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentPerson, requireMissionsLead } from "@/lib/data/auth-guard";
+import { requireMissionsLead } from "@/lib/data/auth-guard";
 import {
   getProjectProgressStats,
   getProjectDecisions,
@@ -27,8 +27,7 @@ function optionalString(formData: FormData, key: string): string | null {
 }
 
 export async function createProgressStat(projectId: string, projectRef: string, formData: FormData) {
-  const person = await getCurrentPerson();
-  if (!person) throw new Error("Not signed in.");
+  await requireMissionsLead(projectId);
   const supabase = await createClient();
 
   const { error } = await supabase.from("project_progress_stats").insert({
@@ -44,8 +43,7 @@ export async function createProgressStat(projectId: string, projectRef: string, 
 }
 
 export async function reviewProgressStat(id: string, projectId: string, projectRef: string) {
-  const person = await getCurrentPerson();
-  if (!person) throw new Error("Not signed in.");
+  const person = await requireMissionsLead(projectId);
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -65,8 +63,7 @@ export async function reviewProgressStat(id: string, projectId: string, projectR
  * again — same reasoning as the reviewed_at gate itself (0054), just
  * applied to edits, not only first-time entry. */
 export async function updateProgressStat(id: string, projectId: string, projectRef: string, formData: FormData) {
-  const person = await getCurrentPerson();
-  if (!person) throw new Error("Not signed in.");
+  await requireMissionsLead(projectId);
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -87,8 +84,7 @@ export async function updateProgressStat(id: string, projectId: string, projectR
 }
 
 export async function deleteProgressStat(id: string, projectId: string, projectRef: string) {
-  const person = await getCurrentPerson();
-  if (!person) throw new Error("Not signed in.");
+  await requireMissionsLead(projectId);
   const supabase = await createClient();
 
   const { error } = await supabase.from("project_progress_stats").delete().eq("id", id).eq("project_id", projectId);
@@ -99,8 +95,7 @@ export async function deleteProgressStat(id: string, projectId: string, projectR
 }
 
 export async function createDecision(projectId: string, projectRef: string, formData: FormData) {
-  const person = await getCurrentPerson();
-  if (!person) throw new Error("Not signed in.");
+  await requireMissionsLead(projectId);
   const supabase = await createClient();
 
   const { error } = await supabase.from("project_decisions").insert({
@@ -117,8 +112,7 @@ export async function createDecision(projectId: string, projectRef: string, form
 }
 
 export async function toggleDecisionStatus(id: string, projectId: string, projectRef: string, nextStatus: "open" | "closed") {
-  const person = await getCurrentPerson();
-  if (!person) throw new Error("Not signed in.");
+  await requireMissionsLead(projectId);
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -133,8 +127,7 @@ export async function toggleDecisionStatus(id: string, projectId: string, projec
 }
 
 export async function reviewDecision(id: string, projectId: string, projectRef: string) {
-  const person = await getCurrentPerson();
-  if (!person) throw new Error("Not signed in.");
+  const person = await requireMissionsLead(projectId);
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -149,8 +142,7 @@ export async function reviewDecision(id: string, projectId: string, projectRef: 
 }
 
 export async function updateDecision(id: string, projectId: string, projectRef: string, formData: FormData) {
-  const person = await getCurrentPerson();
-  if (!person) throw new Error("Not signed in.");
+  await requireMissionsLead(projectId);
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -172,8 +164,7 @@ export async function updateDecision(id: string, projectId: string, projectRef: 
 }
 
 export async function deleteDecision(id: string, projectId: string, projectRef: string) {
-  const person = await getCurrentPerson();
-  if (!person) throw new Error("Not signed in.");
+  await requireMissionsLead(projectId);
   const supabase = await createClient();
 
   const { error } = await supabase.from("project_decisions").delete().eq("id", id).eq("project_id", projectId);
@@ -184,8 +175,7 @@ export async function deleteDecision(id: string, projectId: string, projectRef: 
 }
 
 export async function createCommitment(projectId: string, projectRef: string, formData: FormData) {
-  const person = await getCurrentPerson();
-  if (!person) throw new Error("Not signed in.");
+  await requireMissionsLead(projectId);
   const supabase = await createClient();
 
   const itemsRaw = (formData.get("items") as string | null) ?? "";
@@ -208,8 +198,7 @@ export async function createCommitment(projectId: string, projectRef: string, fo
 }
 
 export async function reviewCommitment(id: string, projectId: string, projectRef: string) {
-  const person = await getCurrentPerson();
-  if (!person) throw new Error("Not signed in.");
+  const person = await requireMissionsLead(projectId);
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -224,8 +213,7 @@ export async function reviewCommitment(id: string, projectId: string, projectRef
 }
 
 export async function updateCommitment(id: string, projectId: string, projectRef: string, formData: FormData) {
-  const person = await getCurrentPerson();
-  if (!person) throw new Error("Not signed in.");
+  await requireMissionsLead(projectId);
   const supabase = await createClient();
 
   const itemsRaw = (formData.get("items") as string | null) ?? "";
@@ -253,8 +241,7 @@ export async function updateCommitment(id: string, projectId: string, projectRef
 }
 
 export async function deleteCommitment(id: string, projectId: string, projectRef: string) {
-  const person = await getCurrentPerson();
-  if (!person) throw new Error("Not signed in.");
+  await requireMissionsLead(projectId);
   const supabase = await createClient();
 
   const { error } = await supabase.from("project_weekly_commitments").delete().eq("id", id).eq("project_id", projectId);
@@ -265,8 +252,7 @@ export async function deleteCommitment(id: string, projectId: string, projectRef
 }
 
 export async function createBaselineMeasure(projectId: string, projectRef: string, formData: FormData) {
-  const person = await getCurrentPerson();
-  if (!person) throw new Error("Not signed in.");
+  await requireMissionsLead(projectId);
   const supabase = await createClient();
 
   const { error } = await supabase.from("project_baseline_measures").insert({
@@ -283,8 +269,7 @@ export async function createBaselineMeasure(projectId: string, projectRef: strin
 }
 
 export async function reviewBaselineMeasure(id: string, projectId: string, projectRef: string) {
-  const person = await getCurrentPerson();
-  if (!person) throw new Error("Not signed in.");
+  const person = await requireMissionsLead(projectId);
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -299,8 +284,7 @@ export async function reviewBaselineMeasure(id: string, projectId: string, proje
 }
 
 export async function updateBaselineMeasure(id: string, projectId: string, projectRef: string, formData: FormData) {
-  const person = await getCurrentPerson();
-  if (!person) throw new Error("Not signed in.");
+  await requireMissionsLead(projectId);
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -322,8 +306,7 @@ export async function updateBaselineMeasure(id: string, projectId: string, proje
 }
 
 export async function deleteBaselineMeasure(id: string, projectId: string, projectRef: string) {
-  const person = await getCurrentPerson();
-  if (!person) throw new Error("Not signed in.");
+  await requireMissionsLead(projectId);
   const supabase = await createClient();
 
   const { error } = await supabase.from("project_baseline_measures").delete().eq("id", id).eq("project_id", projectId);
@@ -346,8 +329,7 @@ export async function recordCheckpointSourceFile(
   projectRef: string,
   file: { path: string; name: string; size: number; type: string }
 ) {
-  const person = await getCurrentPerson();
-  if (!person) throw new Error("Not signed in.");
+  const person = await requireMissionsLead(projectId);
   const supabase = await createClient();
 
   const { data: asset, error: assetError } = await supabase
@@ -375,8 +357,7 @@ export async function recordCheckpointSourceFile(
 }
 
 export async function deleteCheckpointSourceFile(id: string, projectId: string, projectRef: string) {
-  const person = await getCurrentPerson();
-  if (!person) throw new Error("Not signed in.");
+  await requireMissionsLead(projectId);
   const supabase = await createClient();
 
   const { error } = await supabase.from("checkpoint_source_files").delete().eq("id", id).eq("project_id", projectId);
@@ -392,7 +373,8 @@ export async function deleteCheckpointSourceFile(id: string, projectId: string, 
  * per-document cost. Say "Integration required," per the same pattern
  * already used for the agent registry (0066), rather than pretending
  * this can run. */
-export async function runCheckpointAutoMap(_sourceFileId: string): Promise<never> {
+export async function runCheckpointAutoMap(_sourceFileId: string, projectId: string): Promise<never> {
+  await requireMissionsLead(projectId);
   throw new Error(
     "Integration required: reading this file and mapping it into the sections above needs a real AI provider (e.g. an Anthropic API key), which isn't configured yet. The file is saved — add the key, then this can run for real."
   );
@@ -458,8 +440,7 @@ export async function publishCheckpointToHistory(projectId: string, projectRef: 
  * the user's own description: "duplicate to use, but the original stays
  * the same." */
 export async function duplicateCheckpointSnapshot(snapshotId: string, projectId: string, projectRef: string) {
-  const person = await getCurrentPerson();
-  if (!person) throw new Error("Not signed in.");
+  await requireMissionsLead(projectId);
   const supabase = await createClient();
 
   const { data: row, error } = await supabase

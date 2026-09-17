@@ -35,9 +35,11 @@ export default async function CheckpointDataPage({ params }: { params: Promise<{
     getCheckpointSourceFiles(project.id),
   ]);
   const viewer = await getCurrentPerson();
-  // Matches requireMissionsLead in auth-guard.ts -- publishing is
-  // restricted to this mission's lead or a workspace admin.
-  const canPublish =
+  // Matches requireMissionsLead in auth-guard.ts -- every add/edit/
+  // delete/upload/review/publish action on this page is restricted to
+  // this mission's lead or a workspace admin. Everyone else with access
+  // to the project still sees the page, read-only.
+  const canEdit =
     viewer?.workspace_role === "workspace_admin" ||
     viewer?.workspace_role === "delivery_lead" ||
     (!!viewer && viewer.id === project.leadPersonId);
@@ -83,7 +85,7 @@ export default async function CheckpointDataPage({ params }: { params: Promise<{
               View history →
             </Link>
           </div>
-          {canPublish ? <PublishCheckpointButton projectId={project.id} projectRef={project.ref} /> : null}
+          {canEdit ? <PublishCheckpointButton projectId={project.id} projectRef={project.ref} /> : null}
         </div>
       </div>
 
@@ -93,13 +95,17 @@ export default async function CheckpointDataPage({ params }: { params: Promise<{
             <span className="block text-[12.5px] font-semibold text-ink">Source documents</span>
             <span className="block font-mono text-[9.5px] text-muted">A DEV TEAM&apos;S OWN STATUS DECK OR SIMILAR — PDF/PNG</span>
           </div>
-          <UploadCheckpointSourceButton projectId={project.id} projectRef={project.ref} workspaceId={project.workspaceId} />
+          {canEdit ? (
+            <UploadCheckpointSourceButton projectId={project.id} projectRef={project.ref} workspaceId={project.workspaceId} />
+          ) : null}
         </div>
         <div className="flex flex-col gap-2">
           {sourceFiles.length === 0 ? (
             <EmptyState title="No source documents yet." description="Upload the deck a checkpoint's numbers came from, for reference." />
           ) : (
-            sourceFiles.map((f) => <CheckpointSourceFileRow key={f.id} file={f} projectId={project.id} projectRef={project.ref} />)
+            sourceFiles.map((f) => (
+              <CheckpointSourceFileRow key={f.id} file={f} projectId={project.id} projectRef={project.ref} canEdit={canEdit} />
+            ))
           )}
         </div>
         <p className="m-0 mt-3 text-[10.5px] text-muted leading-[1.5]">
@@ -119,23 +125,25 @@ export default async function CheckpointDataPage({ params }: { params: Promise<{
           {stats.length === 0 ? (
             <EmptyState title="No stats yet." description="Add the numbers from this checkpoint's engineering update." />
           ) : (
-            stats.map((s) => <EditableStatRow key={s.id} stat={s} projectId={project.id} projectRef={project.ref} />)
+            stats.map((s) => <EditableStatRow key={s.id} stat={s} projectId={project.id} projectRef={project.ref} canEdit={canEdit} />)
           )}
         </div>
-        <form action={addProgressStat} className="grid grid-cols-[1fr_1fr_1.4fr_auto] gap-2 items-end">
-          <Field label="LABEL">
-            <input name="label" required className={fieldInputClass} placeholder="Migrations done" />
-          </Field>
-          <Field label="VALUE">
-            <input name="value" required className={fieldInputClass} placeholder="5 of 9" />
-          </Field>
-          <Field label="NOTE (OPTIONAL)">
-            <input name="note" className={fieldInputClass} placeholder="M1, M3, M3a, M3-seed, M4 on production." />
-          </Field>
-          <Button variant="primary" type="submit" className="flex-none">
-            Add
-          </Button>
-        </form>
+        {canEdit ? (
+          <form action={addProgressStat} className="grid grid-cols-[1fr_1fr_1.4fr_auto] gap-2 items-end">
+            <Field label="LABEL">
+              <input name="label" required className={fieldInputClass} placeholder="Migrations done" />
+            </Field>
+            <Field label="VALUE">
+              <input name="value" required className={fieldInputClass} placeholder="5 of 9" />
+            </Field>
+            <Field label="NOTE (OPTIONAL)">
+              <input name="note" className={fieldInputClass} placeholder="M1, M3, M3a, M3-seed, M4 on production." />
+            </Field>
+            <Button variant="primary" type="submit" className="flex-none">
+              Add
+            </Button>
+          </form>
+        ) : null}
       </Card>
 
       <Card className="p-4">
@@ -147,26 +155,30 @@ export default async function CheckpointDataPage({ params }: { params: Promise<{
           {decisions.length === 0 ? (
             <EmptyState title="No decisions logged." description="Add what's still open, who owns it, and by when." />
           ) : (
-            decisions.map((d) => <EditableDecisionRow key={d.id} decision={d} projectId={project.id} projectRef={project.ref} />)
+            decisions.map((d) => (
+              <EditableDecisionRow key={d.id} decision={d} projectId={project.id} projectRef={project.ref} canEdit={canEdit} />
+            ))
           )}
         </div>
-        <form action={addDecision} className="grid grid-cols-2 gap-2">
-          <Field label="TITLE">
-            <input name="title" required className={fieldInputClass} placeholder="Continuity cover on the schema" />
-          </Field>
-          <Field label="OWNER">
-            <input name="owner" className={fieldInputClass} placeholder="L.T." />
-          </Field>
-          <Field label="WHY IT MATTERS (OPTIONAL)">
-            <input name="detail" className={fieldInputClass} placeholder="A second name alongside Tony." />
-          </Field>
-          <Field label="DUE (OPTIONAL)">
-            <input name="due_label" className={fieldInputClass} placeholder="W4" />
-          </Field>
-          <Button variant="primary" type="submit" className="col-span-2 flex-none justify-self-start">
-            Add decision
-          </Button>
-        </form>
+        {canEdit ? (
+          <form action={addDecision} className="grid grid-cols-2 gap-2">
+            <Field label="TITLE">
+              <input name="title" required className={fieldInputClass} placeholder="Continuity cover on the schema" />
+            </Field>
+            <Field label="OWNER">
+              <input name="owner" className={fieldInputClass} placeholder="L.T." />
+            </Field>
+            <Field label="WHY IT MATTERS (OPTIONAL)">
+              <input name="detail" className={fieldInputClass} placeholder="A second name alongside Tony." />
+            </Field>
+            <Field label="DUE (OPTIONAL)">
+              <input name="due_label" className={fieldInputClass} placeholder="W4" />
+            </Field>
+            <Button variant="primary" type="submit" className="col-span-2 flex-none justify-self-start">
+              Add decision
+            </Button>
+          </form>
+        ) : null}
       </Card>
 
       <Card className="p-4">
@@ -179,35 +191,37 @@ export default async function CheckpointDataPage({ params }: { params: Promise<{
             <EmptyState title="No commitments yet." description="Add this week's and next week's plan, and what the client committed to." />
           ) : (
             commitments.map((c) => (
-              <EditableCommitmentRow key={c.id} commitment={c} projectId={project.id} projectRef={project.ref} />
+              <EditableCommitmentRow key={c.id} commitment={c} projectId={project.id} projectRef={project.ref} canEdit={canEdit} />
             ))
           )}
         </div>
-        <form action={addCommitment} className="flex flex-col gap-2">
-          <div className="grid grid-cols-2 gap-2">
-            <Field label="PERIOD">
-              <input name="period_label" required className={fieldInputClass} placeholder="This week, 7 to 11 September" />
+        {canEdit ? (
+          <form action={addCommitment} className="flex flex-col gap-2">
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="PERIOD">
+                <input name="period_label" required className={fieldInputClass} placeholder="This week, 7 to 11 September" />
+              </Field>
+              <Field label="OWNER">
+                <input name="owner_label" required className={fieldInputClass} placeholder="greydigi" />
+              </Field>
+            </div>
+            <Field label="ITEMS (ONE PER LINE)">
+              <textarea
+                name="items"
+                rows={3}
+                className={fieldInputClass}
+                placeholder={"M6, order intake mapped.\nM5, purchasing and planning spec."}
+              />
             </Field>
-            <Field label="OWNER">
-              <input name="owner_label" required className={fieldInputClass} placeholder="greydigi" />
-            </Field>
-          </div>
-          <Field label="ITEMS (ONE PER LINE)">
-            <textarea
-              name="items"
-              rows={3}
-              className={fieldInputClass}
-              placeholder={"M6, order intake mapped.\nM5, purchasing and planning spec."}
-            />
-          </Field>
-          <label className="flex items-center gap-2 text-[11.5px] text-muted">
-            <input type="checkbox" name="accent" />
-            Highlight this card (e.g. commitments from the client)
-          </label>
-          <Button variant="primary" type="submit" className="flex-none justify-self-start">
-            Add commitment card
-          </Button>
-        </form>
+            <label className="flex items-center gap-2 text-[11.5px] text-muted">
+              <input type="checkbox" name="accent" />
+              Highlight this card (e.g. commitments from the client)
+            </label>
+            <Button variant="primary" type="submit" className="flex-none justify-self-start">
+              Add commitment card
+            </Button>
+          </form>
+        ) : null}
       </Card>
 
       <Card className="p-4">
@@ -219,26 +233,30 @@ export default async function CheckpointDataPage({ params }: { params: Promise<{
           {measures.length === 0 ? (
             <EmptyState title="No measures yet." description="Add what changes, comparing today against after this phase." />
           ) : (
-            measures.map((m) => <EditableMeasureRow key={m.id} measure={m} projectId={project.id} projectRef={project.ref} />)
+            measures.map((m) => (
+              <EditableMeasureRow key={m.id} measure={m} projectId={project.id} projectRef={project.ref} canEdit={canEdit} />
+            ))
           )}
         </div>
-        <form action={addBaselineMeasure} className="grid grid-cols-[1.3fr_1fr_1fr_1fr_auto] gap-2 items-end">
-          <Field label="MEASURE">
-            <input name="measure_name" required className={fieldInputClass} placeholder="Hands-on time, order receipt to approved PO" />
-          </Field>
-          <Field label="TODAY">
-            <input name="today_value" required className={fieldInputClass} placeholder="Six to eight hours by hand" />
-          </Field>
-          <Field label="AFTER">
-            <input name="after_value" required className={fieldInputClass} placeholder="Under one hour" />
-          </Field>
-          <Field label="BASELINED WHEN (OPTIONAL)">
-            <input name="baselined_when" className={fieldInputClass} placeholder="W7 and W8 parallel weeks" />
-          </Field>
-          <Button variant="primary" type="submit" className="flex-none">
-            Add
-          </Button>
-        </form>
+        {canEdit ? (
+          <form action={addBaselineMeasure} className="grid grid-cols-[1.3fr_1fr_1fr_1fr_auto] gap-2 items-end">
+            <Field label="MEASURE">
+              <input name="measure_name" required className={fieldInputClass} placeholder="Hands-on time, order receipt to approved PO" />
+            </Field>
+            <Field label="TODAY">
+              <input name="today_value" required className={fieldInputClass} placeholder="Six to eight hours by hand" />
+            </Field>
+            <Field label="AFTER">
+              <input name="after_value" required className={fieldInputClass} placeholder="Under one hour" />
+            </Field>
+            <Field label="BASELINED WHEN (OPTIONAL)">
+              <input name="baselined_when" className={fieldInputClass} placeholder="W7 and W8 parallel weeks" />
+            </Field>
+            <Button variant="primary" type="submit" className="flex-none">
+              Add
+            </Button>
+          </form>
+        ) : null}
       </Card>
     </div>
   );

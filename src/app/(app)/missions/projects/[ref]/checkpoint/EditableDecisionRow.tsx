@@ -7,12 +7,22 @@ import { Field, fieldInputClass } from "@/components/ui/Modal";
 import type { DecisionRow } from "@/lib/data/project";
 import { updateDecision, reviewDecision, toggleDecisionStatus, deleteDecision } from "./actions";
 
-export function EditableDecisionRow({ decision, projectId, projectRef }: { decision: DecisionRow; projectId: string; projectRef: string }) {
+export function EditableDecisionRow({
+  decision,
+  projectId,
+  projectRef,
+  canEdit,
+}: {
+  decision: DecisionRow;
+  projectId: string;
+  projectRef: string;
+  canEdit: boolean;
+}) {
   const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  if (editing) {
+  if (editing && canEdit) {
     return (
       <form
         className="flex flex-col gap-2 px-3 py-2.5 border border-coral rounded-[9px]"
@@ -75,26 +85,32 @@ export function EditableDecisionRow({ decision, projectId, projectRef }: { decis
         ) : (
           <Pill tone="waiting_on_client">NEEDS REVIEW</Pill>
         )}
-        <Button variant="secondary" type="button" onClick={() => setEditing(true)} className="!h-6 !px-2 !text-[10.5px]">
-          Edit
-        </Button>
-        {!decision.reviewedAt ? (
-          <form action={reviewDecision.bind(null, decision.id, projectId, projectRef)}>
-            <Button variant="secondary" type="submit" className="!h-6 !px-2 !text-[10.5px]">
-              Mark reviewed
+        {canEdit ? (
+          <>
+            <Button variant="secondary" type="button" onClick={() => setEditing(true)} className="!h-6 !px-2 !text-[10.5px]">
+              Edit
             </Button>
-          </form>
+            {!decision.reviewedAt ? (
+              <form action={reviewDecision.bind(null, decision.id, projectId, projectRef)}>
+                <Button variant="secondary" type="submit" className="!h-6 !px-2 !text-[10.5px]">
+                  Mark reviewed
+                </Button>
+              </form>
+            ) : null}
+            <form
+              action={toggleDecisionStatus.bind(null, decision.id, projectId, projectRef, decision.status === "closed" ? "open" : "closed")}
+            >
+              <Button variant="secondary" type="submit" className="!h-6 !px-2 !text-[10.5px]">
+                {decision.status === "closed" ? "Reopen" : "Close"}
+              </Button>
+            </form>
+            <form action={deleteDecision.bind(null, decision.id, projectId, projectRef)}>
+              <Button variant="secondary" type="submit" className="!h-6 !px-2 !text-[10.5px]">
+                Delete
+              </Button>
+            </form>
+          </>
         ) : null}
-        <form action={toggleDecisionStatus.bind(null, decision.id, projectId, projectRef, decision.status === "closed" ? "open" : "closed")}>
-          <Button variant="secondary" type="submit" className="!h-6 !px-2 !text-[10.5px]">
-            {decision.status === "closed" ? "Reopen" : "Close"}
-          </Button>
-        </form>
-        <form action={deleteDecision.bind(null, decision.id, projectId, projectRef)}>
-          <Button variant="secondary" type="submit" className="!h-6 !px-2 !text-[10.5px]">
-            Delete
-          </Button>
-        </form>
       </div>
     </div>
   );

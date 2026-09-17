@@ -16,10 +16,12 @@ export function CheckpointHistoryTable({
   snapshots,
   projectId,
   projectRef,
+  canEdit,
 }: {
   snapshots: CheckpointSnapshotRow[];
   projectId: string;
   projectRef: string;
+  canEdit: boolean;
 }) {
   return (
     <FilterablePagedList
@@ -47,7 +49,11 @@ export function CheckpointHistoryTable({
           <span className="font-mono text-[9.5px] text-muted">{new Date(s.publishedAt).toLocaleDateString("en-SG")}</span>
           <span className="text-[11.5px] text-muted truncate">{s.publishedByName ?? "—"}</span>
           <span className="font-mono text-[9.5px] text-muted">{s.itemCount}</span>
-          <DuplicateCheckpointSnapshotButton snapshotId={s.id} projectId={projectId} projectRef={projectRef} />
+          {canEdit ? (
+            <DuplicateCheckpointSnapshotButton snapshotId={s.id} projectId={projectId} projectRef={projectRef} />
+          ) : (
+            <span />
+          )}
         </TableRow>
       )}
     />

@@ -7,12 +7,22 @@ import { Field, fieldInputClass } from "@/components/ui/Modal";
 import type { ProgressStatRow } from "@/lib/data/project";
 import { updateProgressStat, reviewProgressStat, deleteProgressStat } from "./actions";
 
-export function EditableStatRow({ stat, projectId, projectRef }: { stat: ProgressStatRow; projectId: string; projectRef: string }) {
+export function EditableStatRow({
+  stat,
+  projectId,
+  projectRef,
+  canEdit,
+}: {
+  stat: ProgressStatRow;
+  projectId: string;
+  projectRef: string;
+  canEdit: boolean;
+}) {
   const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  if (editing) {
+  if (editing && canEdit) {
     return (
       <form
         className="flex flex-col gap-2 px-3 py-2.5 border border-coral rounded-[9px]"
@@ -69,21 +79,25 @@ export function EditableStatRow({ stat, projectId, projectRef }: { stat: Progres
         ) : (
           <Pill tone="waiting_on_client">NEEDS REVIEW</Pill>
         )}
-        <Button variant="secondary" type="button" onClick={() => setEditing(true)} className="!h-6 !px-2 !text-[10.5px]">
-          Edit
-        </Button>
-        {!stat.reviewedAt ? (
-          <form action={reviewProgressStat.bind(null, stat.id, projectId, projectRef)}>
-            <Button variant="secondary" type="submit" className="!h-6 !px-2 !text-[10.5px]">
-              Mark reviewed
+        {canEdit ? (
+          <>
+            <Button variant="secondary" type="button" onClick={() => setEditing(true)} className="!h-6 !px-2 !text-[10.5px]">
+              Edit
             </Button>
-          </form>
+            {!stat.reviewedAt ? (
+              <form action={reviewProgressStat.bind(null, stat.id, projectId, projectRef)}>
+                <Button variant="secondary" type="submit" className="!h-6 !px-2 !text-[10.5px]">
+                  Mark reviewed
+                </Button>
+              </form>
+            ) : null}
+            <form action={deleteProgressStat.bind(null, stat.id, projectId, projectRef)}>
+              <Button variant="secondary" type="submit" className="!h-6 !px-2 !text-[10.5px]">
+                Delete
+              </Button>
+            </form>
+          </>
         ) : null}
-        <form action={deleteProgressStat.bind(null, stat.id, projectId, projectRef)}>
-          <Button variant="secondary" type="submit" className="!h-6 !px-2 !text-[10.5px]">
-            Delete
-          </Button>
-        </form>
       </div>
     </div>
   );

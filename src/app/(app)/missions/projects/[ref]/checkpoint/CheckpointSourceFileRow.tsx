@@ -10,10 +10,12 @@ export function CheckpointSourceFileRow({
   file,
   projectId,
   projectRef,
+  canEdit,
 }: {
   file: CheckpointSourceFileRowType;
   projectId: string;
   projectRef: string;
+  canEdit: boolean;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -30,29 +32,33 @@ export function CheckpointSourceFileRow({
         </div>
         <div className="flex items-center gap-1.5 flex-none">
           <DownloadDocumentLink storagePath={file.storagePath} />
-          <Button
-            variant="secondary"
-            type="button"
-            disabled={isPending}
-            className="!h-6 !px-2 !text-[10.5px]"
-            onClick={() => {
-              setError(null);
-              startTransition(async () => {
-                try {
-                  await runCheckpointAutoMap(file.id);
-                } catch (err) {
-                  setError(err instanceof Error ? err.message : "Could not run auto-map.");
-                }
-              });
-            }}
-          >
-            Run auto-map
-          </Button>
-          <form action={deleteCheckpointSourceFile.bind(null, file.id, projectId, projectRef)}>
-            <Button variant="secondary" type="submit" className="!h-6 !px-2 !text-[10.5px]">
-              Delete
-            </Button>
-          </form>
+          {canEdit ? (
+            <>
+              <Button
+                variant="secondary"
+                type="button"
+                disabled={isPending}
+                className="!h-6 !px-2 !text-[10.5px]"
+                onClick={() => {
+                  setError(null);
+                  startTransition(async () => {
+                    try {
+                      await runCheckpointAutoMap(file.id, projectId);
+                    } catch (err) {
+                      setError(err instanceof Error ? err.message : "Could not run auto-map.");
+                    }
+                  });
+                }}
+              >
+                Run auto-map
+              </Button>
+              <form action={deleteCheckpointSourceFile.bind(null, file.id, projectId, projectRef)}>
+                <Button variant="secondary" type="submit" className="!h-6 !px-2 !text-[10.5px]">
+                  Delete
+                </Button>
+              </form>
+            </>
+          ) : null}
         </div>
       </div>
       {error ? <span className="text-[10.5px] text-block-fg leading-[1.4]">{error}</span> : null}

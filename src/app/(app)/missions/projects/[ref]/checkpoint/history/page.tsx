@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { PageHeading } from "@/components/ui/Card";
 import { getProjectByRef } from "@/lib/data/project";
+import { getCurrentPerson } from "@/lib/data/auth-guard";
 import { listCheckpointSnapshots } from "@/lib/data/checkpoint-history";
 import { CheckpointHistoryTable } from "./CheckpointHistoryTable";
 
@@ -11,6 +12,14 @@ export default async function CheckpointHistoryPage({ params }: { params: Promis
   if (!project) notFound();
 
   const snapshots = await listCheckpointSnapshots(project.id);
+  const viewer = await getCurrentPerson();
+  // Matches requireMissionsLead — duplicating a snapshot back into the
+  // live, editable tables is the same tier as every other Checkpoint
+  // data mutation.
+  const canEdit =
+    viewer?.workspace_role === "workspace_admin" ||
+    viewer?.workspace_role === "delivery_lead" ||
+    (!!viewer && viewer.id === project.leadPersonId);
 
   return (
     <div className="flex flex-col gap-5">
@@ -27,7 +36,7 @@ export default async function CheckpointHistoryPage({ params }: { params: Promis
         </Link>
       </div>
 
-      <CheckpointHistoryTable snapshots={snapshots} projectId={project.id} projectRef={project.ref} />
+      <CheckpointHistoryTable snapshots={snapshots} projectId={project.id} projectRef={project.ref} canEdit={canEdit} />
     </div>
   );
 }

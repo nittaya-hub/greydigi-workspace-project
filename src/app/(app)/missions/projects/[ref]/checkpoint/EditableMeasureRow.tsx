@@ -11,16 +11,18 @@ export function EditableMeasureRow({
   measure,
   projectId,
   projectRef,
+  canEdit,
 }: {
   measure: BaselineMeasureRow;
   projectId: string;
   projectRef: string;
+  canEdit: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  if (editing) {
+  if (editing && canEdit) {
     return (
       <form
         className="flex flex-col gap-2 px-3 py-2.5 border border-coral rounded-[9px]"
@@ -82,21 +84,25 @@ export function EditableMeasureRow({
         ) : (
           <Pill tone="waiting_on_client">NEEDS REVIEW</Pill>
         )}
-        <Button variant="secondary" type="button" onClick={() => setEditing(true)} className="!h-6 !px-2 !text-[10.5px]">
-          Edit
-        </Button>
-        {!measure.reviewedAt ? (
-          <form action={reviewBaselineMeasure.bind(null, measure.id, projectId, projectRef)}>
-            <Button variant="secondary" type="submit" className="!h-6 !px-2 !text-[10.5px]">
-              Mark reviewed
+        {canEdit ? (
+          <>
+            <Button variant="secondary" type="button" onClick={() => setEditing(true)} className="!h-6 !px-2 !text-[10.5px]">
+              Edit
             </Button>
-          </form>
+            {!measure.reviewedAt ? (
+              <form action={reviewBaselineMeasure.bind(null, measure.id, projectId, projectRef)}>
+                <Button variant="secondary" type="submit" className="!h-6 !px-2 !text-[10.5px]">
+                  Mark reviewed
+                </Button>
+              </form>
+            ) : null}
+            <form action={deleteBaselineMeasure.bind(null, measure.id, projectId, projectRef)}>
+              <Button variant="secondary" type="submit" className="!h-6 !px-2 !text-[10.5px]">
+                Delete
+              </Button>
+            </form>
+          </>
         ) : null}
-        <form action={deleteBaselineMeasure.bind(null, measure.id, projectId, projectRef)}>
-          <Button variant="secondary" type="submit" className="!h-6 !px-2 !text-[10.5px]">
-            Delete
-          </Button>
-        </form>
       </div>
     </div>
   );
