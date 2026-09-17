@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Card, EmptyState } from "@/components/ui/Card";
-import { Pill } from "@/components/ui/Pill";
 import { Button } from "@/components/ui/Button";
 import { Field, fieldInputClass } from "@/components/ui/Modal";
 import { ExportPdfButton } from "@/components/pdf/ExportPdfButton";
@@ -11,43 +10,29 @@ import {
   getProjectDecisions,
   getProjectWeeklyCommitments,
   getProjectBaselineMeasures,
+  getCheckpointSourceFiles,
 } from "@/lib/data/project";
 import { getCurrentPerson } from "@/lib/data/auth-guard";
-import {
-  createProgressStat,
-  reviewProgressStat,
-  deleteProgressStat,
-  createDecision,
-  reviewDecision,
-  toggleDecisionStatus,
-  deleteDecision,
-  createCommitment,
-  reviewCommitment,
-  deleteCommitment,
-  createBaselineMeasure,
-  reviewBaselineMeasure,
-  deleteBaselineMeasure,
-} from "./actions";
+import { createProgressStat, createDecision, createCommitment, createBaselineMeasure } from "./actions";
 import { PublishCheckpointButton } from "./PublishCheckpointButton";
-
-function ReviewBadge({ reviewedAt, reviewedByName }: { reviewedAt: string | null; reviewedByName: string | null }) {
-  return reviewedAt ? (
-    <Pill tone="done">REVIEWED{reviewedByName ? ` · ${reviewedByName.toUpperCase()}` : ""}</Pill>
-  ) : (
-    <Pill tone="waiting_on_client">NEEDS REVIEW</Pill>
-  );
-}
+import { EditableStatRow } from "./EditableStatRow";
+import { EditableDecisionRow } from "./EditableDecisionRow";
+import { EditableCommitmentRow } from "./EditableCommitmentRow";
+import { EditableMeasureRow } from "./EditableMeasureRow";
+import { UploadCheckpointSourceButton } from "./UploadCheckpointSourceButton";
+import { CheckpointSourceFileRow } from "./CheckpointSourceFileRow";
 
 export default async function CheckpointDataPage({ params }: { params: Promise<{ ref: string }> }) {
   const { ref } = await params;
   const project = await getProjectByRef(ref);
   if (!project) notFound();
 
-  const [stats, decisions, commitments, measures] = await Promise.all([
+  const [stats, decisions, commitments, measures, sourceFiles] = await Promise.all([
     getProjectProgressStats(project.id),
     getProjectDecisions(project.id),
     getProjectWeeklyCommitments(project.id),
     getProjectBaselineMeasures(project.id),
+    getCheckpointSourceFiles(project.id),
   ]);
   const viewer = await getCurrentPerson();
   // Matches requireMissionsLead in auth-guard.ts -- publishing is
@@ -103,6 +88,27 @@ export default async function CheckpointDataPage({ params }: { params: Promise<{
       </div>
 
       <Card className="p-4">
+        <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+          <div>
+            <span className="block text-[12.5px] font-semibold text-ink">Source documents</span>
+            <span className="block font-mono text-[9.5px] text-muted">A DEV TEAM&apos;S OWN STATUS DECK OR SIMILAR — PDF/PNG</span>
+          </div>
+          <UploadCheckpointSourceButton projectId={project.id} projectRef={project.ref} workspaceId={project.workspaceId} />
+        </div>
+        <div className="flex flex-col gap-2">
+          {sourceFiles.length === 0 ? (
+            <EmptyState title="No source documents yet." description="Upload the deck a checkpoint's numbers came from, for reference." />
+          ) : (
+            sourceFiles.map((f) => <CheckpointSourceFileRow key={f.id} file={f} projectId={project.id} projectRef={project.ref} />)
+          )}
+        </div>
+        <p className="m-0 mt-3 text-[10.5px] text-muted leading-[1.5]">
+          &ldquo;Run auto-map&rdquo; reads a file and fills in the sections below by itself — it needs a real AI provider connected first,
+          so today it explains that instead of pretending to work. Until then, read the file and type the numbers in below by hand.
+        </p>
+      </Card>
+
+      <Card className="p-4">
         <div className="flex items-center justify-between gap-3 mb-3">
           <div>
             <span className="block text-[12.5px] font-semibold text-ink">Build-progress stats</span>
@@ -113,32 +119,7 @@ export default async function CheckpointDataPage({ params }: { params: Promise<{
           {stats.length === 0 ? (
             <EmptyState title="No stats yet." description="Add the numbers from this checkpoint's engineering update." />
           ) : (
-            stats.map((s) => (
-              <div key={s.id} className="flex items-start justify-between gap-3 px-3 py-2.5 border border-line-soft rounded-[9px]">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline gap-2">
-                    <span className="font-display font-extrabold text-[16px] text-ink">{s.value}</span>
-                    <span className="text-[11.5px] font-semibold text-ink">{s.label}</span>
-                  </div>
-                  {s.note ? <span className="block text-[11px] text-muted mt-0.5">{s.note}</span> : null}
-                </div>
-                <div className="flex items-center gap-1.5 flex-none">
-                  <ReviewBadge reviewedAt={s.reviewedAt} reviewedByName={s.reviewedByName} />
-                  {!s.reviewedAt ? (
-                    <form action={reviewProgressStat.bind(null, s.id, project.id, project.ref)}>
-                      <Button variant="secondary" type="submit" className="!h-6 !px-2 !text-[10.5px]">
-                        Mark reviewed
-                      </Button>
-                    </form>
-                  ) : null}
-                  <form action={deleteProgressStat.bind(null, s.id, project.id, project.ref)}>
-                    <Button variant="secondary" type="submit" className="!h-6 !px-2 !text-[10.5px]">
-                      Delete
-                    </Button>
-                  </form>
-                </div>
-              </div>
-            ))
+            stats.map((s) => <EditableStatRow key={s.id} stat={s} projectId={project.id} projectRef={project.ref} />)
           )}
         </div>
         <form action={addProgressStat} className="grid grid-cols-[1fr_1fr_1.4fr_auto] gap-2 items-end">
@@ -166,42 +147,7 @@ export default async function CheckpointDataPage({ params }: { params: Promise<{
           {decisions.length === 0 ? (
             <EmptyState title="No decisions logged." description="Add what's still open, who owns it, and by when." />
           ) : (
-            decisions.map((d) => (
-              <div key={d.id} className="flex items-start justify-between gap-3 px-3 py-2.5 border border-line-soft rounded-[9px]">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[12px] font-semibold text-ink">{d.title}</span>
-                    <Pill tone={d.status === "closed" ? "done" : "idle"}>{d.status.toUpperCase()}</Pill>
-                  </div>
-                  {d.detail ? <span className="block text-[11px] text-muted mt-0.5">{d.detail}</span> : null}
-                  <span className="block font-mono text-[9.5px] text-muted-2 mt-1">
-                    {d.owner ? d.owner.toUpperCase() : "NO OWNER"} · {d.dueLabel ?? "no date"}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 flex-none flex-wrap justify-end">
-                  <ReviewBadge reviewedAt={d.reviewedAt} reviewedByName={d.reviewedByName} />
-                  {!d.reviewedAt ? (
-                    <form action={reviewDecision.bind(null, d.id, project.id, project.ref)}>
-                      <Button variant="secondary" type="submit" className="!h-6 !px-2 !text-[10.5px]">
-                        Mark reviewed
-                      </Button>
-                    </form>
-                  ) : null}
-                  <form
-                    action={toggleDecisionStatus.bind(null, d.id, project.id, project.ref, d.status === "closed" ? "open" : "closed")}
-                  >
-                    <Button variant="secondary" type="submit" className="!h-6 !px-2 !text-[10.5px]">
-                      {d.status === "closed" ? "Reopen" : "Close"}
-                    </Button>
-                  </form>
-                  <form action={deleteDecision.bind(null, d.id, project.id, project.ref)}>
-                    <Button variant="secondary" type="submit" className="!h-6 !px-2 !text-[10.5px]">
-                      Delete
-                    </Button>
-                  </form>
-                </div>
-              </div>
-            ))
+            decisions.map((d) => <EditableDecisionRow key={d.id} decision={d} projectId={project.id} projectRef={project.ref} />)
           )}
         </div>
         <form action={addDecision} className="grid grid-cols-2 gap-2">
@@ -233,41 +179,7 @@ export default async function CheckpointDataPage({ params }: { params: Promise<{
             <EmptyState title="No commitments yet." description="Add this week's and next week's plan, and what the client committed to." />
           ) : (
             commitments.map((c) => (
-              <div
-                key={c.id}
-                className={`flex items-start justify-between gap-3 px-3 py-2.5 border rounded-[9px] ${
-                  c.accent ? "border-coral" : "border-line-soft"
-                }`}
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[12px] font-semibold text-ink">{c.periodLabel}</span>
-                    <span className="font-mono text-[9px] text-muted-2">{c.ownerLabel.toUpperCase()}</span>
-                  </div>
-                  <ul className="m-0 mt-1 pl-4 flex flex-col gap-0.5">
-                    {c.items.map((item, i) => (
-                      <li key={i} className="text-[11.5px] text-muted leading-[1.5]">
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="flex items-center gap-1.5 flex-none">
-                  <ReviewBadge reviewedAt={c.reviewedAt} reviewedByName={c.reviewedByName} />
-                  {!c.reviewedAt ? (
-                    <form action={reviewCommitment.bind(null, c.id, project.id, project.ref)}>
-                      <Button variant="secondary" type="submit" className="!h-6 !px-2 !text-[10.5px]">
-                        Mark reviewed
-                      </Button>
-                    </form>
-                  ) : null}
-                  <form action={deleteCommitment.bind(null, c.id, project.id, project.ref)}>
-                    <Button variant="secondary" type="submit" className="!h-6 !px-2 !text-[10.5px]">
-                      Delete
-                    </Button>
-                  </form>
-                </div>
-              </div>
+              <EditableCommitmentRow key={c.id} commitment={c} projectId={project.id} projectRef={project.ref} />
             ))
           )}
         </div>
@@ -307,34 +219,7 @@ export default async function CheckpointDataPage({ params }: { params: Promise<{
           {measures.length === 0 ? (
             <EmptyState title="No measures yet." description="Add what changes, comparing today against after this phase." />
           ) : (
-            measures.map((m) => (
-              <div key={m.id} className="flex items-start justify-between gap-3 px-3 py-2.5 border border-line-soft rounded-[9px]">
-                <div className="min-w-0 flex-1">
-                  <span className="block text-[12px] font-semibold text-ink">{m.measureName}</span>
-                  <span className="block text-[11px] text-muted mt-0.5">
-                    Today: {m.todayValue} → After: {m.afterValue}
-                  </span>
-                  {m.baselinedWhen ? (
-                    <span className="block font-mono text-[9.5px] text-muted-2 mt-1">BASELINED {m.baselinedWhen.toUpperCase()}</span>
-                  ) : null}
-                </div>
-                <div className="flex items-center gap-1.5 flex-none">
-                  <ReviewBadge reviewedAt={m.reviewedAt} reviewedByName={m.reviewedByName} />
-                  {!m.reviewedAt ? (
-                    <form action={reviewBaselineMeasure.bind(null, m.id, project.id, project.ref)}>
-                      <Button variant="secondary" type="submit" className="!h-6 !px-2 !text-[10.5px]">
-                        Mark reviewed
-                      </Button>
-                    </form>
-                  ) : null}
-                  <form action={deleteBaselineMeasure.bind(null, m.id, project.id, project.ref)}>
-                    <Button variant="secondary" type="submit" className="!h-6 !px-2 !text-[10.5px]">
-                      Delete
-                    </Button>
-                  </form>
-                </div>
-              </div>
-            ))
+            measures.map((m) => <EditableMeasureRow key={m.id} measure={m} projectId={project.id} projectRef={project.ref} />)
           )}
         </div>
         <form action={addBaselineMeasure} className="grid grid-cols-[1.3fr_1fr_1fr_1fr_auto] gap-2 items-end">

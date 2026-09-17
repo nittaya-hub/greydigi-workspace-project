@@ -823,6 +823,22 @@ export interface Database {
           created_at?: Timestamptz;
         }
       >;
+      checkpoint_source_files: CrudTable<
+        {
+          id: string;
+          project_id: string;
+          file_asset_id: string;
+          uploaded_by: string | null;
+          created_at: Timestamptz;
+        },
+        {
+          id?: string;
+          project_id: string;
+          file_asset_id: string;
+          uploaded_by?: string | null;
+          created_at?: Timestamptz;
+        }
+      >;
       documents: CrudTable<
         {
           id: string;

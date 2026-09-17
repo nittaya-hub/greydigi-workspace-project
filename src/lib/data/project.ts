@@ -693,6 +693,53 @@ export async function getProjectBaselineMeasures(projectId: string): Promise<Bas
   }));
 }
 
+export interface CheckpointSourceFileRow {
+  id: string;
+  fileAssetId: string;
+  storagePath: string;
+  originalName: string;
+  uploadedByName: string | null;
+  createdAt: string;
+}
+
+/** Source decks (PDF/PNG) a person has uploaded against this mission's
+ * Checkpoint data tab -- kept alongside the numbers they were read from.
+ * Reads the real file via delivery-documents (0034's bucket) using
+ * file_assets.storage_path, same as Missions' Documents tab. */
+export async function getCheckpointSourceFiles(projectId: string): Promise<CheckpointSourceFileRow[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("checkpoint_source_files")
+    .select("id, file_asset_id, uploaded_by, created_at")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: false });
+  const rows = data ?? [];
+  if (rows.length === 0) return [];
+
+  const fileAssetIds = [...new Set(rows.map((r) => r.file_asset_id))];
+  const uploaderIds = [...new Set(rows.map((r) => r.uploaded_by).filter((x): x is string => !!x))];
+  const [{ data: assets }, { data: uploaders }] = await Promise.all([
+    supabase.from("file_assets").select("id, storage_path, original_name").in("id", fileAssetIds),
+    uploaderIds.length
+      ? supabase.from("people").select("id, full_name").in("id", uploaderIds)
+      : Promise.resolve({ data: [] as { id: string; full_name: string }[] }),
+  ]);
+  const assetById = new Map((assets ?? []).map((a) => [a.id, a] as const));
+  const nameById = new Map((uploaders ?? []).map((p) => [p.id, p.full_name] as const));
+
+  return rows.map((r) => {
+    const asset = assetById.get(r.file_asset_id);
+    return {
+      id: r.id,
+      fileAssetId: r.file_asset_id,
+      storagePath: asset?.storage_path ?? "",
+      originalName: asset?.original_name ?? "Untitled file",
+      uploadedByName: r.uploaded_by ? nameById.get(r.uploaded_by) ?? null : null,
+      createdAt: r.created_at,
+    };
+  });
+}
+
 export interface ClientUpdateRow {
   id: string;
   title: string;
