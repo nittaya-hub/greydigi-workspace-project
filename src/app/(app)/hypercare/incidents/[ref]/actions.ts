@@ -47,6 +47,21 @@ export async function pauseClock(incidentId: string, incidentRef: string, formDa
   revalidatePath("/hypercare");
 }
 
+/** Any signed-in person can (re)assign — same reasoning as the task
+ * drawer's own assignee field in Missions: picking who owns this isn't
+ * a lead-only decision, only resolving is. */
+export async function assignIncident(incidentId: string, incidentRef: string, personId: string | null) {
+  const supabase = await createClient();
+  await getIncidentContext(supabase, incidentId);
+
+  const { error } = await supabase.from("incidents").update({ assigned_person_id: personId }).eq("id", incidentId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/hypercare/incidents/${incidentRef.toLowerCase()}`);
+  revalidatePath("/hypercare/incidents");
+  revalidatePath("/queue");
+}
+
 /** Restricted to the Hypercare lead or a workspace admin — resolving
  * closes the SLA clock for good, so it isn't left to whoever happens to
  * be looking at the incident. */

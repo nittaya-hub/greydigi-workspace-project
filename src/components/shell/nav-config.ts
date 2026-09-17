@@ -11,7 +11,10 @@ export interface NavItem {
  * name prefixed at render time (Sidebar.tsx) to match the client-scoped
  * "{Client} Overview" item it swaps with. Clients management lives behind
  * the workspace switcher dropdown now, not as a standalone nav item. */
-export const WORKSPACE_NAV: NavItem[] = [{ label: "Overview", href: "/" }];
+export const WORKSPACE_NAV: NavItem[] = [
+  { label: "Overview", href: "/" },
+  { label: "My queue", href: "/queue" },
+];
 
 /** Shown as the expandable "Settings" section in master-admin mode — see
  * SettingsSection in Sidebar.tsx. Grouped into two labeled sections so a

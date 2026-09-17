@@ -120,13 +120,14 @@ export interface ServiceChangeRow {
   billable: boolean;
   status: "open" | "done";
   createdAt: string;
+  assignedPersonId: string | null;
 }
 
 export async function listServiceChanges(serviceId: string): Promise<ServiceChangeRow[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("service_changes")
-    .select("id, title, description, effort_band, billable, status, created_at")
+    .select("id, title, description, effort_band, billable, status, created_at, assigned_person_id")
     .eq("service_id", serviceId)
     .order("created_at", { ascending: false });
   return (data ?? []).map((c) => ({
@@ -137,6 +138,7 @@ export async function listServiceChanges(serviceId: string): Promise<ServiceChan
     billable: c.billable,
     status: c.status,
     createdAt: c.created_at,
+    assignedPersonId: c.assigned_person_id,
   }));
 }
 

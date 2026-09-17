@@ -1292,6 +1292,7 @@ export interface Database {
           resolved_at: Timestamptz | null;
           root_cause: string | null;
           created_by: string | null;
+          assigned_person_id: string | null;
         },
         {
           id?: string;
@@ -1305,6 +1306,7 @@ export interface Database {
           resolved_at?: Timestamptz | null;
           root_cause?: string | null;
           created_by?: string | null;
+          assigned_person_id?: string | null;
         },
         Partial<{
           id: string;
@@ -1318,6 +1320,7 @@ export interface Database {
           resolved_at: Timestamptz | null;
           root_cause: string | null;
           created_by: string | null;
+          assigned_person_id: string | null;
         }>,
         [
           {
@@ -1338,6 +1341,7 @@ export interface Database {
           status: SupportRequestStatus;
           opened_at: Timestamptz;
           closed_at: Timestamptz | null;
+          assigned_person_id: string | null;
         },
         {
           id?: string;
@@ -1347,6 +1351,7 @@ export interface Database {
           status?: SupportRequestStatus;
           opened_at?: Timestamptz;
           closed_at?: Timestamptz | null;
+          assigned_person_id?: string | null;
         }
       >;
       incident_pauses: CrudTable<
@@ -1493,6 +1498,7 @@ export interface Database {
           created_by_person_id: string | null;
           created_at: Timestamptz;
           completed_at: Timestamptz | null;
+          assigned_person_id: string | null;
         },
         {
           id?: string;
@@ -1508,6 +1514,7 @@ export interface Database {
           created_by_person_id?: string | null;
           created_at?: Timestamptz;
           completed_at?: Timestamptz | null;
+          assigned_person_id?: string | null;
         }
       >;
       improvement_items: CrudTable<

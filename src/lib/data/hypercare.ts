@@ -270,13 +270,14 @@ export interface IncidentDetail {
   breachAt: string | null;
   resolvedAt: string | null;
   rootCause: string | null;
+  assignedPersonId: string | null;
 }
 
 export async function getIncidentByRef(ref: string): Promise<IncidentDetail | null> {
   const supabase = await createClient();
   const { data: incident } = await supabase
     .from("incidents")
-    .select("id, ref, title, severity, status, service_id, opened_at, breach_at, resolved_at, root_cause")
+    .select("id, ref, title, severity, status, service_id, opened_at, breach_at, resolved_at, root_cause, assigned_person_id")
     .ilike("ref", ref)
     .maybeSingle();
   if (!incident) return null;
@@ -297,6 +298,7 @@ export async function getIncidentByRef(ref: string): Promise<IncidentDetail | nu
     breachAt: incident.breach_at,
     resolvedAt: incident.resolved_at,
     rootCause: incident.root_cause,
+    assignedPersonId: incident.assigned_person_id,
   };
 }
 
@@ -307,6 +309,7 @@ export interface RequestRow {
   status: string;
   serviceName: string;
   openedAt: string;
+  assignedPersonId: string | null;
 }
 
 export async function listRequests(workspaceId: string, clientId?: string | null): Promise<RequestRow[]> {
@@ -320,7 +323,7 @@ export async function listRequests(workspaceId: string, clientId?: string | null
 
   const { data: requests } = await supabase
     .from("support_requests")
-    .select("id, ref, title, status, service_id, opened_at")
+    .select("id, ref, title, status, service_id, opened_at, assigned_person_id")
     .in("service_id", serviceIds)
     .order("opened_at", { ascending: true });
 
@@ -331,6 +334,7 @@ export async function listRequests(workspaceId: string, clientId?: string | null
     status: r.status,
     serviceName: serviceNameById.get(r.service_id) ?? "—",
     openedAt: r.opened_at,
+    assignedPersonId: r.assigned_person_id,
   }));
 }
 

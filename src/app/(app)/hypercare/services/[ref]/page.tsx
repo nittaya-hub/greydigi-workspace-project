@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { Card, StatTile } from "@/components/ui/Card";
 import { getServiceByRef } from "@/lib/data/hypercare";
 import { getServiceAgreement, getCurrentEntitlementPeriod, getRunBook, listServiceChanges, listImprovementItems } from "@/lib/data/hypercare-blueprint";
+import { getCurrentPerson } from "@/lib/data/auth-guard";
+import { createClient } from "@/lib/supabase/server";
 import { LogIncidentButton } from "../../incidents/LogIncidentButton";
 import { AgreementCard } from "./AgreementCard";
 import { EntitlementCard } from "./EntitlementCard";
@@ -30,6 +32,13 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
     listServiceChanges(service.id),
     listImprovementItems(service.id),
   ]);
+
+  const viewer = await getCurrentPerson();
+  const supabase = await createClient();
+  const { data: people } = viewer
+    ? await supabase.from("people").select("id, full_name").eq("workspace_id", viewer.workspace_id).eq("kind", "internal")
+    : { data: [] };
+  const peopleOptions = (people ?? []).map((p) => ({ id: p.id, fullName: p.full_name }));
 
   return (
     <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-5 max-w-[900px] mx-auto">
@@ -100,7 +109,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
       <AgreementCard serviceId={service.id} serviceRef={service.ref} agreement={agreement} />
       <EntitlementCard serviceId={service.id} serviceRef={service.ref} period={entitlementPeriod} />
       <RunBookCard serviceId={service.id} serviceRef={service.ref} runBook={runBook} />
-      <ServiceChangesCard serviceId={service.id} serviceRef={service.ref} changes={serviceChanges} />
+      <ServiceChangesCard serviceId={service.id} serviceRef={service.ref} changes={serviceChanges} people={peopleOptions} />
       <ImprovementItemsCard serviceId={service.id} serviceRef={service.ref} items={improvementItems} />
     </div>
   );

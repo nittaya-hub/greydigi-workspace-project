@@ -1,12 +1,16 @@
 import { PageHeading, Card, EmptyState } from "@/components/ui/Card";
 import { Pill } from "@/components/ui/Pill";
 import { TableHead, TableRow, CellStack } from "@/components/ui/Table";
+import { AssigneeSelect } from "@/components/ui/AssigneeSelect";
 import { getCurrentWorkspaceId } from "@/lib/data/workspace";
+import { getCurrentPerson } from "@/lib/data/auth-guard";
 import { getSelectedClientId } from "@/lib/data/client-scope";
 import { listRequests, listServices } from "@/lib/data/hypercare";
+import { createClient } from "@/lib/supabase/server";
 import { NewRequestButton } from "./NewRequestButton";
+import { assignRequest } from "./actions";
 
-const COLS = "60px 1fr 56px 112px";
+const COLS = "60px 1fr 56px 112px 170px";
 const STATUS_TONE: Record<string, "watch" | "in_progress" | "idle" | "waiting_on_client"> = {
   open: "idle",
   in_progress: "in_progress",
@@ -20,9 +24,16 @@ function ageDays(iso: string) {
 export default async function RequestsPage() {
   const workspaceId = await getCurrentWorkspaceId();
   const clientId = await getSelectedClientId();
+  const person = await getCurrentPerson();
   const requests = workspaceId ? await listRequests(workspaceId, clientId) : [];
   const services = workspaceId ? await listServices(workspaceId, clientId) : [];
   const open = requests.filter((r) => r.status !== "done");
+
+  const supabase = await createClient();
+  const { data: people } = person
+    ? await supabase.from("people").select("id, full_name").eq("workspace_id", person.workspace_id).eq("kind", "internal")
+    : { data: [] };
+  const peopleOptions = (people ?? []).map((p) => ({ id: p.id, fullName: p.full_name }));
 
   return (
     <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[1400px] mx-auto">
@@ -41,6 +52,7 @@ export default async function RequestsPage() {
               <span>REQUEST AND SERVICE</span>
               <span>AGE</span>
               <span>STATUS</span>
+              <span>ASSIGNEE</span>
             </TableHead>
             {open.map((r, i) => {
               const days = ageDays(r.openedAt);
@@ -52,6 +64,12 @@ export default async function RequestsPage() {
                   <Pill tone={STATUS_TONE[r.status] ?? "idle"} className="justify-self-start">
                     {r.status.replace(/_/g, " ").toUpperCase()}
                   </Pill>
+                  <AssigneeSelect
+                    value={r.assignedPersonId}
+                    people={peopleOptions}
+                    onAssign={(personId) => assignRequest(r.id, personId)}
+                    className="border border-line bg-white rounded-[8px] px-[8px] py-[5px] text-[11px] w-full"
+                  />
                 </TableRow>
               );
             })}

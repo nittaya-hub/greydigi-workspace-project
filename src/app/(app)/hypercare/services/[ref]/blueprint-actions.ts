@@ -160,6 +160,14 @@ export async function completeServiceChange(id: string, serviceRef: string) {
   revalidateService(serviceRef);
 }
 
+export async function assignServiceChange(id: string, serviceRef: string, personId: string | null) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("service_changes").update({ assigned_person_id: personId }).eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidateService(serviceRef);
+  revalidatePath("/queue");
+}
+
 /** Feeds Manifest and the Hangar roadmap directly — see
  * listOpenImprovementItemsForWorkspace (lib/data/hypercare-blueprint.ts),
  * read live rather than copied. */

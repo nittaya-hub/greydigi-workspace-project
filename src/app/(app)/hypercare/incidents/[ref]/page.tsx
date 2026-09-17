@@ -1,10 +1,13 @@
 import { notFound } from "next/navigation";
 import { Card, CardHeader, HeroPanel, Eyebrow } from "@/components/ui/Card";
 import { Pill } from "@/components/ui/Pill";
+import { AssigneeSelect } from "@/components/ui/AssigneeSelect";
 import { getIncidentByRef, formatDuration, minutesUntil } from "@/lib/data/hypercare";
 import { getCurrentPerson } from "@/lib/data/auth-guard";
+import { createClient } from "@/lib/supabase/server";
 import { PauseClockButton } from "./PauseClockButton";
 import { ResolveButton } from "./ResolveButton";
+import { assignIncident } from "./actions";
 
 const SEV_TONE: Record<string, "blocked" | "in_progress" | "idle"> = { sev1: "blocked", sev2: "in_progress", sev3: "idle" };
 
@@ -18,6 +21,11 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
   // Matches requireHypercareLead in auth-guard.ts.
   const canResolve = viewer?.workspace_role === "workspace_admin" || viewer?.workspace_role === "hypercare_lead";
 
+  const supabase = await createClient();
+  const { data: people } = viewer
+    ? await supabase.from("people").select("id, full_name").eq("workspace_id", viewer.workspace_id).eq("kind", "internal")
+    : { data: [] };
+
   return (
     <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-5 max-w-[820px] mx-auto">
       <div className="flex flex-col gap-1.5">
@@ -28,9 +36,17 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
         <h1 className="m-0 font-display font-extrabold text-[20px] text-ink">{incident.title}</h1>
       </div>
 
-      <div className="flex gap-1.5 flex-wrap">
+      <div className="flex items-center gap-1.5 flex-wrap">
         <Pill tone={SEV_TONE[incident.severity] ?? "idle"}>{incident.severity.toUpperCase()}</Pill>
         <Pill tone={incident.status === "resolved" ? "done" : "idle"}>{incident.status.replace(/_/g, " ").toUpperCase()}</Pill>
+        <span className="flex-1" />
+        <span className="font-mono text-[9px] tracking-[.07em] text-muted">ASSIGNEE</span>
+        <AssigneeSelect
+          value={incident.assignedPersonId}
+          people={(people ?? []).map((p) => ({ id: p.id, fullName: p.full_name }))}
+          onAssign={(personId) => assignIncident(incident.id, incident.ref, personId)}
+          className="border border-line bg-white rounded-[9px] px-[9px] py-[6px] text-[11.5px] w-[180px]"
+        />
       </div>
 
       {incident.status !== "resolved" && incident.breachAt ? (

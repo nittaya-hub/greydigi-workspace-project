@@ -55,3 +55,12 @@ export async function createRequest(formData: FormData) {
   revalidatePath("/hypercare");
   revalidatePath("/");
 }
+
+export async function assignRequest(requestId: string, personId: string | null) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("support_requests").update({ assigned_person_id: personId }).eq("id", requestId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/hypercare/requests");
+  revalidatePath("/queue");
+}

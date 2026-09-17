@@ -5,10 +5,21 @@ import { Card, CardHeader, EmptyState } from "@/components/ui/Card";
 import { Pill } from "@/components/ui/Pill";
 import { Button } from "@/components/ui/Button";
 import { Field, fieldInputClass } from "@/components/ui/Modal";
-import { createServiceChange, completeServiceChange } from "./blueprint-actions";
+import { AssigneeSelect } from "@/components/ui/AssigneeSelect";
+import { createServiceChange, completeServiceChange, assignServiceChange } from "./blueprint-actions";
 import type { ServiceChangeRow } from "@/lib/data/hypercare-blueprint";
 
-export function ServiceChangesCard({ serviceId, serviceRef, changes }: { serviceId: string; serviceRef: string; changes: ServiceChangeRow[] }) {
+export function ServiceChangesCard({
+  serviceId,
+  serviceRef,
+  changes,
+  people,
+}: {
+  serviceId: string;
+  serviceRef: string;
+  changes: ServiceChangeRow[];
+  people: { id: string; fullName: string }[];
+}) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -29,6 +40,14 @@ export function ServiceChangesCard({ serviceId, serviceRef, changes }: { service
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 flex-none">
+                  {c.status === "open" ? (
+                    <AssigneeSelect
+                      value={c.assignedPersonId}
+                      people={people}
+                      onAssign={(personId) => assignServiceChange(c.id, serviceRef, personId)}
+                      className="border border-line bg-white rounded-[7px] px-[7px] py-[4px] text-[10.5px] w-[130px]"
+                    />
+                  ) : null}
                   <Pill tone={c.status === "done" ? "done" : "in_progress"}>{c.status.toUpperCase()}</Pill>
                   {c.status === "open" ? (
                     <Button variant="secondary" disabled={isPending} onClick={() => startTransition(() => completeServiceChange(c.id, serviceRef))}>
