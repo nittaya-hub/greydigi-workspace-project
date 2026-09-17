@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentPerson } from "@/lib/data/auth-guard";
-import type { AgentConnectorType } from "@/lib/data/agents";
+import { getAgentDeployment, listAgentConnections, type AgentConnectorType } from "@/lib/data/agents";
+import { callAgentConnector } from "@/lib/agents/connector";
 
 /** Step 1 of the connect wizard: register (or reuse) the reusable agent
  * definition. This is the "1 definition" half of "1 definition, many
@@ -144,35 +145,101 @@ export async function saveDeploymentDraft(input: DeploymentDraftInput) {
   return { id: data.id as string };
 }
 
-/** The one action every "Run test" / "Activate" button in the wizard
- * ultimately calls. Always refuses today — there is no supported
- * connector adapter yet, no chosen real agent, and no confirmed payer
- * for provider usage (the two open questions from the blueprint's
- * section 20.2/20.3). This function is the single place that gate lives,
- * so turning it on later is a one-line change instead of hunting for
- * every button that needed to respect it. Per section 5.4: say
- * "integration required," don't pretend.
- *
- * Returns a result instead of throwing -- a thrown Server Action error
- * that reaches the client through Next's Server Components render path
- * gets its message redacted in a production build (generic "Server
- * Components render" text plus a digest, no way for the button to show
- * the real explanation). A returned value is never subject to that. */
-export async function activateDeployment(_deploymentId: string): Promise<{ ok: false; message: string }> {
-  return {
-    ok: false,
-    message:
-      "Integration required: no supported connector adapter is wired up yet, and no agent/provider has been chosen. This deployment can be saved as a draft, but not tested or activated.",
-  };
+type ActionResult = { ok: true; message: string } | { ok: false; message: string };
+
+/** Shared setup for both runTaskTest and activateDeployment: resolve the
+ * deployment and its connection, and fail with a clear message before
+ * ever attempting a real call. Returns a result rather than throwing --
+ * a thrown Server Action error that reaches the client through Next's
+ * Server Components render path gets its message redacted in a
+ * production build (generic "Server Components render" text plus a
+ * digest, no way for the button to show the real explanation). */
+async function resolveDeploymentAndConnection(deploymentId: string) {
+  const person = await getCurrentPerson();
+  if (!person) return { ok: false as const, message: "Not signed in." };
+
+  const deployment = await getAgentDeployment(person.workspace_id, deploymentId);
+  if (!deployment) return { ok: false as const, message: "Deployment not found." };
+  if (!deployment.connectionId) return { ok: false as const, message: "Choose a connection (step 2) before running a test." };
+
+  const connections = await listAgentConnections(person.workspace_id);
+  const connection = connections.find((c) => c.id === deployment.connectionId);
+  if (!connection) return { ok: false as const, message: "Connection not found." };
+
+  return { ok: true as const, person, deployment, connection };
 }
 
-/** Same gate as activateDeployment, for the wizard's "Run test" step —
- * kept as a separate function (not just a shared button) so a real
- * adapter can implement task-testing and activation on different
- * timelines later without one unblocking the other by accident. */
-export async function runTaskTest(_deploymentId: string): Promise<{ ok: false; message: string }> {
-  return {
-    ok: false,
-    message: "Integration required: there is no supported connector adapter to run a task against yet. Choose a real agent and connector before a task test is possible.",
-  };
+/** The one action every "Run test" / "Activate" button in the wizard
+ * ultimately calls. Makes a real HTTPS call to the deployment's own
+ * connection (see src/lib/agents/connector.ts) -- an n8n webhook and a
+ * plain external API are both just an HTTP endpoint, so there's one
+ * call path for either. Marks the connection verified and the
+ * deployment "active" only once that call actually succeeds. */
+export async function activateDeployment(deploymentId: string): Promise<ActionResult> {
+  const resolved = await resolveDeploymentAndConnection(deploymentId);
+  if (!resolved.ok) return resolved;
+  const { person, deployment, connection } = resolved;
+
+  const result = await callAgentConnector(connection, {
+    event: "activate",
+    deployment: {
+      id: deployment.id,
+      scopeDescription: deployment.scopeDescription,
+      canRead: deployment.canRead,
+      canCreateDrafts: deployment.canCreateDrafts,
+      canChangeRecords: deployment.canChangeRecords,
+      canPublish: deployment.canPublish,
+      scheduleDescription: deployment.scheduleDescription,
+    },
+    agent: { name: deployment.agentDefinitionName },
+  });
+  if (!result.ok) return result;
+
+  const supabase = await createClient();
+  await supabase.from("agent_connections").update({ status: "verified" }).eq("id", connection.id).eq("workspace_id", person.workspace_id);
+  const { error } = await supabase
+    .from("agent_deployments")
+    .update({ status: "active", updated_at: new Date().toISOString() })
+    .eq("id", deployment.id)
+    .eq("workspace_id", person.workspace_id);
+  if (error) return { ok: false, message: error.message };
+
+  revalidatePath("/manifest/agents");
+  return { ok: true, message: `Connector call succeeded (${result.statusSummary}). Deployment is now active.` };
+}
+
+/** Same connector call as activateDeployment, for the wizard's "Run
+ * test" step — kept separate so a test can be re-run at any time
+ * without touching the deployment's own active/paused state, and only
+ * moves it to "ready" (not "active") on success. */
+export async function runTaskTest(deploymentId: string): Promise<ActionResult> {
+  const resolved = await resolveDeploymentAndConnection(deploymentId);
+  if (!resolved.ok) return resolved;
+  const { person, deployment, connection } = resolved;
+
+  const result = await callAgentConnector(connection, {
+    event: "task_test",
+    deployment: {
+      id: deployment.id,
+      scopeDescription: deployment.scopeDescription,
+      canRead: deployment.canRead,
+      canCreateDrafts: deployment.canCreateDrafts,
+      canChangeRecords: deployment.canChangeRecords,
+    },
+    agent: { name: deployment.agentDefinitionName },
+  });
+  if (!result.ok) return result;
+
+  const supabase = await createClient();
+  await supabase.from("agent_connections").update({ status: "verified" }).eq("id", connection.id).eq("workspace_id", person.workspace_id);
+  if (deployment.status === "draft") {
+    await supabase
+      .from("agent_deployments")
+      .update({ status: "ready", updated_at: new Date().toISOString() })
+      .eq("id", deployment.id)
+      .eq("workspace_id", person.workspace_id);
+  }
+
+  revalidatePath("/manifest/agents");
+  return { ok: true, message: `Test call succeeded (${result.statusSummary}). Deployment marked "ready" -- Activate to turn it on.` };
 }

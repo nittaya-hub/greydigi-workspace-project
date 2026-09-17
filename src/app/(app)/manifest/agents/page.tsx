@@ -34,11 +34,14 @@ export default async function AgentsRegistryPage() {
 
       <Card className="border-coral/40 bg-coral/[0.04]">
         <div className="px-4 py-3.5 flex flex-col gap-1">
-          <p className="text-[11.5px] font-semibold text-ink">Integration required — by design, for now</p>
+          <p className="text-[11.5px] font-semibold text-ink">Real calls, once a connection actually points somewhere</p>
           <p className="text-[11.5px] text-muted leading-[1.55]">
-            You can register an agent, set up a connection record, scope a deployment to a mission, and save it all as a draft. Running a real
-            task test or activating a deployment is intentionally disabled everywhere in this cockpit until a real agent/provider is chosen and
-            someone is named to pay for its usage — so nothing here can incur a real cost.
+            &ldquo;Run test&rdquo; and &ldquo;Activate&rdquo; make a real HTTPS call to whatever endpoint a connection&rsquo;s own
+            record points at (an n8n webhook or a plain external API — either way, one HTTP POST). Until a connection has a real endpoint URL,
+            and — if it needs auth — a matching environment variable set on this deployment for its secret name, both
+            buttons will say so instead of pretending to succeed. Once wired up, every call is real: it reaches that
+            external system and can incur whatever cost it charges, so only point a connection at something someone has
+            actually agreed to pay for.
           </p>
         </div>
       </Card>

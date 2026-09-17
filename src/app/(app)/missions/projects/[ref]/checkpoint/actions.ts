@@ -9,6 +9,7 @@ import {
   getProjectWeeklyCommitments,
   getProjectBaselineMeasures,
 } from "@/lib/data/project";
+import { extractCheckpointDataFromFile } from "@/lib/ai/checkpoint-extraction";
 import type { Json } from "@/lib/supabase/database.types";
 
 /** The deck's own five (page 4 legend) — done/in progress/next/planned/
@@ -378,28 +379,112 @@ export async function deleteCheckpointSourceFile(id: string, projectId: string, 
   revalidatePath(`${basePath(projectRef)}/checkpoint`);
 }
 
-/** The gate every "Run auto-map" button calls. Always throws today --
- * reading a PDF/PNG and mapping it into stats/decisions/commitments/
- * measures needs a real AI provider call (this workspace has no AI API
- * key configured anywhere, checked before writing this), with a real
- * per-document cost. Say "Integration required," per the same pattern
- * already used for the agent registry (0066), rather than pretending
- * this can run. */
-/** Returns a result instead of throwing -- a thrown Server Action error
+/** The gate every "Run auto-map" button calls. Reads the source file
+ * with Claude (see src/lib/ai/checkpoint-extraction.ts) and inserts
+ * whatever it found as new, unreviewed rows -- additive only, never
+ * touches or replaces an existing row, and every inserted row still
+ * needs a human to open it, check it against the source, and mark it
+ * reviewed before it can reach a client (same rule as a row typed in
+ * by hand). Falls back to the same "Integration required" explanation
+ * the button always showed when no ANTHROPIC_API_KEY is configured.
+ *
+ * Returns a result instead of throwing -- a thrown Server Action error
  * that reaches the client through Next's Server Components render path
  * gets its message redacted in a production build (generic "Server
  * Components render" text plus a digest, no way for the button to show
  * the real explanation). A returned value is never subject to that. */
-export async function runCheckpointAutoMap(_sourceFileId: string, projectId: string): Promise<{ ok: false; message: string }> {
+export async function runCheckpointAutoMap(
+  sourceFileId: string,
+  projectId: string,
+  projectRef: string
+): Promise<{ ok: true; message: string } | { ok: false; message: string }> {
   try {
     await requireMissionsLead(projectId);
   } catch (err) {
     return { ok: false, message: err instanceof Error ? err.message : "Not authorized." };
   }
+
+  const supabase = await createClient();
+
+  const { data: sourceFile } = await supabase
+    .from("checkpoint_source_files")
+    .select("file_asset_id")
+    .eq("id", sourceFileId)
+    .eq("project_id", projectId)
+    .maybeSingle();
+  if (!sourceFile) return { ok: false, message: "Source file not found." };
+
+  const { data: asset } = await supabase
+    .from("file_assets")
+    .select("storage_path, mime_type")
+    .eq("id", sourceFile.file_asset_id)
+    .maybeSingle();
+  if (!asset) return { ok: false, message: "Source file not found." };
+
+  const { data: blob, error: downloadError } = await supabase.storage.from("delivery-documents").download(asset.storage_path);
+  if (downloadError || !blob) return { ok: false, message: `Couldn't read the source file: ${downloadError?.message ?? "unknown error"}.` };
+
+  let extraction;
+  try {
+    const base64 = Buffer.from(await blob.arrayBuffer()).toString("base64");
+    extraction = await extractCheckpointDataFromFile({ base64, mimeType: asset.mime_type ?? "application/pdf" });
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : "Couldn't read this file with the AI provider." };
+  }
+
+  const [statsResult, decisionsResult, commitmentsResult, measuresResult] = await Promise.all([
+    extraction.stats.length
+      ? supabase
+          .from("project_progress_stats")
+          .insert(extraction.stats.map((s) => ({ project_id: projectId, label: s.label, value: s.value, note: s.note })))
+      : Promise.resolve({ error: null }),
+    extraction.decisions.length
+      ? supabase.from("project_decisions").insert(
+          extraction.decisions.map((d) => ({
+            project_id: projectId,
+            title: d.title,
+            detail: d.detail,
+            owner: d.owner,
+            due_label: d.dueLabel,
+          }))
+        )
+      : Promise.resolve({ error: null }),
+    extraction.commitments.length
+      ? supabase.from("project_weekly_commitments").insert(
+          extraction.commitments.map((c) => ({
+            project_id: projectId,
+            period_label: c.periodLabel,
+            owner_label: c.ownerLabel,
+            items: c.items,
+            accent: c.accent,
+          }))
+        )
+      : Promise.resolve({ error: null }),
+    extraction.measures.length
+      ? supabase.from("project_baseline_measures").insert(
+          extraction.measures.map((m) => ({
+            project_id: projectId,
+            measure_name: m.measureName,
+            today_value: m.todayValue,
+            after_value: m.afterValue,
+            baselined_when: m.baselinedWhen,
+          }))
+        )
+      : Promise.resolve({ error: null }),
+  ]);
+  const dbError = statsResult.error ?? decisionsResult.error ?? commitmentsResult.error ?? measuresResult.error;
+  if (dbError) return { ok: false, message: `Read the file, but couldn't save the result: ${dbError.message}` };
+
+  revalidatePath(`${basePath(projectRef)}/checkpoint`);
+  revalidatePath(`${basePath(projectRef)}/client-view-config`);
+
+  const totalRows = extraction.stats.length + extraction.decisions.length + extraction.commitments.length + extraction.measures.length;
+  if (totalRows === 0) {
+    return { ok: true, message: "Read the file, but didn't find anything new to add. Check the file and enter the numbers by hand." };
+  }
   return {
-    ok: false,
-    message:
-      "Integration required: reading this file and mapping it into the sections above needs a real AI provider (e.g. an Anthropic API key), which isn't configured yet. The file is saved — add the key, then this can run for real.",
+    ok: true,
+    message: `Added ${extraction.stats.length} stat(s), ${extraction.decisions.length} decision(s), ${extraction.commitments.length} commitment card(s), ${extraction.measures.length} measure(s) -- unreviewed. Check each against the file, then mark it reviewed.`,
   };
 }
 

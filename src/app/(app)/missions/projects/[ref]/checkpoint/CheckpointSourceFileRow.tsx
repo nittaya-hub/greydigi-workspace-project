@@ -18,6 +18,7 @@ export function CheckpointSourceFileRow({
   canEdit: boolean;
 }) {
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   return (
@@ -41,9 +42,11 @@ export function CheckpointSourceFileRow({
                 className="!h-6 !px-2 !text-[10.5px]"
                 onClick={() => {
                   setError(null);
+                  setNotice(null);
                   startTransition(async () => {
-                    const result = await runCheckpointAutoMap(file.id, projectId);
+                    const result = await runCheckpointAutoMap(file.id, projectId, projectRef);
                     if (!result.ok) setError(result.message);
+                    else setNotice(result.message);
                   });
                 }}
               >
@@ -59,6 +62,7 @@ export function CheckpointSourceFileRow({
         </div>
       </div>
       {error ? <span className="text-[10.5px] text-block-fg leading-[1.4]">{error}</span> : null}
+      {notice ? <span className="text-[10.5px] text-ok-fg leading-[1.4]">{notice}</span> : null}
     </div>
   );
 }

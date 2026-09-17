@@ -11,6 +11,7 @@
     "supabase:gen-types": "supabase gen types typescript --project-id \"$SUPABASE_PROJECT_ID\" --schema public > src/lib/supabase/database.types.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.126.0",
     "@base-ui/react": "^1.8.0",
     "@react-pdf/renderer": "^4.9.0",
     "@sparticuz/chromium": "^152.0.0",

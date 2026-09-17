@@ -112,8 +112,10 @@ export default async function CheckpointDataPage({ params }: { params: Promise<{
           )}
         </div>
         <p className="m-0 mt-3 text-[10.5px] text-muted leading-[1.5]">
-          &ldquo;Run auto-map&rdquo; reads a file and fills in the sections below by itself — it needs a real AI provider connected first,
-          so today it explains that instead of pretending to work. Until then, read the file and type the numbers in below by hand.
+          &ldquo;Run auto-map&rdquo; reads a file with Claude and adds whatever it finds as new, unreviewed rows below —
+          it never edits or replaces an existing row, and every row it adds still needs a human to check it against the
+          file and mark it reviewed, same as one typed in by hand. Needs an AI provider key configured on this
+          deployment; until then it explains that instead of pretending to work.
         </p>
       </Card>
 

@@ -176,6 +176,7 @@ export function ConnectWizard({
       }
       const result = await runTaskTest(deploymentId);
       if (!result.ok) setError(result.message);
+      else setNotice(result.message);
     });
   }
 
@@ -189,6 +190,7 @@ export function ConnectWizard({
       }
       const result = await activateDeployment(deploymentId);
       if (!result.ok) setError(result.message);
+      else setNotice(result.message);
     });
   }
 
@@ -456,19 +458,21 @@ function StepConnect(props: {
           <Field label="AUTHENTICATION METHOD">
             <input className={fieldInputClass} value={props.authMethod} onChange={(e) => props.setAuthMethod(e.target.value)} placeholder="Bearer token" />
           </Field>
-          <Field label="SECRET — LABEL ONLY, NOT THE SECRET ITSELF">
+          <Field label="SECRET — ENVIRONMENT VARIABLE NAME, NOT THE SECRET ITSELF">
             <input
               className={fieldInputClass}
               value={props.secretRef}
               onChange={(e) => props.setSecretRef(e.target.value)}
-              placeholder="e.g. 1Password: Weekly Update Agent prod key"
+              placeholder="e.g. WEEKLY_UPDATE_AGENT_PROD_KEY"
             />
           </Field>
         </div>
       )}
       <p className="text-[11px] text-muted leading-[1.5]">
-        No real secret value is ever stored here — this field is a pointer for whoever manages the actual credential elsewhere.
-        &ldquo;Test connection&rdquo; isn&rsquo;t offered yet because no connector adapter exists to test against (see step 5).
+        No real secret value is ever stored here. Whoever manages the actual credential sets it as an environment
+        variable on this deployment (e.g. in Vercel&rsquo;s project settings), under the exact name typed above — that
+        name is what &ldquo;Run test&rdquo; and &ldquo;Activate&rdquo; (step 5) read from at call time. Blank means
+        the connector call goes out with no auth header at all.
       </p>
     </div>
   );
