@@ -118,6 +118,60 @@ function ValidView({
           of these is a short reference list, not the primary narrative
           card (Incidents above), so stretching each edge to edge on a
           1100px-wide sheet read as disproportionate. */}
+      {data.entitlement && data.entitlement.length > 0 ? (
+        <Card>
+          <div className="px-4 py-3.5 border-b border-line font-display font-extrabold text-[13.5px]">Entitlement</div>
+          <div className="px-4 py-3.5 flex flex-col gap-3.5">
+            {data.entitlement.map((e) => {
+              const pct = e.included_units > 0 ? Math.min(100, Math.round((e.consumed_units / e.included_units) * 100)) : 0;
+              const over = e.overage_units > 0;
+              return (
+                <div key={e.service_ref} className="flex flex-col gap-1.5">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-[12.5px] font-semibold text-ink">{e.service_name}</span>
+                    <span className="font-mono text-[9.5px] text-muted">
+                      {e.period_start} – {e.period_end}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-display font-extrabold text-[17px] text-ink">
+                      {e.consumed_units} / {e.included_units}
+                    </span>
+                    <span className="text-[11px] text-muted">units consumed this period</span>
+                  </div>
+                  <div className="h-1.5 rounded-[3px] bg-line overflow-hidden">
+                    <div className={`h-full ${over ? "bg-coral" : "bg-ink"}`} style={{ width: `${pct}%` }} />
+                  </div>
+                  {over ? (
+                    <span className="text-[11.5px] text-coral font-semibold">
+                      {e.overage_units} units over{" "}
+                      {e.overage_billed ? "· billed" : e.overage_absorbed ? "· absorbed" : "· not yet resolved"}
+                    </span>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      ) : null}
+
+      {data.improvement_backlog && data.improvement_backlog.length > 0 ? (
+        <Card>
+          <div className="px-4 py-3.5 border-b border-line font-display font-extrabold text-[13.5px]">Improvement backlog</div>
+          <div className="px-4 py-3.5 flex flex-col gap-2.5">
+            {data.improvement_backlog.map((item, i) => (
+              <div key={i} className="flex flex-col gap-0.5">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-[12.5px] font-semibold text-ink">{item.pattern}</span>
+                  <span className="font-mono text-[9.5px] text-muted">SEEN {item.frequency}×</span>
+                </div>
+                {item.proposed_fix ? <span className="text-[11.5px] text-muted">{item.proposed_fix}</span> : null}
+              </div>
+            ))}
+          </div>
+        </Card>
+      ) : null}
+
       {(data.services && data.services.length > 0) ||
       (data.sla_tiers && data.sla_tiers.length > 0) ||
       (data.request_backlog && data.request_backlog.length > 0) ? (

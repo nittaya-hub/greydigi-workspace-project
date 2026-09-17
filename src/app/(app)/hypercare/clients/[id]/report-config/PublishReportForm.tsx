@@ -189,6 +189,33 @@ export function PublishReportForm({ clientId }: { clientId: string }) {
                 <span className="text-[11.5px] text-muted">No incidents opened in this period.</span>
               )}
 
+              {preview.entitlement && preview.entitlement.length > 0 ? (
+                <div className="flex flex-col gap-1.5">
+                  <span className="font-mono text-[9px] tracking-[.07em] text-muted">ENTITLEMENT</span>
+                  {preview.entitlement.map((e) => (
+                    <div key={e.service_ref} className="flex justify-between text-[12px] gap-2">
+                      <span className="text-ink truncate">{e.service_name}</span>
+                      <span className="font-mono text-[10.5px] text-muted">
+                        {e.consumed_units}/{e.included_units}
+                        {e.overage_units > 0 ? ` (+${e.overage_units})` : ""}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              {preview.improvement_backlog && preview.improvement_backlog.length > 0 ? (
+                <div className="flex flex-col gap-1.5">
+                  <span className="font-mono text-[9px] tracking-[.07em] text-muted">IMPROVEMENT BACKLOG</span>
+                  {preview.improvement_backlog.map((item, i) => (
+                    <div key={i} className="flex justify-between text-[12px] gap-2">
+                      <span className="text-ink truncate">{item.pattern}</span>
+                      <span className="font-mono text-[10.5px] text-muted">SEEN {item.frequency}×</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
               <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-line-soft">
                 <span className="font-mono text-[9px] tracking-[.07em] text-muted mr-1">SUBMISSION CARDS</span>
                 {preview.submissions.issue ? <Pill tone="idle">REPORT AN ISSUE</Pill> : null}

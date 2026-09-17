@@ -20,6 +20,8 @@ const FIELD_LABELS: Record<string, { label: string; note: string }> = {
   incidents_summary: { label: "Incidents", note: "Every incident opened within the report period" },
   sla_status: { label: "SLA targets", note: "Response target and update cadence per severity" },
   request_backlog: { label: "Request backlog", note: "Open support requests" },
+  entitlement_summary: { label: "Entitlement", note: "Included, consumed and overage units for the period covered" },
+  improvement_backlog: { label: "Improvement backlog", note: "Open recurring patterns worth fixing" },
   submissions_issue: { label: "Report an issue card", note: "Client can send an issue — category, severity, description" },
   submissions_change_request: { label: "Change request card", note: "Client can raise a change — business impact, priority" },
   submissions_question: { label: "Ask a question card", note: "General clarification and inquiry inbox" },

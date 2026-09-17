@@ -64,6 +64,18 @@ export interface HypercareReportData {
   }[];
   sla_tiers?: { service_ref: string; severity: string; response_target_minutes: number; update_cadence_minutes: number | null }[];
   request_backlog?: { ref: string; title: string; status: string; opened_at: string }[];
+  entitlement?: {
+    service_ref: string;
+    service_name: string;
+    period_start: string;
+    period_end: string;
+    included_units: number;
+    consumed_units: number;
+    overage_units: number;
+    overage_billed: boolean;
+    overage_absorbed: boolean;
+  }[];
+  improvement_backlog?: { pattern: string; frequency: number; proposed_fix: string | null }[];
   submissions: { issue: boolean; change_request: boolean; question: boolean };
   submission_options: {
     issue: { category: { value: string; label: string }[]; severity: { value: string; label: string }[] };
