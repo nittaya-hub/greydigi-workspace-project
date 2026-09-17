@@ -4,6 +4,7 @@ import { Eyebrow } from "@/components/ui/Card";
 import { ProjectTabs } from "@/components/ui/ProjectTabs";
 import { getProjectByRef } from "@/lib/data/project";
 import { getCurrentPerson } from "@/lib/data/auth-guard";
+import { ClientScopeSync } from "@/components/shell/ClientScopeSync";
 import { EditProjectButton } from "./EditProjectButton";
 import { DeleteProjectButton } from "./DeleteProjectButton";
 
@@ -39,6 +40,7 @@ export default async function ProjectLayout({
 
   return (
     <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-5 max-w-[1400px] mx-auto">
+      <ClientScopeSync clientId={project.clientId} />
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-[5px] min-w-0">
           <span className="w-[34px] h-[3px] bg-coral rounded-[2px]" />

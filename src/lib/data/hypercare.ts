@@ -166,6 +166,7 @@ export interface ServiceDetail {
   id: string;
   ref: string;
   name: string;
+  clientId: string;
   clientName: string;
   liveSince: string | null;
   health: ServiceHealth;
@@ -205,6 +206,7 @@ export async function getServiceByRef(ref: string): Promise<ServiceDetail | null
     id: service.id,
     ref: service.ref,
     name: service.name,
+    clientId: service.client_id,
     clientName: client?.name ?? "—",
     liveSince: service.live_since,
     health: service.health,

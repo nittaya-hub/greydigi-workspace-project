@@ -5,6 +5,7 @@ import { getServiceByRef } from "@/lib/data/hypercare";
 import { getServiceAgreement, getCurrentEntitlementPeriod, getRunBook, listServiceChanges, listImprovementItems } from "@/lib/data/hypercare-blueprint";
 import { getCurrentPerson } from "@/lib/data/auth-guard";
 import { createClient } from "@/lib/supabase/server";
+import { ClientScopeSync } from "@/components/shell/ClientScopeSync";
 import { LogIncidentButton } from "../../incidents/LogIncidentButton";
 import { AgreementCard } from "./AgreementCard";
 import { EntitlementCard } from "./EntitlementCard";
@@ -42,6 +43,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
 
   return (
     <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-5 max-w-[900px] mx-auto">
+      <ClientScopeSync clientId={service.clientId} />
       <div className="flex items-end justify-between gap-4">
         <div className="flex flex-col gap-1.5">
           <span className="w-[34px] h-[3px] bg-coral rounded-[2px]" />
