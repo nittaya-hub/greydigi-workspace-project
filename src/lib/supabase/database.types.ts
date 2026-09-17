@@ -1399,6 +1399,8 @@ export interface Database {
           renewal_date: DateStr | null;
           source_ref: string | null;
           created_at: Timestamptz;
+          fee_amount_monthly: number | null;
+          monthly_running_cost: number | null;
         },
         {
           id?: string;
@@ -1411,6 +1413,8 @@ export interface Database {
           renewal_date?: DateStr | null;
           source_ref?: string | null;
           created_at?: Timestamptz;
+          fee_amount_monthly?: number | null;
+          monthly_running_cost?: number | null;
         }
       >;
       entitlement_periods: CrudTable<

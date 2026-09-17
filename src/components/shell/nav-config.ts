@@ -106,6 +106,7 @@ export const HYPERCARE_NAV: NavItem[] = [
   { label: "SLA", href: "/hypercare/sla" },
   { label: "Health", href: "/hypercare/health" },
   { label: "Escalations", href: "/hypercare/escalations" },
+  { label: "Commercials", href: "/hypercare/commercials" },
 ];
 
 /** The company brain — assets, decisions, accuracy/calibration, written

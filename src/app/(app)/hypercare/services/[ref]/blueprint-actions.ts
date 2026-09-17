@@ -25,6 +25,8 @@ export async function upsertServiceAgreement(serviceId: string, serviceRef: stri
   const entitlementIncludedUnits = Number(String(formData.get("entitlementIncludedUnits") ?? "0").trim()) || 0;
   const renewalDate = String(formData.get("renewalDate") ?? "").trim() || null;
   const sourceRef = String(formData.get("sourceRef") ?? "").trim() || null;
+  const feeAmountRaw = String(formData.get("feeAmountMonthly") ?? "").trim();
+  const costRaw = String(formData.get("monthlyRunningCost") ?? "").trim();
 
   const { error } = await supabase.from("service_agreements").upsert(
     {
@@ -36,11 +38,14 @@ export async function upsertServiceAgreement(serviceId: string, serviceRef: stri
       entitlement_included_units: entitlementIncludedUnits,
       renewal_date: renewalDate,
       source_ref: sourceRef,
+      fee_amount_monthly: feeAmountRaw ? Number(feeAmountRaw) : null,
+      monthly_running_cost: costRaw ? Number(costRaw) : null,
     },
     { onConflict: "service_id" }
   );
   if (error) throw new Error(error.message);
   revalidateService(serviceRef);
+  revalidatePath("/hypercare/commercials");
 }
 
 /** Opens this month's entitlement bucket, included-units copied from the

@@ -52,7 +52,31 @@ export function AgreementCard({ serviceId, serviceRef, agreement }: { serviceId:
               <Field label="SOURCE (E.G. SIGNED SOW REF)">
                 <input name="sourceRef" defaultValue={agreement?.sourceRef ?? ""} className={fieldInputClass} />
               </Field>
+              <Field label="FEE, AS A NUMBER PER MONTH (FOR MARGIN)">
+                <input
+                  name="feeAmountMonthly"
+                  type="number"
+                  step="0.01"
+                  defaultValue={agreement?.feeAmountMonthly ?? ""}
+                  className={fieldInputClass}
+                  placeholder="4000"
+                />
+              </Field>
+              <Field label="MONTHLY RUNNING COST (FOR MARGIN)">
+                <input
+                  name="monthlyRunningCost"
+                  type="number"
+                  step="0.01"
+                  defaultValue={agreement?.monthlyRunningCost ?? ""}
+                  className={fieldInputClass}
+                  placeholder="1200"
+                />
+              </Field>
             </div>
+            <p className="m-0 text-[10.5px] text-muted leading-[1.5]">
+              Both feed the Commercials screen&apos;s margin figure — leave either blank and it shows as not entered yet, rather than a
+              computed zero.
+            </p>
             {error ? <p className="text-[11.5px] text-block-fg">{error}</p> : null}
             <div className="flex gap-2">
               <Button variant="primary" type="submit" disabled={isPending}>
@@ -76,6 +100,12 @@ export function AgreementCard({ serviceId, serviceRef, agreement }: { serviceId:
               <span className="text-ink font-semibold">{agreement.entitlementIncludedUnits} units / period</span>
               <span className="text-muted">Renewal</span>
               <span className="text-ink font-semibold">{agreement.renewalDate ?? "—"}</span>
+              <span className="text-muted">Margin (monthly)</span>
+              <span className="text-ink font-semibold">
+                {agreement.feeAmountMonthly != null && agreement.monthlyRunningCost != null
+                  ? (agreement.feeAmountMonthly - agreement.monthlyRunningCost).toLocaleString(undefined, { maximumFractionDigits: 2 })
+                  : "Not entered yet"}
+              </span>
             </div>
             <Button variant="secondary" className="self-start mt-1" onClick={() => setEditing(true)}>
               Edit

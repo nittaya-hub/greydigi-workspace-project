@@ -14,13 +14,15 @@ export interface ServiceAgreementRow {
   entitlementIncludedUnits: number;
   renewalDate: string | null;
   sourceRef: string | null;
+  feeAmountMonthly: number | null;
+  monthlyRunningCost: number | null;
 }
 
 export async function getServiceAgreement(serviceId: string): Promise<ServiceAgreementRow | null> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("service_agreements")
-    .select("id, tier, term_months, fee, entitlement_included_units, renewal_date, source_ref")
+    .select("id, tier, term_months, fee, entitlement_included_units, renewal_date, source_ref, fee_amount_monthly, monthly_running_cost")
     .eq("service_id", serviceId)
     .maybeSingle();
   if (!data) return null;
@@ -32,6 +34,8 @@ export async function getServiceAgreement(serviceId: string): Promise<ServiceAgr
     entitlementIncludedUnits: data.entitlement_included_units,
     renewalDate: data.renewal_date,
     sourceRef: data.source_ref,
+    feeAmountMonthly: data.fee_amount_monthly,
+    monthlyRunningCost: data.monthly_running_cost,
   };
 }
 
@@ -190,4 +194,56 @@ export async function listOpenImprovementItemsForWorkspace(
   const nameById = new Map((services ?? []).map((s) => [s.id, s.name]));
 
   return data.map((i) => ({ id: i.id, pattern: i.pattern, frequency: i.frequency, serviceName: nameById.get(i.service_id) ?? "—" }));
+}
+
+export interface CommercialsRow {
+  serviceId: string;
+  serviceRef: string;
+  serviceName: string;
+  clientName: string;
+  tier: string | null;
+  feeAmountMonthly: number | null;
+  monthlyRunningCost: number | null;
+  marginMonthly: number | null;
+}
+
+/** Hypercare wave 4.4's Commercials screen: margin per service, computed
+ * only where a person has entered both real numbers (fee_amount_monthly,
+ * monthly_running_cost, 0069) — a service with neither, or only one, shows
+ * as not entered rather than a computed zero or a silently wrong number. */
+export async function getCommercialsOverview(workspaceId: string, clientId?: string | null): Promise<CommercialsRow[]> {
+  const supabase = await createClient();
+  let servicesQuery = supabase.from("services").select("id, ref, name, client_id").eq("workspace_id", workspaceId);
+  if (clientId) servicesQuery = servicesQuery.eq("client_id", clientId);
+  const { data: services } = await servicesQuery;
+  if (!services || services.length === 0) return [];
+
+  const serviceIds = services.map((s) => s.id);
+  const clientIds = [...new Set(services.map((s) => s.client_id))];
+
+  const [{ data: agreements }, { data: clients }] = await Promise.all([
+    supabase
+      .from("service_agreements")
+      .select("service_id, tier, fee_amount_monthly, monthly_running_cost")
+      .in("service_id", serviceIds),
+    supabase.from("clients").select("id, name").in("id", clientIds),
+  ]);
+  const agreementByService = new Map((agreements ?? []).map((a) => [a.service_id, a] as const));
+  const clientNameById = new Map((clients ?? []).map((c) => [c.id, c.name] as const));
+
+  return services.map((s) => {
+    const agreement = agreementByService.get(s.id);
+    const fee = agreement?.fee_amount_monthly ?? null;
+    const cost = agreement?.monthly_running_cost ?? null;
+    return {
+      serviceId: s.id,
+      serviceRef: s.ref,
+      serviceName: s.name,
+      clientName: clientNameById.get(s.client_id) ?? "—",
+      tier: agreement?.tier ?? null,
+      feeAmountMonthly: fee,
+      monthlyRunningCost: cost,
+      marginMonthly: fee != null && cost != null ? fee - cost : null,
+    };
+  });
 }
