@@ -105,6 +105,30 @@ export async function toggleIntegration(
   revalidatePath("/settings/integrations");
 }
 
+/** The page used to open with three pre-seeded rows (Shopify, Xero,
+ * Google Workspace) from migration 0010 -- generic guessed names, not
+ * a real client's confirmed integration state, so they've been
+ * deleted. This is the only way to add a row now: by hand, once
+ * there's a real one to track. */
+export async function createIntegration(workspaceId: string, name: string) {
+  if (!name.trim()) throw new Error("Name is required.");
+  const person = await requireWorkspaceAdmin();
+  if (workspaceId !== person.workspace_id) throw new Error("Workspace not found.");
+  const supabase = await createClient();
+  const { error } = await supabase.from("workspace_integrations").insert({ workspace_id: workspaceId, name: name.trim() });
+  if (error) throw new Error(error.message);
+  revalidatePath("/settings/integrations");
+}
+
+export async function deleteIntegration(workspaceId: string, integrationId: string) {
+  const person = await requireWorkspaceAdmin();
+  if (workspaceId !== person.workspace_id) throw new Error("Workspace not found.");
+  const supabase = await createClient();
+  const { error } = await supabase.from("workspace_integrations").delete().eq("id", integrationId).eq("workspace_id", workspaceId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/settings/integrations");
+}
+
 export async function updateSlaPolicy(
   policyId: string,
   serviceName: string,

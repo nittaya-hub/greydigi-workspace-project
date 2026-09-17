@@ -3,7 +3,7 @@
 import { useTransition } from "react";
 import { Pill } from "@/components/ui/Pill";
 import { Toggle } from "@/components/ui/Toggle";
-import { toggleIntegration } from "../actions";
+import { toggleIntegration, deleteIntegration } from "../actions";
 
 export function IntegrationRow({
   workspaceId,
@@ -37,6 +37,14 @@ export function IntegrationRow({
         label={`${connected ? "Disconnect" : "Connect"} ${name}`}
         onChange={() => startTransition(() => toggleIntegration(workspaceId, integrationId, name, !connected))}
       />
+      <button
+        type="button"
+        disabled={isPending}
+        onClick={() => startTransition(() => deleteIntegration(workspaceId, integrationId))}
+        className="min-h-[40px] text-[10.5px] text-coral-strong disabled:opacity-50"
+      >
+        Delete
+      </button>
     </div>
   );
 }
