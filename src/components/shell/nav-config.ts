@@ -48,6 +48,7 @@ export const SETTINGS_NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       { label: "Client Management", href: "/settings/portal" },
       { label: "Branding", href: "/settings/branding" },
       { label: "Integrations", href: "/settings/integrations" },
+      { label: "Connections", href: "/settings/connections" },
       { label: "Audit log", href: "/settings/audit" },
     ],
   },

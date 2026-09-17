@@ -165,6 +165,12 @@ async function resolveDeploymentAndConnection(deploymentId: string) {
   const connections = await listAgentConnections(person.workspace_id);
   const connection = connections.find((c) => c.id === deployment.connectionId);
   if (!connection) return { ok: false as const, message: "Connection not found." };
+  if (!connection.enabled) {
+    return {
+      ok: false as const,
+      message: `This connection ("${connection.name}") is disabled from Settings > Connections. Enable it there before testing or activating.`,
+    };
+  }
 
   return { ok: true as const, person, deployment, connection };
 }

@@ -913,6 +913,84 @@ export interface Database {
           updated_at?: Timestamptz;
         }
       >;
+      project_architecture_columns: CrudTable<
+        {
+          id: string;
+          project_id: string;
+          label: string;
+          icon: string | null;
+          color_hex: string | null;
+          sort_order: number;
+          created_at: Timestamptz;
+        },
+        {
+          id?: string;
+          project_id: string;
+          label: string;
+          icon?: string | null;
+          color_hex?: string | null;
+          sort_order?: number;
+          created_at?: Timestamptz;
+        }
+      >;
+      project_architecture_nodes: CrudTable<
+        {
+          id: string;
+          project_id: string;
+          column_id: string;
+          label: string;
+          detail: string | null;
+          icon: string | null;
+          sort_order: number;
+          created_at: Timestamptz;
+          updated_at: Timestamptz;
+        },
+        {
+          id?: string;
+          project_id: string;
+          column_id: string;
+          label: string;
+          detail?: string | null;
+          icon?: string | null;
+          sort_order?: number;
+          created_at?: Timestamptz;
+          updated_at?: Timestamptz;
+        }
+      >;
+      project_architecture_edges: CrudTable<
+        {
+          id: string;
+          project_id: string;
+          from_node_id: string;
+          to_node_id: string;
+          label: string | null;
+          created_at: Timestamptz;
+        },
+        {
+          id?: string;
+          project_id: string;
+          from_node_id: string;
+          to_node_id: string;
+          label?: string | null;
+          created_at?: Timestamptz;
+        }
+      >;
+      project_architecture_source_files: CrudTable<
+        {
+          id: string;
+          project_id: string;
+          file_asset_id: string;
+          uploaded_by: string | null;
+          created_at: Timestamptz;
+        },
+        {
+          id?: string;
+          project_id: string;
+          file_asset_id: string;
+          uploaded_by?: string | null;
+          created_at?: Timestamptz;
+        }
+      >;
       documents: CrudTable<
         {
           id: string;
@@ -1758,6 +1836,7 @@ export interface Database {
           auth_method: string | null;
           secret_ref: string | null;
           status: AgentConnectionStatus;
+          enabled: boolean;
           created_by: string | null;
           created_at: Timestamptz;
         },
@@ -1770,6 +1849,7 @@ export interface Database {
           auth_method?: string | null;
           secret_ref?: string | null;
           status?: AgentConnectionStatus;
+          enabled?: boolean;
           created_by?: string | null;
           created_at?: Timestamptz;
         }

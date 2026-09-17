@@ -24,6 +24,7 @@ export interface AgentConnectionRow {
   authMethod: string | null;
   secretRef: string | null;
   status: AgentConnectionStatus;
+  enabled: boolean;
   createdAt: string;
 }
 
@@ -105,7 +106,7 @@ export async function listAgentConnections(workspaceId: string): Promise<AgentCo
   const supabase = await createClient();
   const { data } = await supabase
     .from("agent_connections")
-    .select("id, name, connector_type, endpoint_url, auth_method, secret_ref, status, created_at")
+    .select("id, name, connector_type, endpoint_url, auth_method, secret_ref, status, enabled, created_at")
     .eq("workspace_id", workspaceId)
     .order("created_at", { ascending: false });
   return (data ?? []).map((c) => ({
@@ -116,6 +117,7 @@ export async function listAgentConnections(workspaceId: string): Promise<AgentCo
     authMethod: c.auth_method,
     secretRef: c.secret_ref,
     status: c.status,
+    enabled: c.enabled,
     createdAt: c.created_at,
   }));
 }

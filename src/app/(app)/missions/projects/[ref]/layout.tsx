@@ -30,6 +30,7 @@ export default async function ProjectLayout({
     { label: "Change requests", href: `${base}/change-requests` },
     { label: "Client updates", href: `${base}/client-updates` },
     { label: "Checkpoint data", href: `${base}/checkpoint` },
+    { label: "Solution architecture", href: `${base}/architecture` },
     // "Share links" used to be its own tab here; the public no-login
     // link (P·1) it managed moved into Client view config instead, next
     // to the portal link it always sat beside anyway -- see that page's
