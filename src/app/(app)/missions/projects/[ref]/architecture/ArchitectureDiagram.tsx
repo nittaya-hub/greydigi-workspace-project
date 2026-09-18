@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal, Field, fieldInputClass } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/shadcn/sheet";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/shadcn/select";
 import type { ProjectArchitectureData, ArchitectureColumn, ArchitectureNode } from "@/lib/data/architecture";
 import {
   createArchitectureColumn,
@@ -44,6 +45,9 @@ export function ArchitectureDiagram({
   const [addingNodeColumnId, setAddingNodeColumnId] = useState<string | null>(null);
   const [editingNode, setEditingNode] = useState<ArchitectureNode | null>(null);
   const [addingEdge, setAddingEdge] = useState(false);
+  const [edgeFrom, setEdgeFrom] = useState("");
+  const [edgeTo, setEdgeTo] = useState("");
+  const [edgeLabel, setEdgeLabel] = useState("");
   const [viewingColumn, setViewingColumn] = useState<ArchitectureColumn | null>(null);
 
   function remeasure() {
@@ -356,58 +360,83 @@ export function ArchitectureDiagram({
         ) : null}
       </Modal>
 
-      {/* Edge add */}
-      <Modal open={addingEdge} onClose={() => setAddingEdge(false)} title="Add a connection">
-        <form
-          className="flex flex-col gap-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const formData = new FormData(e.currentTarget);
-            const fromNodeId = formData.get("from") as string;
-            const toNodeId = formData.get("to") as string;
-            const label = formData.get("label") as string;
-            run(async () => {
-              await createArchitectureEdge(projectId, projectRef, { fromNodeId, toNodeId, label });
-              setAddingEdge(false);
-            }, "Connection added.");
-          }}
-        >
+      {/* Edge add -- a controlled form (not native FormData) since the
+          themed Select below is a Base UI component, not a real <select>;
+          a native one rendered its own unstyled OS dropdown instead of
+          picking up this app's theme at all. */}
+      <Modal
+        open={addingEdge}
+        onClose={() => {
+          setAddingEdge(false);
+          setEdgeFrom("");
+          setEdgeTo("");
+          setEdgeLabel("");
+        }}
+        title="Add a connection"
+      >
+        <div className="flex flex-col gap-3">
           <Field label="FROM">
-            <select name="from" required className={fieldInputClass} defaultValue="">
-              <option value="" disabled>
-                Choose a module
-              </option>
-              {allNodes.map((n) => (
-                <option key={n.id} value={n.id}>
-                  {n.columnLabel} · {n.label}
-                </option>
-              ))}
-            </select>
+            <Select items={allNodes.map((n) => ({ value: n.id, label: `${n.columnLabel} · ${n.label}` }))} value={edgeFrom} onValueChange={(v) => setEdgeFrom(v as string)}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Choose a module" />
+              </SelectTrigger>
+              <SelectContent>
+                {allNodes.map((n) => (
+                  <SelectItem key={n.id} value={n.id}>
+                    {n.columnLabel} · {n.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </Field>
           <Field label="TO">
-            <select name="to" required className={fieldInputClass} defaultValue="">
-              <option value="" disabled>
-                Choose a module
-              </option>
-              {allNodes.map((n) => (
-                <option key={n.id} value={n.id}>
-                  {n.columnLabel} · {n.label}
-                </option>
-              ))}
-            </select>
+            <Select items={allNodes.map((n) => ({ value: n.id, label: `${n.columnLabel} · ${n.label}` }))} value={edgeTo} onValueChange={(v) => setEdgeTo(v as string)}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Choose a module" />
+              </SelectTrigger>
+              <SelectContent>
+                {allNodes.map((n) => (
+                  <SelectItem key={n.id} value={n.id}>
+                    {n.columnLabel} · {n.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </Field>
           <Field label="LABEL (OPTIONAL)">
-            <input name="label" className={fieldInputClass} placeholder="source = api_pull" />
+            <input value={edgeLabel} onChange={(e) => setEdgeLabel(e.target.value)} className={fieldInputClass} placeholder="source = api_pull" />
           </Field>
           <div className="flex gap-2">
-            <Button variant="primary" type="submit">
+            <Button
+              variant="primary"
+              type="button"
+              disabled={!edgeFrom || !edgeTo}
+              onClick={() =>
+                run(async () => {
+                  await createArchitectureEdge(projectId, projectRef, { fromNodeId: edgeFrom, toNodeId: edgeTo, label: edgeLabel });
+                  setAddingEdge(false);
+                  setEdgeFrom("");
+                  setEdgeTo("");
+                  setEdgeLabel("");
+                }, "Connection added.")
+              }
+            >
               Add connection
             </Button>
-            <Button variant="secondary" type="button" onClick={() => setAddingEdge(false)}>
+            <Button
+              variant="secondary"
+              type="button"
+              onClick={() => {
+                setAddingEdge(false);
+                setEdgeFrom("");
+                setEdgeTo("");
+                setEdgeLabel("");
+              }}
+            >
               Cancel
             </Button>
           </div>
-        </form>
+        </div>
       </Modal>
 
       {/* Column detail -- click a column's heading to read everything

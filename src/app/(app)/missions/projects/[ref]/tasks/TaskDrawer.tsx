@@ -21,7 +21,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/shadcn/select";
-import { Avatar, AvatarFallback } from "@/components/shadcn/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/shadcn/avatar";
 import { Badge } from "@/components/shadcn/badge";
 import { Separator } from "@/components/shadcn/separator";
 import { ScrollArea } from "@/components/shadcn/scroll-area";
@@ -497,7 +497,8 @@ function TaskDrawerBody({
                     {comments.map((c) => (
                       <li key={c.id} className="flex gap-2.5">
                         <Avatar size="sm" className="mt-0.5">
-                          <AvatarFallback>{initialsFrom(c.authorName)}</AvatarFallback>
+                          {c.authorAvatarUrl ? <AvatarImage src={c.authorAvatarUrl} alt="" /> : null}
+                          <AvatarFallback>{c.authorInitials !== "?" ? c.authorInitials : initialsFrom(c.authorName)}</AvatarFallback>
                         </Avatar>
                         <div className="flex flex-col gap-0.5">
                           <span className="text-xs font-medium text-foreground">

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Pill } from "@/components/ui/Pill";
 import { Field, fieldInputClass } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/shadcn/select";
 import type { ProjectTimelineData } from "@/lib/data/project";
 import {
   seedDefaultTimelineStatuses,
@@ -48,6 +49,8 @@ export function TimelineGrid({
   const [addingRow, setAddingRow] = useState(false);
   const [addingStatus, setAddingStatus] = useState(false);
   const [editingStatusId, setEditingStatusId] = useState<string | null>(null);
+  const [editStyleValue, setEditStyleValue] = useState<"filled" | "outline">("filled");
+  const [addStyleValue, setAddStyleValue] = useState<"filled" | "outline">("filled");
   const toast = useToast();
 
   const statusById = new Map(data.statuses.map((s) => [s.id, s] as const));
@@ -132,6 +135,7 @@ export function TimelineGrid({
                 onSubmit={(e) => {
                   e.preventDefault();
                   const formData = new FormData(e.currentTarget);
+                  formData.set("style", editStyleValue);
                   run(async () => {
                     await updateTimelineStatus(s.id, projectId, projectRef, formData);
                     setEditingStatusId(null);
@@ -145,10 +149,19 @@ export function TimelineGrid({
                   <input name="color_hex" type="color" defaultValue={s.colorHex} className="h-10 w-14 border border-line rounded-[9px]" />
                 </Field>
                 <Field label="STYLE">
-                  <select name="style" defaultValue={s.style} className={`${fieldInputClass} !w-[110px]`}>
-                    <option value="filled">Filled</option>
-                    <option value="outline">Outline</option>
-                  </select>
+                  <Select
+                    items={[{ value: "filled", label: "Filled" }, { value: "outline", label: "Outline" }]}
+                    value={editStyleValue}
+                    onValueChange={(v) => setEditStyleValue(v as "filled" | "outline")}
+                  >
+                    <SelectTrigger className="!w-[110px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="filled">Filled</SelectItem>
+                      <SelectItem value="outline">Outline</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </Field>
                 <Button variant="primary" type="submit" className={smallButtonClass}>
                   Save
@@ -168,7 +181,15 @@ export function TimelineGrid({
                   }
                 />
                 <span className="text-[11.5px] text-ink flex-1 min-w-[100px]">{s.label}</span>
-                <Button variant="secondary" type="button" className={smallButtonClass} onClick={() => setEditingStatusId(s.id)}>
+                <Button
+                  variant="secondary"
+                  type="button"
+                  className={smallButtonClass}
+                  onClick={() => {
+                    setEditStyleValue(s.style);
+                    setEditingStatusId(s.id);
+                  }}
+                >
                   Edit
                 </Button>
                 <Button
@@ -189,9 +210,11 @@ export function TimelineGrid({
               onSubmit={(e) => {
                 e.preventDefault();
                 const formData = new FormData(e.currentTarget);
+                formData.set("style", addStyleValue);
                 run(async () => {
                   await createTimelineStatus(projectId, projectRef, formData);
                   setAddingStatus(false);
+                  setAddStyleValue("filled");
                 }, "Colour added.");
               }}
             >
@@ -202,15 +225,32 @@ export function TimelineGrid({
                 <input name="color_hex" type="color" defaultValue="#F2583E" className="h-10 w-14 border border-line rounded-[9px]" />
               </Field>
               <Field label="STYLE">
-                <select name="style" defaultValue="filled" className={`${fieldInputClass} !w-[110px]`}>
-                  <option value="filled">Filled</option>
-                  <option value="outline">Outline</option>
-                </select>
+                <Select
+                  items={[{ value: "filled", label: "Filled" }, { value: "outline", label: "Outline" }]}
+                  value={addStyleValue}
+                  onValueChange={(v) => setAddStyleValue(v as "filled" | "outline")}
+                >
+                  <SelectTrigger className="!w-[110px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="filled">Filled</SelectItem>
+                    <SelectItem value="outline">Outline</SelectItem>
+                  </SelectContent>
+                </Select>
               </Field>
               <Button variant="primary" type="submit" className={smallButtonClass}>
                 Add colour
               </Button>
-              <Button variant="secondary" type="button" className={smallButtonClass} onClick={() => setAddingStatus(false)}>
+              <Button
+                variant="secondary"
+                type="button"
+                className={smallButtonClass}
+                onClick={() => {
+                  setAddingStatus(false);
+                  setAddStyleValue("filled");
+                }}
+              >
                 Cancel
               </Button>
             </form>
@@ -292,22 +332,43 @@ export function TimelineGrid({
                   return (
                     <td key={weekIndex} className="px-1.5 py-2 border-b border-l border-line-soft align-middle">
                       {canEdit ? (
-                        <select
-                          value={statusId ?? ""}
-                          disabled={isPending}
-                          onChange={(e) =>
-                            run(() => setTimelineCell(row.id, projectId, projectRef, weekIndex, e.target.value || null), "Cell updated.")
+                        <Select
+                          items={[{ value: "__none__", label: "—" }, ...data.statuses.map((s) => ({ value: s.id, label: s.label }))]}
+                          value={statusId ?? "__none__"}
+                          onValueChange={(v) =>
+                            run(
+                              () => setTimelineCell(row.id, projectId, projectRef, weekIndex, v === "__none__" ? null : (v as string)),
+                              "Cell updated."
+                            )
                           }
-                          className="text-[10px] border border-line rounded-[6px] px-1 min-h-[40px] w-full bg-white touch-manipulation"
-                          style={status ? { background: status.style === "filled" ? status.colorHex : "white", color: status.style === "filled" ? "white" : status.colorHex } : {}}
                         >
-                          <option value="">—</option>
-                          {data.statuses.map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {s.label}
-                            </option>
-                          ))}
-                        </select>
+                          <SelectTrigger
+                            size="sm"
+                            disabled={isPending}
+                            className="!min-h-[40px] w-full border-line text-[10px]"
+                            style={
+                              status
+                                ? { background: status.style === "filled" ? status.colorHex : "white", color: status.style === "filled" ? "white" : status.colorHex }
+                                : {}
+                            }
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">—</SelectItem>
+                            {data.statuses.map((s) => (
+                              <SelectItem key={s.id} value={s.id}>
+                                <span className="flex items-center gap-1.5">
+                                  <span
+                                    className="w-2 h-2 rounded-full flex-none"
+                                    style={s.style === "outline" ? { border: `2px solid ${s.colorHex}` } : { background: s.colorHex }}
+                                  />
+                                  {s.label}
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       ) : status ? (
                         <span
                           className="block h-5 rounded-[5px]"

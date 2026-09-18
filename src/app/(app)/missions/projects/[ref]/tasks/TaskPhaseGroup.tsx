@@ -3,6 +3,7 @@
 import { useState, useTransition, type DragEvent } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { GripVertical, CircleCheck, Circle, Trash2, Loader2, AlertTriangle } from "lucide-react";
 import clsx from "clsx";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/shadcn/select";
@@ -23,15 +24,7 @@ const UNASSIGNED = "__unassigned__";
  * shadcn Avatar primitive: at 16px this only ever needs an image-or-
  * initials swap, not that component's loading-state machinery. */
 function OwnerAvatar({ avatarUrl, initials }: { avatarUrl: string | null; initials: string | null }) {
-  if (avatarUrl) {
-    // eslint-disable-next-line @next/next/no-img-element -- 16px icon inside a dropdown item, not worth next/image's overhead here
-    return <img src={avatarUrl} alt="" className="w-4 h-4 rounded-full object-cover flex-none" />;
-  }
-  return (
-    <span className="w-4 h-4 rounded-full bg-ink-soft text-white text-[7px] flex items-center justify-center flex-none leading-none">
-      {initials ?? ""}
-    </span>
-  );
+  return <PersonAvatar avatarUrl={avatarUrl} initials={initials ?? ""} size={16} />;
 }
 const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
   { value: "idle", label: "Idle" },

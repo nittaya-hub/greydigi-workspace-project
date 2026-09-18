@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { Card, CardHeader, EmptyState } from "@/components/ui/Card";
 import { TableHead, TableRow, CellStack } from "@/components/ui/Table";
+import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { getProjectByRef, getWorkspaceInternalPeople } from "@/lib/data/project";
 import { listProjectMembers, getMyProjectRole } from "@/lib/data/project-members";
 import { AddProjectMemberButton } from "./AddProjectMemberButton";
@@ -51,7 +52,14 @@ export default async function ProjectMembersPage({ params }: { params: Promise<{
             </TableHead>
             {members.map((m, i) => (
               <TableRow key={m.id} cols={COLS} last={i === members.length - 1}>
-                <CellStack primary={m.fullName} />
+                <CellStack
+                  primary={
+                    <span className="flex items-center gap-2">
+                      <PersonAvatar avatarUrl={m.avatarUrl} initials={m.avatarInitials} size={22} />
+                      {m.fullName}
+                    </span>
+                  }
+                />
                 <span className="font-mono text-[10px] text-muted">
                   {m.role === "project_admin" ? "PROJECT ADMIN" : "MEMBER"}
                 </span>

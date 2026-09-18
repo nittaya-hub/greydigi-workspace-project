@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Input } from "@/components/shadcn/input";
-import { Switch } from "@/components/shadcn/switch";
+import { Toggle } from "@/components/ui/Toggle";
 import { updateSubmissionTaxonomyOption } from "../actions";
 
 export function SubmissionTaxonomyRow({
@@ -53,13 +53,15 @@ export function SubmissionTaxonomyRow({
         disabled={isPending}
       />
       <div className="flex items-center gap-1.5">
-        <Switch
+        <Toggle
           checked={active}
-          onCheckedChange={(next: boolean) => {
+          label={`${active ? "Retire" : "Activate"} ${label}`}
+          disabled={isPending}
+          onChange={() => {
+            const next = !active;
             setActive(next);
             save({ label: labelValue, isActive: next });
           }}
-          disabled={isPending}
         />
         <span className="text-[10.5px] text-muted">{active ? "Active" : "Retired"}</span>
       </div>

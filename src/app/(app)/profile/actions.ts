@@ -18,8 +18,18 @@ export async function updateOwnProfile(formData: FormData) {
   const { error } = await supabase.from("people").update({ full_name: fullName }).eq("id", person.id);
   if (error) throw new Error(error.message);
 
-  revalidatePath("/profile");
-  revalidatePath("/");
+  revalidateEverywhereAPersonNameShows();
+}
+
+/** A person's name/photo shows on dozens of pages across every cockpit
+ * (task owners, comments, project members, the sidebar itself) --
+ * revalidating just /profile left every one of those showing a stale
+ * cached render until its own path happened to revalidate for some
+ * other reason. Revalidating the root layout instead invalidates the
+ * whole app shell's cache in one call, so every page picks up the
+ * change on next load. */
+function revalidateEverywhereAPersonNameShows() {
+  revalidatePath("/", "layout");
 }
 
 /** Records an already-uploaded avatars/<person_id>/<file> object as this
@@ -41,8 +51,7 @@ export async function updateOwnAvatar(path: string) {
   const { error } = await supabase.from("people").update({ avatar_url: publicUrl }).eq("id", person.id);
   if (error) throw new Error(error.message);
 
-  revalidatePath("/profile");
-  revalidatePath("/");
+  revalidateEverywhereAPersonNameShows();
 }
 
 export async function removeOwnAvatar() {
@@ -53,6 +62,5 @@ export async function removeOwnAvatar() {
   const { error } = await supabase.from("people").update({ avatar_url: null }).eq("id", person.id);
   if (error) throw new Error(error.message);
 
-  revalidatePath("/profile");
-  revalidatePath("/");
+  revalidateEverywhereAPersonNameShows();
 }

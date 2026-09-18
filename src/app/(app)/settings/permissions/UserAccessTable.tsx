@@ -5,6 +5,7 @@ import Link from "next/link";
 import clsx from "clsx";
 import { LinkButton } from "@/components/ui/Button";
 import { ConfirmButton } from "@/components/ui/ConfirmButton";
+import { Toggle } from "@/components/ui/Toggle";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/shadcn/select";
 import type { MemberRow } from "@/lib/data/admin";
 import type { WorkspaceRole } from "@/lib/supabase/database.types";
@@ -26,30 +27,17 @@ function ActiveSwitch({ personId, isActive }: { personId: string; isActive: bool
   const [, startTransition] = useTransition();
 
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={optimistic}
-      aria-label={optimistic ? "Deactivate user" : "Activate user"}
-      onClick={() => {
+    <Toggle
+      checked={optimistic}
+      label={optimistic ? "Deactivate user" : "Activate user"}
+      onChange={() => {
         const next = !optimistic;
         setOptimistic(next);
         startTransition(() => {
           withTimeout(setMemberActive(personId, next)).catch(() => setOptimistic(!next));
         });
       }}
-      className={clsx(
-        "w-9 h-5 rounded-full flex-none relative transition-colors",
-        optimistic ? "bg-coral" : "bg-line"
-      )}
-    >
-      <span
-        className={clsx(
-          "absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform",
-          optimistic ? "translate-x-[18px]" : "translate-x-0.5"
-        )}
-      />
-    </button>
+    />
   );
 }
 

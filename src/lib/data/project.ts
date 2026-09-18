@@ -370,6 +370,7 @@ export interface TaskCommentRow {
   createdAt: string;
   authorName: string;
   authorInitials: string;
+  authorAvatarUrl: string | null;
 }
 
 export async function getTaskComments(taskId: string): Promise<TaskCommentRow[]> {
@@ -383,8 +384,8 @@ export async function getTaskComments(taskId: string): Promise<TaskCommentRow[]>
 
   const authorIds = [...new Set(data.map((c) => c.author_person_id).filter((x): x is string => !!x))];
   const { data: people } = authorIds.length
-    ? await supabase.from("people").select("id, full_name, avatar_initials").in("id", authorIds)
-    : { data: [] as { id: string; full_name: string; avatar_initials: string }[] };
+    ? await supabase.from("people").select("id, full_name, avatar_initials, avatar_url").in("id", authorIds)
+    : { data: [] as { id: string; full_name: string; avatar_initials: string; avatar_url: string | null }[] };
   const byId = new Map((people ?? []).map((p) => [p.id, p]));
 
   return data.map((c) => ({
@@ -393,6 +394,7 @@ export async function getTaskComments(taskId: string): Promise<TaskCommentRow[]>
     createdAt: c.created_at,
     authorName: c.author_person_id ? (byId.get(c.author_person_id)?.full_name ?? "—") : "—",
     authorInitials: c.author_person_id ? (byId.get(c.author_person_id)?.avatar_initials ?? "?") : "?",
+    authorAvatarUrl: c.author_person_id ? (byId.get(c.author_person_id)?.avatar_url ?? null) : null,
   }));
 }
 

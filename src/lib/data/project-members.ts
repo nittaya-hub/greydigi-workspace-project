@@ -7,6 +7,7 @@ export interface ProjectMemberRow {
   personId: string;
   fullName: string;
   avatarInitials: string;
+  avatarUrl: string | null;
   role: ProjectMemberRole;
   createdAt: string;
 }
@@ -18,7 +19,7 @@ export async function listProjectMembers(projectId: string): Promise<ProjectMemb
   const supabase = await createClient();
   const { data } = await supabase
     .from("project_members")
-    .select("id, person_id, role, created_at, people(full_name, avatar_initials)")
+    .select("id, person_id, role, created_at, people(full_name, avatar_initials, avatar_url)")
     .eq("project_id", projectId)
     .order("created_at", { ascending: true });
 
@@ -29,6 +30,7 @@ export async function listProjectMembers(projectId: string): Promise<ProjectMemb
       personId: m.person_id,
       fullName: person?.full_name ?? "—",
       avatarInitials: person?.avatar_initials ?? "?",
+      avatarUrl: person?.avatar_url ?? null,
       role: m.role,
       createdAt: m.created_at,
     };

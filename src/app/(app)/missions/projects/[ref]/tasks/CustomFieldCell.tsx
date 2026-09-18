@@ -2,17 +2,23 @@
 
 import { useState, useTransition } from "react";
 import { DatePicker } from "@/components/ui/DatePicker";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/shadcn/select";
 import type { TaskCustomFieldOption } from "@/lib/data/project";
 import type { TaskCustomFieldType } from "@/lib/supabase/database.types";
 import { setTaskCustomFieldValue, setTaskCustomFieldOption } from "./task-drawer-actions";
 
-/** One cell of a configurable column -- text edits inline (click,
- * save on blur/Enter, matching the rest of the tasks page's autosave
- * feel); calendar reuses the exact same DatePicker every due-date
- * cell already uses; status is a plain <select> of colour swatches --
- * a native select rather than a custom dropdown keeps this consistent
- * with the fact that a real click target on a phone is what "status"
- * actually needs here, not a fancier widget. */
+const NONE_VALUE = "__none__";
+
+/** One cell of a configurable column, styled to match the built-in
+ * Owner/Due/Status cells exactly (same component, same size/font
+ * classes) rather than inventing new ones that read as a different
+ * size on the same row: calendar reuses the identical DatePicker
+ * classes the Due column uses (h-auto, font-mono text-[9.5px]);
+ * status reuses the same shadcn Select + SelectTrigger size="sm" +
+ * font-mono text-[9px] uppercase shape the built-in Status column
+ * uses, just with per-column colours instead of a fixed status map;
+ * text edits inline (click, save on blur/Enter, matching the rest of
+ * the tasks page's autosave feel). */
 export function CustomFieldCell({
   taskId,
   projectRef,
@@ -30,7 +36,7 @@ export function CustomFieldCell({
   initialValue: string;
   initialOptionId: string | null;
 }) {
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
 
   if (fieldType === "calendar") {
     return (
@@ -38,35 +44,48 @@ export function CustomFieldCell({
         value={initialValue || null}
         onClick={(e) => e.stopPropagation()}
         onChange={(value) => startTransition(() => setTaskCustomFieldValue(taskId, projectRef, fieldId, value))}
-        className="w-full min-w-0 rounded-[6px] border-transparent bg-transparent px-1 py-0.5 text-[11.5px] text-ink hover:border-line"
+        className="h-auto w-full min-w-0 rounded-[6px] border-transparent bg-transparent px-1 py-1 font-mono text-[9.5px] text-muted hover:border-line"
       />
     );
   }
 
   if (fieldType === "status") {
+    const items = [{ value: NONE_VALUE, label: "—" }, ...options.map((o) => ({ value: o.id, label: o.label }))];
     const selected = initialOptionId ? options.find((o) => o.id === initialOptionId) : null;
     return (
-      <select
-        value={initialOptionId ?? ""}
-        disabled={isPending}
-        onClick={(e) => e.stopPropagation()}
-        onChange={(e) =>
-          startTransition(() => setTaskCustomFieldOption(taskId, projectRef, fieldId, e.target.value || null))
-        }
-        className="w-full min-w-0 text-[11px] font-semibold rounded-[6px] border px-1.5 py-1 outline-none"
-        style={
-          selected
-            ? { background: `${selected.colorHex}1A`, color: selected.colorHex, borderColor: `${selected.colorHex}40` }
-            : { background: "transparent", color: "var(--color-muted-2)", borderColor: "transparent" }
+      <Select
+        items={items}
+        value={initialOptionId ?? NONE_VALUE}
+        onValueChange={(v) =>
+          startTransition(() => setTaskCustomFieldOption(taskId, projectRef, fieldId, v === NONE_VALUE ? null : (v as string)))
         }
       >
-        <option value="">—</option>
-        {options.map((o) => (
-          <option key={o.id} value={o.id}>
-            {o.label}
-          </option>
-        ))}
-      </select>
+        <SelectTrigger
+          size="sm"
+          onClick={(e) => e.stopPropagation()}
+          className="justify-self-start w-full min-w-0 justify-start gap-1 rounded-[5px] border-transparent px-[7px] py-[3px] font-mono text-[9px] tracking-[.06em] uppercase focus-visible:ring-0"
+          style={
+            selected
+              ? { background: `${selected.colorHex}1A`, color: selected.colorHex }
+              : { background: "var(--color-idle-bg)", color: "var(--color-muted)" }
+          }
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {items.map((o) => {
+            const opt = options.find((x) => x.id === o.value);
+            return (
+              <SelectItem key={o.value} value={o.value}>
+                <span className="flex items-center gap-1.5">
+                  {opt ? <span className="w-2 h-2 rounded-full flex-none" style={{ background: opt.colorHex }} /> : null}
+                  {o.label}
+                </span>
+              </SelectItem>
+            );
+          })}
+        </SelectContent>
+      </Select>
     );
   }
 
