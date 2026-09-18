@@ -6,21 +6,45 @@ import { Modal, Field, fieldInputClass } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/shadcn/sheet";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/shadcn/select";
-import type { ProjectArchitectureData, ArchitectureColumn, ArchitectureNode } from "@/lib/data/architecture";
+import { LogoUploadField } from "./LogoUploadField";
+import type { ProjectArchitectureData, ArchitectureColumn, ArchitectureNode, ArchitectureNote } from "@/lib/data/architecture";
 import {
   createArchitectureColumn,
   updateArchitectureColumn,
   deleteArchitectureColumn,
   createArchitectureNode,
   updateArchitectureNode,
+  updateArchitectureNodePosition,
   deleteArchitectureNode,
   createArchitectureEdge,
   deleteArchitectureEdge,
+  createArchitectureNote,
+  updateArchitectureNoteBody,
+  updateArchitectureNoteGeometry,
+  deleteArchitectureNote,
 } from "./actions";
 
 type Rect = { left: number; top: number; width: number; height: number };
+type PosOverride = { x: number; y: number; columnId?: string };
 
 const iconInputClass = `${fieldInputClass} !w-[56px] text-center`;
+const COLUMN_WIDTH = 260;
+const CARD_WIDTH = 200;
+const DRAG_THRESHOLD = 4;
+
+/** Where a node with no saved (pos_x, pos_y) lands -- pre-canvas rows,
+ * or a brand new node before its first drag. Mirrors the same
+ * formula createArchitectureNode uses server-side, so a freshly
+ * created node never visibly jumps on the next reload. */
+function fallbackNodePosition(node: ArchitectureNode, columnIndex: number, indexInColumn: number): { x: number; y: number } {
+  return { x: columnIndex * COLUMN_WIDTH + 20, y: indexInColumn * 110 + 80 };
+}
+
+function resolveColumnIdForX(columns: ArchitectureColumn[], x: number): string | undefined {
+  const centerX = x + CARD_WIDTH / 2;
+  const idx = Math.max(0, Math.min(columns.length - 1, Math.floor(centerX / COLUMN_WIDTH)));
+  return columns[idx]?.id;
+}
 
 export function ArchitectureDiagram({
   data,
@@ -40,6 +64,13 @@ export function ArchitectureDiagram({
   const [isPending, startTransition] = useTransition();
   const toast = useToast();
 
+  // Positions committed by a finished drag, held locally since the
+  // position-update actions deliberately skip revalidatePath (see
+  // their own comments in actions.ts). Persists until an unrelated
+  // action revalidates the page and the server value catches up.
+  const [nodeOverrides, setNodeOverrides] = useState<Record<string, PosOverride>>({});
+  const [noteOverrides, setNoteOverrides] = useState<Record<string, { x: number; y: number }>>({});
+
   const [addingColumn, setAddingColumn] = useState(false);
   const [editingColumn, setEditingColumn] = useState<ArchitectureColumn | null>(null);
   const [addingNodeColumnId, setAddingNodeColumnId] = useState<string | null>(null);
@@ -57,15 +88,17 @@ export function ArchitectureDiagram({
     }
     setRects(next);
     if (containerRef.current) {
-      setSvgSize({ width: containerRef.current.offsetWidth, height: containerRef.current.offsetHeight });
+      setSvgSize({ width: containerRef.current.scrollWidth, height: containerRef.current.scrollHeight });
     }
   }
 
   useLayoutEffect(() => {
-    // Measuring the DOM after layout and feeding the result back into
-    // state is exactly what positions the SVG edges -- there's no
-    // external system to subscribe to here, only the browser's own
-    // layout, so this is the legitimate exception the rule allows for.
+    // Measuring the DOM after layout (including mid-drag, since
+    // nodeOverrides/noteOverrides changing is exactly what moves a
+    // card) and feeding the result back into state is what positions
+    // the SVG edges -- there's no external system to subscribe to
+    // here, only the browser's own layout, so this is the legitimate
+    // exception the rule allows for.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     remeasure();
     const container = containerRef.current;
@@ -74,7 +107,7 @@ export function ArchitectureDiagram({
     ro.observe(container);
     for (const el of nodeRefs.current.values()) ro.observe(el);
     return () => ro.disconnect();
-  }, [data]);
+  }, [data, nodeOverrides, noteOverrides]);
 
   function run(fn: () => Promise<void>, successMessage?: string) {
     startTransition(async () => {
@@ -89,6 +122,109 @@ export function ArchitectureDiagram({
 
   const allNodes = data.columns.flatMap((c) => c.nodes.map((n) => ({ ...n, columnLabel: c.label })));
   const nodeById = new Map(allNodes.map((n) => [n.id, n] as const));
+  const columnById = new Map(data.columns.map((c) => [c.id, c] as const));
+
+  // Effective (post-drag) position + column for every node, and the
+  // canvas footprint that follows from it.
+  const nodePositions = new Map<string, { x: number; y: number; columnId: string }>();
+  data.columns.forEach((column, columnIndex) => {
+    column.nodes.forEach((node, indexInColumn) => {
+      const override = nodeOverrides[node.id];
+      const base = node.posX != null && node.posY != null ? { x: node.posX, y: node.posY } : fallbackNodePosition(node, columnIndex, indexInColumn);
+      nodePositions.set(node.id, {
+        x: override?.x ?? base.x,
+        y: override?.y ?? base.y,
+        columnId: override?.columnId ?? node.columnId,
+      });
+    });
+  });
+
+  let maxRight = data.columns.length * COLUMN_WIDTH + 60;
+  let maxBottom = 560;
+  for (const pos of nodePositions.values()) {
+    maxRight = Math.max(maxRight, pos.x + CARD_WIDTH + 40);
+    maxBottom = Math.max(maxBottom, pos.y + 160);
+  }
+  for (const note of data.notes) {
+    const override = noteOverrides[note.id];
+    const x = override?.x ?? note.posX;
+    const y = override?.y ?? note.posY;
+    maxRight = Math.max(maxRight, x + note.width + 40);
+    maxBottom = Math.max(maxBottom, y + note.height + 40);
+  }
+  const canvasWidth = maxRight;
+  const canvasHeight = maxBottom;
+
+  function startNodeDrag(e: React.PointerEvent, node: ArchitectureNode) {
+    if (!canEdit) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const pos = nodePositions.get(node.id)!;
+    const startClientX = e.clientX;
+    const startClientY = e.clientY;
+    let moved = false;
+
+    const onMove = (ev: PointerEvent) => {
+      const dx = ev.clientX - startClientX;
+      const dy = ev.clientY - startClientY;
+      if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) moved = true;
+      const nx = Math.max(0, pos.x + dx);
+      const ny = Math.max(0, pos.y + dy);
+      setNodeOverrides((prev) => ({ ...prev, [node.id]: { ...prev[node.id], x: nx, y: ny } }));
+    };
+    const onUp = (ev: PointerEvent) => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      if (!moved) {
+        setEditingNode(node);
+        return;
+      }
+      const dx = ev.clientX - startClientX;
+      const dy = ev.clientY - startClientY;
+      const nx = Math.max(0, pos.x + dx);
+      const ny = Math.max(0, pos.y + dy);
+      const columnId = resolveColumnIdForX(data.columns, nx);
+      setNodeOverrides((prev) => ({ ...prev, [node.id]: { x: nx, y: ny, columnId } }));
+      run(() => updateArchitectureNodePosition(node.id, projectId, nx, ny, columnId));
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }
+
+  function startNoteDrag(e: React.PointerEvent, note: ArchitectureNote) {
+    if (!canEdit) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const override = noteOverrides[note.id];
+    const origX = override?.x ?? note.posX;
+    const origY = override?.y ?? note.posY;
+    const startClientX = e.clientX;
+    const startClientY = e.clientY;
+
+    const onMove = (ev: PointerEvent) => {
+      const dx = ev.clientX - startClientX;
+      const dy = ev.clientY - startClientY;
+      setNoteOverrides((prev) => ({ ...prev, [note.id]: { x: Math.max(0, origX + dx), y: Math.max(0, origY + dy) } }));
+    };
+    const onUp = (ev: PointerEvent) => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      const dx = ev.clientX - startClientX;
+      const dy = ev.clientY - startClientY;
+      const nx = Math.max(0, origX + dx);
+      const ny = Math.max(0, origY + dy);
+      setNoteOverrides((prev) => ({ ...prev, [note.id]: { x: nx, y: ny } }));
+      run(() => updateArchitectureNoteGeometry(note.id, projectId, { x: nx, y: ny, width: note.width, height: note.height }));
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }
+
+  function addNote() {
+    const x = 40 + (data.notes.length % 4) * 40;
+    const y = 40 + (data.notes.length % 4) * 40;
+    run(() => createArchitectureNote(projectId, projectRef, { x, y }));
+  }
 
   if (data.columns.length === 0) {
     return (
@@ -118,146 +254,169 @@ export function ArchitectureDiagram({
     <div className="flex flex-col gap-4">
       <div
         ref={containerRef}
-        className="relative overflow-x-auto -mx-3 px-3 py-3 sm:mx-0 sm:px-3 rounded-[10px]"
+        className="relative overflow-auto -mx-3 px-3 py-3 sm:mx-0 sm:px-3 rounded-[10px] max-h-[70vh]"
         style={{ background: "var(--color-canvas)" }}
       >
-        <svg
-          width={svgSize.width}
-          height={svgSize.height}
-          className="absolute left-0 top-0 pointer-events-none"
-          style={{ overflow: "visible" }}
-        >
-          <defs>
-            <marker id="arch-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-              <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--color-ink-soft)" />
-            </marker>
-          </defs>
-          {data.edges.map((edge) => {
-            const from = rects[edge.fromNodeId];
-            const to = rects[edge.toNodeId];
-            if (!from || !to) return null;
-            const x1 = from.left + from.width;
-            const y1 = from.top + from.height / 2;
-            const x2 = to.left;
-            const y2 = to.top + to.height / 2;
-            const bend = Math.max(32, Math.abs(x2 - x1) / 2);
-            return (
-              <path
-                key={edge.id}
-                d={`M ${x1} ${y1} C ${x1 + bend} ${y1}, ${x2 - bend} ${y2}, ${x2} ${y2}`}
-                fill="none"
-                stroke="var(--color-ink-soft)"
-                strokeWidth={2}
-                markerEnd="url(#arch-arrow)"
-              />
-            );
-          })}
-        </svg>
-
-        {data.edges.map((edge) => {
-          const from = rects[edge.fromNodeId];
-          const to = rects[edge.toNodeId];
-          if (!from || !to || !edge.label) return null;
-          const midX = (from.left + from.width + to.left) / 2;
-          const midY = (from.top + from.height / 2 + to.top + to.height / 2) / 2;
-          return (
-            <span
-              key={edge.id}
-              className="absolute font-mono text-[9px] text-ink bg-white border border-line-soft px-1.5 py-0.5 rounded-[4px] whitespace-nowrap pointer-events-none shadow-sm"
-              style={{ left: midX, top: midY, transform: "translate(-50%, -50%)" }}
+        <div className="relative" style={{ width: canvasWidth, height: canvasHeight }}>
+          {/* Column bands -- a visual reference, not a layout constraint.
+              A node can be dragged anywhere; dropping it inside a band
+              reassigns its column too, so the tint stays meaningful. */}
+          {data.columns.map((column, columnIndex) => (
+            <div
+              key={column.id}
+              className="absolute top-0 bottom-0 border-r border-line-soft/60"
+              style={{ left: columnIndex * COLUMN_WIDTH, width: COLUMN_WIDTH, background: `${column.colorHex ?? "#1F2738"}0F` }}
             >
-              {edge.label}
-            </span>
-          );
-        })}
-
-        <div className="relative flex items-start gap-3 pb-2">
-          {data.columns.map((column) => (
-            <div key={column.id} className="flex-none w-[220px] flex flex-col gap-2 border border-line rounded-[9px] bg-white shadow-sm p-2">
               <div
-                className="flex items-center gap-1.5 px-1 pb-1.5 border-b-2"
+                className="sticky top-0 z-10 mx-2 mt-2 flex items-center gap-1.5 px-2 py-1.5 rounded-[8px] bg-white border shadow-sm"
                 style={{ borderColor: column.colorHex ?? "var(--color-line)" }}
               >
-                {column.icon ? <span className="text-[14px] leading-none">{column.icon}</span> : null}
+                {column.iconImageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={column.iconImageUrl} alt="" className="w-4 h-4 rounded-[3px] object-contain flex-none" />
+                ) : column.icon ? (
+                  <span className="text-[13px] leading-none flex-none">{column.icon}</span>
+                ) : null}
                 <button
                   type="button"
                   onClick={() => setViewingColumn(column)}
-                  className="flex-1 min-w-0 text-left min-h-[28px] text-[11.5px] font-semibold text-ink truncate hover:underline"
+                  className="flex-1 min-w-0 text-left min-h-[24px] text-[11px] font-semibold text-ink truncate hover:underline"
                   title="View everything in this column"
                 >
                   {column.label}
                 </button>
                 {canEdit ? (
-                  <div className="flex gap-1 flex-none">
-                    <button
-                      type="button"
-                      onClick={() => setEditingColumn(column)}
-                      className="min-h-[28px] min-w-[28px] text-[10px] text-muted hover:text-ink"
-                      aria-label="Edit column"
-                    >
-                      Edit
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditingColumn(column)}
+                    className="min-h-[24px] text-[9.5px] text-muted hover:text-ink flex-none"
+                    aria-label="Edit column"
+                  >
+                    Edit
+                  </button>
                 ) : null}
               </div>
-
-              <div className="flex flex-col gap-1.5">
-                {column.nodes.length === 0 ? (
-                  <span className="text-[10.5px] text-muted-2 px-1">No modules yet.</span>
-                ) : (
-                  column.nodes.map((node) => (
-                    <div
-                      key={node.id}
-                      ref={(el) => {
-                        if (el) nodeRefs.current.set(node.id, el);
-                        else nodeRefs.current.delete(node.id);
-                      }}
-                      onClick={() => canEdit && setEditingNode(node)}
-                      className={`rounded-[8px] border border-line-soft bg-white px-2.5 py-2 flex flex-col gap-0.5 ${
-                        canEdit ? "cursor-pointer hover:border-coral/50" : ""
-                      }`}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        {node.icon ? <span className="text-[12px] leading-none flex-none">{node.icon}</span> : null}
-                        <span className="text-[11px] font-semibold text-ink leading-[1.3]">{node.label}</span>
-                      </div>
-                      {node.detail ? <span className="text-[10px] text-muted leading-[1.4]">{node.detail}</span> : null}
-                    </div>
-                  ))
-                )}
-              </div>
-
               {canEdit ? (
-                <Button
-                  variant="secondary"
+                <button
                   type="button"
-                  className="!min-h-[32px] !h-8 !text-[10.5px]"
                   onClick={() => setAddingNodeColumnId(column.id)}
+                  className="sticky top-[42px] z-10 mx-2 mt-1.5 block w-[calc(100%-16px)] rounded-[7px] border border-dashed border-line text-[10px] text-muted hover:text-coral hover:border-coral/50 py-1"
                 >
-                  Add module
-                </Button>
+                  + Add module
+                </button>
               ) : null}
             </div>
           ))}
 
           {canEdit ? (
-            <Button
-              variant="secondary"
-              type="button"
-              className="flex-none !min-h-[40px] self-start"
-              onClick={() => setAddingColumn(true)}
-            >
-              Add column
-            </Button>
+            <div className="absolute top-2 flex flex-col gap-2" style={{ left: data.columns.length * COLUMN_WIDTH + 12 }}>
+              <Button variant="secondary" type="button" className="!min-h-[32px] !h-8 !text-[10.5px]" onClick={() => setAddingColumn(true)}>
+                + Column
+              </Button>
+              <Button variant="secondary" type="button" className="!min-h-[32px] !h-8 !text-[10.5px]" onClick={addNote}>
+                + Note
+              </Button>
+            </div>
           ) : null}
+
+          <svg width={svgSize.width} height={svgSize.height} className="absolute left-0 top-0 pointer-events-none" style={{ overflow: "visible" }}>
+            <defs>
+              <marker id="arch-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--color-ink-soft)" />
+              </marker>
+            </defs>
+            {data.edges.map((edge) => {
+              const from = rects[edge.fromNodeId];
+              const to = rects[edge.toNodeId];
+              if (!from || !to) return null;
+              const x1 = from.left + from.width;
+              const y1 = from.top + from.height / 2;
+              const x2 = to.left;
+              const y2 = to.top + to.height / 2;
+              const bend = Math.max(32, Math.abs(x2 - x1) / 2);
+              return (
+                <path
+                  key={edge.id}
+                  d={`M ${x1} ${y1} C ${x1 + bend} ${y1}, ${x2 - bend} ${y2}, ${x2} ${y2}`}
+                  fill="none"
+                  stroke="var(--color-ink-soft)"
+                  strokeWidth={2}
+                  markerEnd="url(#arch-arrow)"
+                />
+              );
+            })}
+          </svg>
+
+          {data.edges.map((edge) => {
+            const from = rects[edge.fromNodeId];
+            const to = rects[edge.toNodeId];
+            if (!from || !to || !edge.label) return null;
+            const midX = (from.left + from.width + to.left) / 2;
+            const midY = (from.top + from.height / 2 + to.top + to.height / 2) / 2;
+            return (
+              <span
+                key={edge.id}
+                className="absolute font-mono text-[9px] text-ink bg-white border border-line-soft px-1.5 py-0.5 rounded-[4px] whitespace-nowrap pointer-events-none shadow-sm"
+                style={{ left: midX, top: midY, transform: "translate(-50%, -50%)" }}
+              >
+                {edge.label}
+              </span>
+            );
+          })}
+
+          {allNodes.map((node) => {
+            const pos = nodePositions.get(node.id)!;
+            const column = columnById.get(pos.columnId);
+            return (
+              <div
+                key={node.id}
+                ref={(el) => {
+                  if (el) nodeRefs.current.set(node.id, el);
+                  else nodeRefs.current.delete(node.id);
+                }}
+                onPointerDown={(e) => startNodeDrag(e, node)}
+                className={`absolute rounded-[8px] border border-line-soft bg-white px-2.5 py-2 flex flex-col gap-0.5 shadow-sm select-none ${
+                  canEdit ? "cursor-grab active:cursor-grabbing hover:border-coral/50" : ""
+                }`}
+                style={{ left: pos.x, top: pos.y, width: CARD_WIDTH, borderLeftWidth: 3, borderLeftColor: column?.colorHex ?? "var(--color-line)" }}
+              >
+                <div className="flex items-center gap-1.5">
+                  {node.iconImageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={node.iconImageUrl} alt="" className="w-4 h-4 rounded-[3px] object-contain flex-none" />
+                  ) : node.icon ? (
+                    <span className="text-[12px] leading-none flex-none">{node.icon}</span>
+                  ) : null}
+                  <span className="text-[11px] font-semibold text-ink leading-[1.3]">{node.label}</span>
+                </div>
+                {node.detail ? <span className="text-[10px] text-muted leading-[1.4]">{node.detail}</span> : null}
+              </div>
+            );
+          })}
+
+          {data.notes.map((note) => {
+            const override = noteOverrides[note.id];
+            const x = override?.x ?? note.posX;
+            const y = override?.y ?? note.posY;
+            return (
+              <NoteCard
+                key={note.id}
+                note={note}
+                x={x}
+                y={y}
+                canEdit={canEdit}
+                onDragStart={(e) => startNoteDrag(e, note)}
+                onBodyBlur={(body) => run(() => updateArchitectureNoteBody(note.id, projectId, projectRef, body))}
+                onDelete={() => run(() => deleteArchitectureNote(note.id, projectId, projectRef), "Note deleted.")}
+              />
+            );
+          })}
         </div>
       </div>
 
       <div className="flex flex-col gap-2 border-t border-line-soft pt-3">
         <div className="flex items-center justify-between gap-2">
-          <span className="font-mono text-[9.5px] text-muted">
-            CONNECTIONS {data.edges.length > 0 ? `· ${data.edges.length}` : ""}
-          </span>
+          <span className="font-mono text-[9.5px] text-muted">CONNECTIONS {data.edges.length > 0 ? `· ${data.edges.length}` : ""}</span>
           {canEdit && allNodes.length >= 2 ? (
             <Button variant="secondary" type="button" className="!min-h-[32px] !h-8 !text-[10.5px]" onClick={() => setAddingEdge(true)}>
               Add a connection
@@ -476,6 +635,51 @@ export function ArchitectureDiagram({
   );
 }
 
+function NoteCard({
+  note,
+  x,
+  y,
+  canEdit,
+  onDragStart,
+  onBodyBlur,
+  onDelete,
+}: {
+  note: ArchitectureNote;
+  x: number;
+  y: number;
+  canEdit: boolean;
+  onDragStart: (e: React.PointerEvent) => void;
+  onBodyBlur: (body: string) => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div
+      className="absolute rounded-[8px] border border-line-soft shadow-sm flex flex-col overflow-hidden"
+      style={{ left: x, top: y, width: note.width, height: note.height, background: note.colorHex }}
+    >
+      <div
+        onPointerDown={canEdit ? onDragStart : undefined}
+        className={`flex items-center justify-between px-2 py-1 flex-none border-b border-black/5 ${canEdit ? "cursor-grab active:cursor-grabbing" : ""}`}
+      >
+        <span className="font-mono text-[8.5px] text-ink/50 select-none">NOTE</span>
+        {canEdit ? (
+          <button type="button" onClick={onDelete} className="text-[11px] text-ink/40 hover:text-coral-strong leading-none" aria-label="Delete note">
+            ×
+          </button>
+        ) : null}
+      </div>
+      <textarea
+        key={note.id}
+        defaultValue={note.body}
+        readOnly={!canEdit}
+        placeholder={canEdit ? "Write a note..." : ""}
+        onBlur={(e) => canEdit && onBodyBlur(e.target.value)}
+        className="flex-1 min-h-0 resize-none bg-transparent px-2 py-1.5 text-[11px] text-ink leading-[1.4] outline-none"
+      />
+    </div>
+  );
+}
+
 function ColumnForm({
   column,
   onSubmit,
@@ -503,6 +707,9 @@ function ColumnForm({
           <input name="label" required autoFocus defaultValue={column?.label ?? ""} className={fieldInputClass} placeholder="Shopify (external source)" />
         </Field>
       </div>
+      <Field label="LOGO (OPTIONAL, OVERRIDES ICON)">
+        <LogoUploadField name="icon_image_url" initialValue={column?.iconImageUrl ?? null} />
+      </Field>
       <Field label="ACCENT COLOUR (OPTIONAL)">
         <input name="color_hex" type="color" defaultValue={column?.colorHex ?? "#1F2738"} className="h-10 w-16 border border-line rounded-[9px]" />
       </Field>
@@ -550,6 +757,9 @@ function NodeForm({
           <input name="label" required autoFocus defaultValue={node?.label ?? ""} className={fieldInputClass} placeholder="platform.shopify_orders_current" />
         </Field>
       </div>
+      <Field label="LOGO (OPTIONAL, OVERRIDES ICON)">
+        <LogoUploadField name="icon_image_url" initialValue={node?.iconImageUrl ?? null} />
+      </Field>
       <Field label="DETAIL (OPTIONAL)">
         <textarea name="detail" rows={2} defaultValue={node?.detail ?? ""} className={fieldInputClass} placeholder="1 row / order, latest raw Shopify state" />
       </Field>

@@ -20,6 +20,21 @@ function optionalString(formData: FormData, key: string): string | null {
   return value ? value : null;
 }
 
+const MAX_ICON_IMAGE_LENGTH = 300_000; // ~225KB decoded -- a logo, not a photo
+
+/** A client-side-read data URI (see LogoUploadField.tsx) rather than a
+ * Storage path -- these render inline, often many at once on one
+ * canvas, and a Storage signed URL expires mid-session; a data URI
+ * never does. Capped server-side too, since the client-side cap in
+ * LogoUploadField is just UX, not a security boundary. */
+function optionalImageDataUri(formData: FormData, key: string): string | null {
+  const value = (formData.get(key) as string | null)?.trim();
+  if (!value) return null;
+  if (!value.startsWith("data:image/")) throw new Error("Logo must be an uploaded image.");
+  if (value.length > MAX_ICON_IMAGE_LENGTH) throw new Error("That logo image is too large -- keep it under ~200KB.");
+  return value;
+}
+
 // ---- Columns ----
 
 export async function createArchitectureColumn(projectId: string, projectRef: string, formData: FormData) {
@@ -38,6 +53,7 @@ export async function createArchitectureColumn(projectId: string, projectRef: st
     project_id: projectId,
     label: requiredString(formData, "label"),
     icon: optionalString(formData, "icon"),
+    icon_image_url: optionalImageDataUri(formData, "icon_image_url"),
     color_hex: optionalString(formData, "color_hex"),
     sort_order: nextSort,
   });
@@ -54,6 +70,7 @@ export async function updateArchitectureColumn(id: string, projectId: string, pr
     .update({
       label: requiredString(formData, "label"),
       icon: optionalString(formData, "icon"),
+      icon_image_url: optionalImageDataUri(formData, "icon_image_url"),
       color_hex: optionalString(formData, "color_hex"),
     })
     .eq("id", id)
@@ -75,17 +92,23 @@ export async function deleteArchitectureColumn(id: string, projectId: string, pr
 
 // ---- Nodes ----
 
+/** New nodes land at a sensible starting spot (near their column's own
+ * x-band, stacked down by however many nodes that column already
+ * has) rather than (0,0) for every new node -- purely a starting
+ * point now that position is freeform; dragging is what actually
+ * places it. */
 export async function createArchitectureNode(columnId: string, projectId: string, projectRef: string, formData: FormData) {
   await requireMissionsLead(projectId);
   const supabase = await createClient();
 
-  const { data: existing } = await supabase
-    .from("project_architecture_nodes")
-    .select("sort_order")
-    .eq("column_id", columnId)
-    .order("sort_order", { ascending: false })
-    .limit(1);
+  const [{ data: existing }, { data: column }, { count: nodeCountInColumnRaw }] = await Promise.all([
+    supabase.from("project_architecture_nodes").select("sort_order").eq("column_id", columnId).order("sort_order", { ascending: false }).limit(1),
+    supabase.from("project_architecture_columns").select("sort_order").eq("id", columnId).maybeSingle(),
+    supabase.from("project_architecture_nodes").select("id", { count: "exact", head: true }).eq("column_id", columnId),
+  ]);
   const nextSort = (existing?.[0]?.sort_order ?? -1) + 1;
+  const columnIndex = column?.sort_order ?? 0;
+  const nodeCountInColumn = nodeCountInColumnRaw ?? 0;
 
   const { error } = await supabase.from("project_architecture_nodes").insert({
     project_id: projectId,
@@ -93,7 +116,10 @@ export async function createArchitectureNode(columnId: string, projectId: string
     label: requiredString(formData, "label"),
     detail: optionalString(formData, "detail"),
     icon: optionalString(formData, "icon"),
+    icon_image_url: optionalImageDataUri(formData, "icon_image_url"),
     sort_order: nextSort,
+    pos_x: columnIndex * 260 + 20,
+    pos_y: nodeCountInColumn * 110 + 80,
   });
   if (error) throw new Error(error.message);
   revalidatePath(basePath(projectRef));
@@ -109,12 +135,37 @@ export async function updateArchitectureNode(id: string, projectId: string, proj
       label: requiredString(formData, "label"),
       detail: optionalString(formData, "detail"),
       icon: optionalString(formData, "icon"),
+      icon_image_url: optionalImageDataUri(formData, "icon_image_url"),
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
     .eq("project_id", projectId);
   if (error) throw new Error(error.message);
   revalidatePath(basePath(projectRef));
+}
+
+/** Drag-end persistence -- called once per drag gesture (not per pixel
+ * of movement), so this is cheap even on a busy canvas. No
+ * revalidatePath: the caller already holds the correct optimistic
+ * position locally, and revalidating on every drag would refetch the
+ * whole diagram mid-gesture for no visible benefit. Columns are now a
+ * purely visual band rather than a layout constraint, but a node's
+ * column_id still drives its colour-coding and grouping -- so a drag
+ * that ends inside a different band reassigns it there too, which is
+ * what makes the bands feel real rather than decorative. */
+export async function updateArchitectureNodePosition(id: string, projectId: string, x: number, y: number, columnId?: string) {
+  await requireMissionsLead(projectId);
+  const supabase = await createClient();
+
+  const update: { pos_x: number; pos_y: number; updated_at: string; column_id?: string } = {
+    pos_x: x,
+    pos_y: y,
+    updated_at: new Date().toISOString(),
+  };
+  if (columnId) update.column_id = columnId;
+
+  const { error } = await supabase.from("project_architecture_nodes").update(update).eq("id", id).eq("project_id", projectId);
+  if (error) throw new Error(error.message);
 }
 
 /** Deletes the node; any edge touching it cascades via FK too. */
@@ -153,6 +204,63 @@ export async function deleteArchitectureEdge(id: string, projectId: string, proj
   const supabase = await createClient();
 
   const { error } = await supabase.from("project_architecture_edges").delete().eq("id", id).eq("project_id", projectId);
+  if (error) throw new Error(error.message);
+  revalidatePath(basePath(projectRef));
+}
+
+// ---- Notes (freeform sticky notes on the canvas) ----
+
+export async function createArchitectureNote(projectId: string, projectRef: string, input: { x: number; y: number }) {
+  const person = await requireMissionsLead(projectId);
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("project_architecture_notes").insert({
+    project_id: projectId,
+    body: "",
+    pos_x: input.x,
+    pos_y: input.y,
+    created_by: person.id,
+  });
+  if (error) throw new Error(error.message);
+  revalidatePath(basePath(projectRef));
+}
+
+export async function updateArchitectureNoteBody(id: string, projectId: string, projectRef: string, body: string) {
+  await requireMissionsLead(projectId);
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("project_architecture_notes")
+    .update({ body, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("project_id", projectId);
+  if (error) throw new Error(error.message);
+  revalidatePath(basePath(projectRef));
+}
+
+/** Same "no revalidatePath" reasoning as updateArchitectureNodePosition
+ * -- called once per drag/resize gesture, not per pixel. */
+export async function updateArchitectureNoteGeometry(
+  id: string,
+  projectId: string,
+  geometry: { x: number; y: number; width: number; height: number }
+) {
+  await requireMissionsLead(projectId);
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("project_architecture_notes")
+    .update({ pos_x: geometry.x, pos_y: geometry.y, width: geometry.width, height: geometry.height, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("project_id", projectId);
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteArchitectureNote(id: string, projectId: string, projectRef: string) {
+  await requireMissionsLead(projectId);
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("project_architecture_notes").delete().eq("id", id).eq("project_id", projectId);
   if (error) throw new Error(error.message);
   revalidatePath(basePath(projectRef));
 }
@@ -213,6 +321,38 @@ function cellString(value: unknown): string {
   return value === null || value === undefined ? "" : String(value).trim();
 }
 
+/** Shared by importArchitectureExcel and compareArchitectureExcelToDiagram
+ * -- download the recorded source file and parse its first sheet into
+ * plain rows. Neither caller mutates anything here. */
+async function readArchitectureExcelRows(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  projectId: string,
+  sourceFileId: string
+): Promise<{ ok: true; rows: ExcelImportRow[] } | { ok: false; message: string }> {
+  const { data: sourceFile } = await supabase
+    .from("project_architecture_source_files")
+    .select("file_asset_id")
+    .eq("id", sourceFileId)
+    .eq("project_id", projectId)
+    .maybeSingle();
+  if (!sourceFile) return { ok: false, message: "Source file not found." };
+
+  const { data: asset } = await supabase.from("file_assets").select("storage_path").eq("id", sourceFile.file_asset_id).maybeSingle();
+  if (!asset) return { ok: false, message: "Source file not found." };
+
+  const { data: blob, error: downloadError } = await supabase.storage.from("delivery-documents").download(asset.storage_path);
+  if (downloadError || !blob) return { ok: false, message: `Couldn't read the file: ${downloadError?.message ?? "unknown error"}.` };
+
+  try {
+    const buffer = Buffer.from(await blob.arrayBuffer());
+    const workbook = XLSX.read(buffer, { type: "buffer" });
+    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+    return { ok: true, rows: XLSX.utils.sheet_to_json<ExcelImportRow>(firstSheet, { defval: "" }) };
+  } catch {
+    return { ok: false, message: "Couldn't read this as a spreadsheet. Export it as .xlsx and try again." };
+  }
+}
+
 /** Reads the first sheet of an uploaded .xlsx workbook and maps it onto
  * this diagram -- no AI involved, this is deterministic since a
  * spreadsheet is already structured data. Expected columns: Column,
@@ -236,29 +376,9 @@ export async function importArchitectureExcel(
 
   const supabase = await createClient();
 
-  const { data: sourceFile } = await supabase
-    .from("project_architecture_source_files")
-    .select("file_asset_id")
-    .eq("id", sourceFileId)
-    .eq("project_id", projectId)
-    .maybeSingle();
-  if (!sourceFile) return { ok: false, message: "Source file not found." };
-
-  const { data: asset } = await supabase.from("file_assets").select("storage_path").eq("id", sourceFile.file_asset_id).maybeSingle();
-  if (!asset) return { ok: false, message: "Source file not found." };
-
-  const { data: blob, error: downloadError } = await supabase.storage.from("delivery-documents").download(asset.storage_path);
-  if (downloadError || !blob) return { ok: false, message: `Couldn't read the file: ${downloadError?.message ?? "unknown error"}.` };
-
-  let rows: ExcelImportRow[];
-  try {
-    const buffer = Buffer.from(await blob.arrayBuffer());
-    const workbook = XLSX.read(buffer, { type: "buffer" });
-    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-    rows = XLSX.utils.sheet_to_json<ExcelImportRow>(firstSheet, { defval: "" });
-  } catch {
-    return { ok: false, message: "Couldn't read this as a spreadsheet. Export it as .xlsx and try again." };
-  }
+  const parsed = await readArchitectureExcelRows(supabase, projectId, sourceFileId);
+  if (!parsed.ok) return parsed;
+  const rows = parsed.rows;
   if (rows.length === 0) return { ok: false, message: "That spreadsheet has no rows." };
 
   const { data: existingColumns } = await supabase
@@ -342,4 +462,52 @@ export async function importArchitectureExcel(
     message += ` Couldn't match ${skippedEdges.length} connection(s) to an exact module label: ${skippedEdges.slice(0, 3).join("; ")}${skippedEdges.length > 3 ? ", ..." : ""}.`;
   }
   return { ok: true, message };
+}
+
+export interface ArchitectureExcelComparison {
+  matched: string[];
+  missingFromDiagram: { column: string; node: string }[];
+  missingFromExcel: string[];
+}
+
+/** Read-only: does NOT import or change anything -- just checks every
+ * (Column, Node) pair in the spreadsheet against what the diagram
+ * actually has right now, by exact label match. "Missing from
+ * diagram" means the sheet lists it but no module with that label
+ * exists yet; "missing from Excel" means the diagram has a module the
+ * sheet never mentions (could be hand-added, or the sheet is out of
+ * date). */
+export async function compareArchitectureExcelToDiagram(
+  projectId: string,
+  sourceFileId: string
+): Promise<{ ok: true; result: ArchitectureExcelComparison } | { ok: false; message: string }> {
+  try {
+    await requireMissionsLead(projectId);
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : "Not authorized." };
+  }
+
+  const supabase = await createClient();
+  const parsed = await readArchitectureExcelRows(supabase, projectId, sourceFileId);
+  if (!parsed.ok) return parsed;
+
+  const excelPairs = new Map<string, string>(); // node label -> column label
+  for (const row of parsed.rows) {
+    const columnLabel = cellString(row.Column);
+    const nodeLabel = cellString(row.Node);
+    if (columnLabel && nodeLabel) excelPairs.set(nodeLabel, columnLabel);
+  }
+
+  const { data: diagramNodes } = await supabase.from("project_architecture_nodes").select("label").eq("project_id", projectId);
+  const diagramLabels = new Set((diagramNodes ?? []).map((n) => n.label));
+
+  const matched: string[] = [];
+  const missingFromDiagram: { column: string; node: string }[] = [];
+  for (const [nodeLabel, columnLabel] of excelPairs) {
+    if (diagramLabels.has(nodeLabel)) matched.push(nodeLabel);
+    else missingFromDiagram.push({ column: columnLabel, node: nodeLabel });
+  }
+  const missingFromExcel = [...diagramLabels].filter((label) => !excelPairs.has(label));
+
+  return { ok: true, result: { matched, missingFromDiagram, missingFromExcel } };
 }

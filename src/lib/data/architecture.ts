@@ -6,13 +6,17 @@ export interface ArchitectureNode {
   label: string;
   detail: string | null;
   icon: string | null;
+  iconImageUrl: string | null;
   sortOrder: number;
+  posX: number | null;
+  posY: number | null;
 }
 
 export interface ArchitectureColumn {
   id: string;
   label: string;
   icon: string | null;
+  iconImageUrl: string | null;
   colorHex: string | null;
   sortOrder: number;
   nodes: ArchitectureNode[];
@@ -25,38 +29,62 @@ export interface ArchitectureEdge {
   label: string | null;
 }
 
+export interface ArchitectureNote {
+  id: string;
+  body: string;
+  colorHex: string;
+  posX: number;
+  posY: number;
+  width: number;
+  height: number;
+}
+
 export interface ProjectArchitectureData {
   columns: ArchitectureColumn[];
   edges: ArchitectureEdge[];
+  notes: ArchitectureNote[];
 }
 
 /** The whole "REFERENCE · SOLUTION ARCHITECTURE" diagram for one
- * project -- columns (in order), each with its own nodes (in order),
- * plus every edge between any two nodes in the diagram (edges can
- * cross columns, so they're returned flat rather than nested). Never
- * seeds anything on read, same rule as every other diagram/timeline
- * getter in this codebase -- an empty diagram is a real, valid state
- * until someone adds the first column. */
+ * project -- columns (in order, a purely visual reference band now,
+ * not a layout constraint), every node with its free (pos_x, pos_y)
+ * canvas position, every edge between any two nodes (edges can cross
+ * columns, so they're returned flat rather than nested), and every
+ * freeform note pinned on the canvas. Never seeds anything on read,
+ * same rule as every other diagram/timeline getter in this codebase --
+ * an empty diagram is a real, valid state until someone adds the
+ * first column. */
 export async function getProjectArchitecture(projectId: string): Promise<ProjectArchitectureData> {
   const supabase = await createClient();
-  const [{ data: columns }, { data: nodes }, { data: edges }] = await Promise.all([
+  const [{ data: columns }, { data: nodes }, { data: edges }, { data: notes }] = await Promise.all([
     supabase
       .from("project_architecture_columns")
-      .select("id, label, icon, color_hex, sort_order")
+      .select("id, label, icon, icon_image_url, color_hex, sort_order")
       .eq("project_id", projectId)
       .order("sort_order", { ascending: true }),
     supabase
       .from("project_architecture_nodes")
-      .select("id, column_id, label, detail, icon, sort_order")
+      .select("id, column_id, label, detail, icon, icon_image_url, sort_order, pos_x, pos_y")
       .eq("project_id", projectId)
       .order("sort_order", { ascending: true }),
     supabase.from("project_architecture_edges").select("id, from_node_id, to_node_id, label").eq("project_id", projectId),
+    supabase.from("project_architecture_notes").select("id, body, color_hex, pos_x, pos_y, width, height").eq("project_id", projectId),
   ]);
 
   const nodesByColumn = new Map<string, ArchitectureNode[]>();
   for (const n of nodes ?? []) {
     const list = nodesByColumn.get(n.column_id) ?? [];
-    list.push({ id: n.id, columnId: n.column_id, label: n.label, detail: n.detail, icon: n.icon, sortOrder: n.sort_order });
+    list.push({
+      id: n.id,
+      columnId: n.column_id,
+      label: n.label,
+      detail: n.detail,
+      icon: n.icon,
+      iconImageUrl: n.icon_image_url,
+      sortOrder: n.sort_order,
+      posX: n.pos_x,
+      posY: n.pos_y,
+    });
     nodesByColumn.set(n.column_id, list);
   }
 
@@ -65,11 +93,21 @@ export async function getProjectArchitecture(projectId: string): Promise<Project
       id: c.id,
       label: c.label,
       icon: c.icon,
+      iconImageUrl: c.icon_image_url,
       colorHex: c.color_hex,
       sortOrder: c.sort_order,
       nodes: nodesByColumn.get(c.id) ?? [],
     })),
     edges: (edges ?? []).map((e) => ({ id: e.id, fromNodeId: e.from_node_id, toNodeId: e.to_node_id, label: e.label })),
+    notes: (notes ?? []).map((n) => ({
+      id: n.id,
+      body: n.body,
+      colorHex: n.color_hex,
+      posX: n.pos_x,
+      posY: n.pos_y,
+      width: n.width,
+      height: n.height,
+    })),
   };
 }
 

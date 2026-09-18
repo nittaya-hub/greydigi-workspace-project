@@ -947,6 +947,7 @@ export interface Database {
           project_id: string;
           label: string;
           icon: string | null;
+          icon_image_url: string | null;
           color_hex: string | null;
           sort_order: number;
           created_at: Timestamptz;
@@ -956,6 +957,7 @@ export interface Database {
           project_id: string;
           label: string;
           icon?: string | null;
+          icon_image_url?: string | null;
           color_hex?: string | null;
           sort_order?: number;
           created_at?: Timestamptz;
@@ -969,7 +971,10 @@ export interface Database {
           label: string;
           detail: string | null;
           icon: string | null;
+          icon_image_url: string | null;
           sort_order: number;
+          pos_x: number | null;
+          pos_y: number | null;
           created_at: Timestamptz;
           updated_at: Timestamptz;
         },
@@ -980,7 +985,38 @@ export interface Database {
           label: string;
           detail?: string | null;
           icon?: string | null;
+          icon_image_url?: string | null;
           sort_order?: number;
+          pos_x?: number | null;
+          pos_y?: number | null;
+          created_at?: Timestamptz;
+          updated_at?: Timestamptz;
+        }
+      >;
+      project_architecture_notes: CrudTable<
+        {
+          id: string;
+          project_id: string;
+          body: string;
+          color_hex: string;
+          pos_x: number;
+          pos_y: number;
+          width: number;
+          height: number;
+          created_by: string | null;
+          created_at: Timestamptz;
+          updated_at: Timestamptz;
+        },
+        {
+          id?: string;
+          project_id: string;
+          body?: string;
+          color_hex?: string;
+          pos_x?: number;
+          pos_y?: number;
+          width?: number;
+          height?: number;
+          created_by?: string | null;
           created_at?: Timestamptz;
           updated_at?: Timestamptz;
         }
