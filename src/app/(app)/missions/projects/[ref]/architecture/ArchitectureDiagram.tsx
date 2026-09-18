@@ -4,6 +4,7 @@ import { useLayoutEffect, useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { Modal, Field, fieldInputClass } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/shadcn/sheet";
 import type { ProjectArchitectureData, ArchitectureColumn, ArchitectureNode } from "@/lib/data/architecture";
 import {
   createArchitectureColumn,
@@ -43,6 +44,7 @@ export function ArchitectureDiagram({
   const [addingNodeColumnId, setAddingNodeColumnId] = useState<string | null>(null);
   const [editingNode, setEditingNode] = useState<ArchitectureNode | null>(null);
   const [addingEdge, setAddingEdge] = useState(false);
+  const [viewingColumn, setViewingColumn] = useState<ArchitectureColumn | null>(null);
 
   function remeasure() {
     const next: Record<string, Rect> = {};
@@ -110,7 +112,11 @@ export function ArchitectureDiagram({
 
   return (
     <div className="flex flex-col gap-4">
-      <div ref={containerRef} className="relative overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
+      <div
+        ref={containerRef}
+        className="relative overflow-x-auto -mx-3 px-3 py-3 sm:mx-0 sm:px-3 rounded-[10px]"
+        style={{ background: "var(--color-canvas)" }}
+      >
         <svg
           width={svgSize.width}
           height={svgSize.height}
@@ -118,8 +124,8 @@ export function ArchitectureDiagram({
           style={{ overflow: "visible" }}
         >
           <defs>
-            <marker id="arch-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-              <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--color-muted-2)" />
+            <marker id="arch-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--color-ink-soft)" />
             </marker>
           </defs>
           {data.edges.map((edge) => {
@@ -136,8 +142,8 @@ export function ArchitectureDiagram({
                 key={edge.id}
                 d={`M ${x1} ${y1} C ${x1 + bend} ${y1}, ${x2 - bend} ${y2}, ${x2} ${y2}`}
                 fill="none"
-                stroke="var(--color-muted-2)"
-                strokeWidth={1.5}
+                stroke="var(--color-ink-soft)"
+                strokeWidth={2}
                 markerEnd="url(#arch-arrow)"
               />
             );
@@ -153,7 +159,7 @@ export function ArchitectureDiagram({
           return (
             <span
               key={edge.id}
-              className="absolute font-mono text-[9px] text-muted bg-paper px-1 rounded-[4px] whitespace-nowrap pointer-events-none"
+              className="absolute font-mono text-[9px] text-ink bg-white border border-line-soft px-1.5 py-0.5 rounded-[4px] whitespace-nowrap pointer-events-none shadow-sm"
               style={{ left: midX, top: midY, transform: "translate(-50%, -50%)" }}
             >
               {edge.label}
@@ -163,13 +169,20 @@ export function ArchitectureDiagram({
 
         <div className="relative flex items-start gap-3 pb-2">
           {data.columns.map((column) => (
-            <div key={column.id} className="flex-none w-[220px] flex flex-col gap-2 border border-line rounded-[9px] bg-white/60 p-2">
+            <div key={column.id} className="flex-none w-[220px] flex flex-col gap-2 border border-line rounded-[9px] bg-white shadow-sm p-2">
               <div
                 className="flex items-center gap-1.5 px-1 pb-1.5 border-b-2"
                 style={{ borderColor: column.colorHex ?? "var(--color-line)" }}
               >
                 {column.icon ? <span className="text-[14px] leading-none">{column.icon}</span> : null}
-                <span className="flex-1 text-[11.5px] font-semibold text-ink truncate">{column.label}</span>
+                <button
+                  type="button"
+                  onClick={() => setViewingColumn(column)}
+                  className="flex-1 min-w-0 text-left min-h-[28px] text-[11.5px] font-semibold text-ink truncate hover:underline"
+                  title="View everything in this column"
+                >
+                  {column.label}
+                </button>
                 {canEdit ? (
                   <div className="flex gap-1 flex-none">
                     <button
@@ -396,6 +409,40 @@ export function ArchitectureDiagram({
           </div>
         </form>
       </Modal>
+
+      {/* Column detail -- click a column's heading to read everything
+          under it in one clean list, rather than only the compact
+          inline cards. */}
+      <Sheet open={!!viewingColumn} onOpenChange={(open) => !open && setViewingColumn(null)}>
+        <SheetContent side="right" className="w-full sm:max-w-[420px] overflow-y-auto">
+          {viewingColumn ? (
+            <>
+              <SheetHeader>
+                <SheetTitle className="flex items-center gap-2">
+                  {viewingColumn.icon ? <span>{viewingColumn.icon}</span> : null}
+                  {viewingColumn.label}
+                </SheetTitle>
+                <SheetDescription>{viewingColumn.nodes.length} module(s) in this column.</SheetDescription>
+              </SheetHeader>
+              <div className="flex flex-col gap-2 px-4 pb-4">
+                {viewingColumn.nodes.length === 0 ? (
+                  <span className="text-[12px] text-muted">No modules yet.</span>
+                ) : (
+                  viewingColumn.nodes.map((node) => (
+                    <div key={node.id} className="rounded-[8px] border border-line-soft px-3 py-2.5">
+                      <div className="flex items-center gap-1.5">
+                        {node.icon ? <span className="text-[13px] leading-none">{node.icon}</span> : null}
+                        <span className="text-[12.5px] font-semibold text-ink">{node.label}</span>
+                      </div>
+                      {node.detail ? <span className="block text-[11px] text-muted leading-[1.5] mt-0.5">{node.detail}</span> : null}
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
+          ) : null}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

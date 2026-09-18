@@ -6,6 +6,7 @@ import { getCurrentPerson } from "@/lib/data/auth-guard";
 import { UploadArchitectureExcelButton } from "./UploadArchitectureExcelButton";
 import { ArchitectureDiagram } from "./ArchitectureDiagram";
 import { ArchitectureSourceFileRow } from "./ArchitectureSourceFileRow";
+import { ExpandArchitectureButton } from "./ExpandArchitectureButton";
 
 export default async function SolutionArchitecturePage({ params }: { params: Promise<{ ref: string }> }) {
   const { ref } = await params;
@@ -60,9 +61,12 @@ export default async function SolutionArchitecturePage({ params }: { params: Pro
       </Card>
 
       <Card className="p-4">
-        <div className="mb-3">
-          <span className="block text-[12.5px] font-semibold text-ink">Solution architecture</span>
-          <span className="block font-mono text-[9.5px] text-muted">COLUMNS ARE STAGES, LEFT TO RIGHT · MODULES AND CONNECTIONS ARE YOURS TO EDIT</span>
+        <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+          <div>
+            <span className="block text-[12.5px] font-semibold text-ink">Solution architecture</span>
+            <span className="block font-mono text-[9.5px] text-muted">COLUMNS ARE STAGES, LEFT TO RIGHT · MODULES AND CONNECTIONS ARE YOURS TO EDIT</span>
+          </div>
+          <ExpandArchitectureButton data={architecture} projectId={project.id} projectRef={project.ref} />
         </div>
         <ArchitectureDiagram data={architecture} projectId={project.id} projectRef={project.ref} canEdit={canEdit} />
       </Card>
