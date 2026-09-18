@@ -15,6 +15,7 @@ import {
   getProjectChangeRequests,
   type TaskRow,
   type TaskCustomFieldColumn,
+  type TaskCustomFieldValue,
 } from "@/lib/data/project";
 import { TaskPhaseGroup } from "../projects/[ref]/tasks/TaskPhaseGroup";
 import { InlineAddTaskRow } from "../projects/[ref]/tasks/InlineAddTaskRow";
@@ -31,7 +32,7 @@ interface ProjectTaskSection {
   clientName: string;
   tasks: TaskRow[];
   customFields: TaskCustomFieldColumn[];
-  customValues: Map<string, Map<string, string>>;
+  customValues: Map<string, Map<string, TaskCustomFieldValue>>;
 }
 
 export default async function WorkspaceTasksPage({
@@ -199,6 +200,6 @@ async function loadDrawerData(taskId: string, sections: ProjectTaskSection[]) {
     activity,
     projectRef,
     customFields: section?.customFields ?? [],
-    customValues: section?.customValues.get(taskId) ?? new Map<string, string>(),
+    customValues: section?.customValues.get(taskId) ?? new Map<string, TaskCustomFieldValue>(),
   };
 }

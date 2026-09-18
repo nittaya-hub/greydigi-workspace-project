@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/shadcn/avatar";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
@@ -19,11 +20,28 @@ export function AvatarUploadField({
   const inputRef = useRef<HTMLInputElement>(null);
   const [isPending, startTransition] = useTransition();
   const toast = useToast();
+  const router = useRouter();
+  // Shows the picked file immediately (a local object URL), rather than
+  // waiting on the upload -> record -> revalidate -> re-render round
+  // trip to reach this component's own `avatarUrl` prop -- that path is
+  // real and does work, but it's a few hops away, and a photo picker
+  // that visibly updates the instant you pick a file is worth the
+  // small bit of local state. Cleared once the server's own avatarUrl
+  // prop reflects the same change, so this never drifts from what's
+  // actually saved.
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  const displayUrl = previewUrl ?? avatarUrl;
 
   return (
     <div className="flex items-center gap-4">
       <Avatar size="lg" className="w-16 h-16">
-        {avatarUrl ? <AvatarImage src={avatarUrl} alt="" /> : null}
+        {displayUrl ? <AvatarImage src={displayUrl} alt="" /> : null}
         <AvatarFallback className="text-[18px]">{initials}</AvatarFallback>
       </Avatar>
       <div className="flex flex-col gap-2">
@@ -35,6 +53,8 @@ export function AvatarUploadField({
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (!file) return;
+            const localUrl = URL.createObjectURL(file);
+            setPreviewUrl(localUrl);
             startTransition(async () => {
               try {
                 const supabase = createBrowserClient();
@@ -43,8 +63,10 @@ export function AvatarUploadField({
                 const { error: uploadError } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
                 if (uploadError) throw new Error(uploadError.message);
                 await updateOwnAvatar(path);
+                router.refresh();
                 toast.show("Photo updated.", "success");
               } catch (err) {
+                setPreviewUrl(null);
                 toast.show(err instanceof Error ? err.message : "Could not upload photo.", "error");
               } finally {
                 if (inputRef.current) inputRef.current.value = "";
@@ -56,7 +78,7 @@ export function AvatarUploadField({
           <Button variant="secondary" type="button" disabled={isPending} onClick={() => inputRef.current?.click()}>
             {isPending ? "Uploading..." : "Change photo"}
           </Button>
-          {avatarUrl ? (
+          {displayUrl ? (
             <Button
               variant="secondary"
               type="button"
@@ -65,6 +87,8 @@ export function AvatarUploadField({
                 startTransition(async () => {
                   try {
                     await removeOwnAvatar();
+                    setPreviewUrl(null);
+                    router.refresh();
                     toast.show("Photo removed.", "success");
                   } catch (err) {
                     toast.show(err instanceof Error ? err.message : "Could not remove photo.", "error");

@@ -304,13 +304,8 @@ export function Sidebar({ shell, onNavigate }: { shell: ShellData; onNavigate?: 
           <>
             <Link href="/profile" className="flex items-center gap-[9px] flex-1 min-w-0" title="Profile settings">
               {shell.person.avatarUrl ? (
-                <Image
-                  src={shell.person.avatarUrl}
-                  alt=""
-                  width={26}
-                  height={26}
-                  className="w-[26px] h-[26px] rounded-full object-cover flex-none"
-                />
+                // eslint-disable-next-line @next/next/no-img-element -- a 26px sidebar icon isn't worth next/image's remote-pattern config; a plain Supabase Storage URL just works
+                <img src={shell.person.avatarUrl} alt="" className="w-[26px] h-[26px] rounded-full object-cover flex-none" />
               ) : (
                 <span className="w-[26px] h-[26px] rounded-full bg-ink-soft text-white text-[10px] flex items-center justify-center flex-none">
                   {shell.person.initials}

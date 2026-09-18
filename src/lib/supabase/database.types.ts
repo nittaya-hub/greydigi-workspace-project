@@ -17,6 +17,7 @@ export type WorkspaceRole =
 export type ProjectStatus = "active" | "archived";
 export type HealthStatus = "on_plan" | "watch" | "blocked";
 export type TaskStatus = "idle" | "in_progress" | "waiting_on_client" | "blocked" | "watch" | "done";
+export type TaskCustomFieldType = "text" | "calendar" | "status";
 export type GateStatus = "on_plan" | "held" | "cleared";
 export type ConditionStatus = "open" | "met" | "waived";
 export type ConditionOwner = "team" | "client";
@@ -666,12 +667,37 @@ export interface Database {
         { id?: string; task_id: string; author_person_id?: string | null; body: string; created_at?: Timestamptz }
       >;
       task_custom_fields: CrudTable<
-        { id: string; project_id: string; name: string; sort_order: number; created_at: Timestamptz },
-        { id?: string; project_id: string; name: string; sort_order?: number; created_at?: Timestamptz }
+        { id: string; project_id: string; name: string; field_type: TaskCustomFieldType; sort_order: number; created_at: Timestamptz },
+        {
+          id?: string;
+          project_id: string;
+          name: string;
+          field_type?: TaskCustomFieldType;
+          sort_order?: number;
+          created_at?: Timestamptz;
+        }
+      >;
+      task_custom_field_options: CrudTable<
+        { id: string; field_id: string; label: string; color_hex: string; sort_order: number; created_at: Timestamptz },
+        {
+          id?: string;
+          field_id: string;
+          label: string;
+          color_hex?: string;
+          sort_order?: number;
+          created_at?: Timestamptz;
+        }
       >;
       task_custom_field_values: CrudTable<
-        { id: string; task_id: string; field_id: string; value: string | null; updated_at: Timestamptz },
-        { id?: string; task_id: string; field_id: string; value?: string | null; updated_at?: Timestamptz }
+        { id: string; task_id: string; field_id: string; value: string | null; option_id: string | null; updated_at: Timestamptz },
+        {
+          id?: string;
+          task_id: string;
+          field_id: string;
+          value?: string | null;
+          option_id?: string | null;
+          updated_at?: Timestamptz;
+        }
       >;
       baselines: CrudTable<
         {

@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { GripVertical, CircleCheck, Circle, Trash2, Loader2, AlertTriangle } from "lucide-react";
 import clsx from "clsx";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/shadcn/select";
-import type { TaskRow, TaskCustomFieldColumn, WorkspacePersonOption } from "@/lib/data/project";
+import type { TaskRow, TaskCustomFieldColumn, TaskCustomFieldValue, WorkspacePersonOption } from "@/lib/data/project";
 import type { TaskStatus } from "@/lib/supabase/database.types";
 import { withTimeout } from "@/lib/withTimeout";
 import { ConfirmButton } from "@/components/ui/ConfirmButton";
@@ -85,7 +85,7 @@ function TaskListRow({
   onDrop: (e: DragEvent<HTMLDivElement>) => void;
   onDragEnd: () => void;
   customFields: TaskCustomFieldColumn[];
-  customValues: Map<string, Map<string, string>>;
+  customValues: Map<string, Map<string, TaskCustomFieldValue>>;
   people: WorkspacePersonOption[];
 }) {
   // Adjusts optimistic local state during render when the server-confirmed
@@ -289,15 +289,21 @@ function TaskListRow({
           ))}
         </SelectContent>
       </Select>
-      {customFields.map((f) => (
-        <CustomFieldCell
-          key={f.id}
-          taskId={task.id}
-          projectRef={projectRef}
-          fieldId={f.id}
-          initialValue={customValues.get(task.id)?.get(f.id) ?? ""}
-        />
-      ))}
+      {customFields.map((f) => {
+        const cellValue = customValues.get(task.id)?.get(f.id);
+        return (
+          <CustomFieldCell
+            key={f.id}
+            taskId={task.id}
+            projectRef={projectRef}
+            fieldId={f.id}
+            fieldType={f.fieldType}
+            options={f.options}
+            initialValue={cellValue?.value ?? ""}
+            initialOptionId={cellValue?.optionId ?? null}
+          />
+        );
+      })}
       <ConfirmButton
         trigger={<Trash2 size={14} />}
         triggerClassName="flex-none text-muted-2 hover:text-block-fg justify-self-center"
@@ -337,7 +343,7 @@ export function TaskPhaseGroup({
   phaseId: string | null;
   tasks: TaskRow[];
   customFields: TaskCustomFieldColumn[];
-  customValues: Map<string, Map<string, string>>;
+  customValues: Map<string, Map<string, TaskCustomFieldValue>>;
   cols: string;
   people: WorkspacePersonOption[];
 }) {

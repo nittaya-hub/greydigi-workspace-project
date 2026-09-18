@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentPerson } from "@/lib/data/auth-guard";
 import { notifyWorkspace } from "@/lib/data/notify";
-import type { TaskStatus, TaskVisibility } from "@/lib/supabase/database.types";
+import type { TaskStatus, TaskVisibility, TaskCustomFieldType } from "@/lib/supabase/database.types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -342,12 +342,19 @@ export async function createTaskInline(
   return created.id;
 }
 
-/** Adds a new configurable column to this project's tasks table — free
- * text only, applies to every task in the project going forward. Column
- * name must be unique per project (task_custom_fields has a unique
- * (project_id, name) constraint). */
-export async function addTaskCustomField(projectId: string, projectRef: string, name: string): Promise<string> {
-  const trimmed = name.trim();
+/** Adds a new configurable column to this project's tasks table --
+ * text (free text), calendar (a date), or status (a colour-coded
+ * option set, created in the same call so the popover's "Create" click
+ * produces a fully working column, options included, in one round
+ * trip). Column name must be unique per project (task_custom_fields
+ * has a unique (project_id, name) constraint). Type is fixed at
+ * creation -- see 0076's own migration comment for why. */
+export async function addTaskCustomField(
+  projectId: string,
+  projectRef: string,
+  input: { name: string; fieldType: TaskCustomFieldType; options?: { label: string; colorHex: string }[] }
+): Promise<string> {
+  const trimmed = input.name.trim();
   if (!trimmed) throw new Error("Column name can't be empty.");
 
   const supabase = await createClient();
@@ -358,10 +365,20 @@ export async function addTaskCustomField(projectId: string, projectRef: string, 
 
   const { data: created, error } = await supabase
     .from("task_custom_fields")
-    .insert({ project_id: projectId, name: trimmed, sort_order: (count ?? 0) + 1 })
+    .insert({ project_id: projectId, name: trimmed, field_type: input.fieldType, sort_order: (count ?? 0) + 1 })
     .select("id")
     .single();
   if (error || !created) throw new Error(error?.message ?? "Could not add column.");
+
+  if (input.fieldType === "status" && input.options?.length) {
+    const rows = input.options
+      .filter((o) => o.label.trim())
+      .map((o, i) => ({ field_id: created.id, label: o.label.trim(), color_hex: o.colorHex, sort_order: i }));
+    if (rows.length) {
+      const { error: optionsError } = await supabase.from("task_custom_field_options").insert(rows);
+      if (optionsError) throw new Error(optionsError.message);
+    }
+  }
 
   revalidateTaskViews(projectRef);
   return created.id;
@@ -371,7 +388,8 @@ export async function addTaskCustomField(projectId: string, projectRef: string, 
  * along with every task's value in it (task_custom_field_values.field_id
  * is `on delete cascade`, 0017_task_custom_fields.sql) — there's no
  * "empty the column instead" option, since a column with no values left
- * is just a column, not a meaningfully different state. */
+ * is just a column, not a meaningfully different state. Any status
+ * options cascade with it too (task_custom_field_options.field_id). */
 export async function deleteTaskCustomField(fieldId: string, projectId: string, projectRef: string) {
   const supabase = await createClient();
 
@@ -381,15 +399,81 @@ export async function deleteTaskCustomField(fieldId: string, projectId: string, 
   revalidateTaskViews(projectRef);
 }
 
-/** Sets one cell's value for a custom column, upserting since the first
- * edit for a given (task, field) pair has no row yet. */
+/** Sets one cell's value for a text/calendar column, upserting since
+ * the first edit for a given (task, field) pair has no row yet. Always
+ * clears option_id -- a value row is either a value or an option
+ * choice, never both (see setTaskCustomFieldOption for status columns). */
 export async function setTaskCustomFieldValue(taskId: string, projectRef: string, fieldId: string, value: string) {
   const supabase = await createClient();
   const trimmed = value.trim();
 
+  const { error } = await supabase.from("task_custom_field_values").upsert(
+    { task_id: taskId, field_id: fieldId, value: trimmed || null, option_id: null, updated_at: new Date().toISOString() },
+    { onConflict: "task_id,field_id" }
+  );
+  if (error) throw new Error(error.message);
+
+  revalidateTaskViews(projectRef);
+}
+
+/** Same as setTaskCustomFieldValue but for a status column's cell --
+ * stores a real FK to the chosen option (or null to clear it) instead
+ * of free text, so renaming an option later doesn't leave old cells
+ * showing a stale label. */
+export async function setTaskCustomFieldOption(taskId: string, projectRef: string, fieldId: string, optionId: string | null) {
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("task_custom_field_values").upsert(
+    { task_id: taskId, field_id: fieldId, option_id: optionId, value: null, updated_at: new Date().toISOString() },
+    { onConflict: "task_id,field_id" }
+  );
+  if (error) throw new Error(error.message);
+
+  revalidateTaskViews(projectRef);
+}
+
+/** Adds one more colour option to an existing status column -- the
+ * "Manage options" control on the column header, for adding options
+ * after the column already exists (creation-time options come from
+ * addTaskCustomField itself). */
+export async function addTaskCustomFieldOption(fieldId: string, projectRef: string, input: { label: string; colorHex: string }) {
+  const trimmed = input.label.trim();
+  if (!trimmed) throw new Error("Option label can't be empty.");
+
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from("task_custom_field_options")
+    .select("id", { count: "exact", head: true })
+    .eq("field_id", fieldId);
+
   const { error } = await supabase
-    .from("task_custom_field_values")
-    .upsert({ task_id: taskId, field_id: fieldId, value: trimmed || null, updated_at: new Date().toISOString() }, { onConflict: "task_id,field_id" });
+    .from("task_custom_field_options")
+    .insert({ field_id: fieldId, label: trimmed, color_hex: input.colorHex, sort_order: count ?? 0 });
+  if (error) throw new Error(error.message);
+
+  revalidateTaskViews(projectRef);
+}
+
+export async function updateTaskCustomFieldOption(optionId: string, projectRef: string, input: { label: string; colorHex: string }) {
+  const trimmed = input.label.trim();
+  if (!trimmed) throw new Error("Option label can't be empty.");
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("task_custom_field_options")
+    .update({ label: trimmed, color_hex: input.colorHex })
+    .eq("id", optionId);
+  if (error) throw new Error(error.message);
+
+  revalidateTaskViews(projectRef);
+}
+
+/** Deleting an option leaves any cell that had it set to null
+ * (task_custom_field_values.option_id is `on delete set null`, 0076) --
+ * those cells just show empty, same as a task that never got a value. */
+export async function deleteTaskCustomFieldOption(optionId: string, projectRef: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("task_custom_field_options").delete().eq("id", optionId);
   if (error) throw new Error(error.message);
 
   revalidateTaskViews(projectRef);

@@ -26,7 +26,7 @@ import { Badge } from "@/components/shadcn/badge";
 import { Separator } from "@/components/shadcn/separator";
 import { ScrollArea } from "@/components/shadcn/scroll-area";
 import { Button } from "@/components/shadcn/button";
-import type { TaskActivityRow, TaskCommentRow, TaskCustomFieldColumn, TaskDetail, WorkspacePersonOption } from "@/lib/data/project";
+import type { TaskActivityRow, TaskCommentRow, TaskCustomFieldColumn, TaskCustomFieldValue, TaskDetail, WorkspacePersonOption } from "@/lib/data/project";
 import type { TaskStatus, TaskVisibility } from "@/lib/supabase/database.types";
 import { useAutosaveField, type SaveStatus } from "./useAutosaveField";
 import { addTaskComment, deleteTask, updateTaskAssignee, updateTaskField, updateTaskScope } from "./task-drawer-actions";
@@ -90,7 +90,7 @@ export function TaskDrawer({
   /** This task's configurable columns (task_custom_fields), editable
    * inline below — same fields CustomFieldCell edits in the table row. */
   customFields?: TaskCustomFieldColumn[];
-  customValues?: Map<string, string>;
+  customValues?: Map<string, TaskCustomFieldValue>;
   approvedChangeRequests?: { id: string; ref: string; title: string }[];
 }) {
   const router = useRouter();
@@ -140,7 +140,7 @@ function TaskDrawerBody({
   people: WorkspacePersonOption[];
   projectRef: string;
   customFields: TaskCustomFieldColumn[];
-  customValues: Map<string, string>;
+  customValues: Map<string, TaskCustomFieldValue>;
   onDeleted: () => void;
   /** Approved change requests for this task's project only — the scope
    * picker below can only ever link to one of these, so an unapproved
@@ -443,16 +443,22 @@ function TaskDrawerBody({
             <>
               <Separator />
               <div className="grid grid-cols-2 gap-3">
-                {customFields.map((f) => (
-                  <CustomFieldDrawerField
-                    key={f.id}
-                    taskId={task.id}
-                    projectRef={projectRef}
-                    fieldId={f.id}
-                    fieldName={f.name}
-                    initialValue={customValues.get(f.id) ?? ""}
-                  />
-                ))}
+                {customFields.map((f) => {
+                  const cellValue = customValues.get(f.id);
+                  return (
+                    <CustomFieldDrawerField
+                      key={f.id}
+                      taskId={task.id}
+                      projectRef={projectRef}
+                      fieldId={f.id}
+                      fieldName={f.name}
+                      fieldType={f.fieldType}
+                      options={f.options}
+                      initialValue={cellValue?.value ?? ""}
+                      initialOptionId={cellValue?.optionId ?? null}
+                    />
+                  );
+                })}
               </div>
             </>
           ) : null}

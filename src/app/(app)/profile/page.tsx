@@ -11,7 +11,7 @@ export default async function ProfilePage() {
   if (!person) notFound();
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-6 max-w-[720px] mx-auto">
       <PageHeading title="Profile" description="Your own name and photo -- visible to your whole workspace, wherever your name shows up (task owners, assignee pickers, comments)." />
 
       <Card>

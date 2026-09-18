@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import type { HealthStatus, TaskStatus, TaskVisibility } from "@/lib/supabase/database.types";
+import type { HealthStatus, TaskStatus, TaskVisibility, TaskCustomFieldType } from "@/lib/supabase/database.types";
 
 export interface ProjectContext {
   id: string;
@@ -214,43 +214,83 @@ export async function getProjectTasks(projectId: string): Promise<TaskRow[]> {
   });
 }
 
+export interface TaskCustomFieldOption {
+  id: string;
+  label: string;
+  colorHex: string;
+  sortOrder: number;
+}
+
 export interface TaskCustomFieldColumn {
   id: string;
   name: string;
+  fieldType: TaskCustomFieldType;
   sortOrder: number;
+  options: TaskCustomFieldOption[];
+}
+
+/** One custom-field cell's value -- `value` for text/calendar columns,
+ * `optionId` for status columns. Never both at once (setting one always
+ * clears the other server-side, see setTaskCustomFieldValue/Option). */
+export interface TaskCustomFieldValue {
+  value: string | null;
+  optionId: string | null;
 }
 
 /** The extra, admin-defined columns on this project's tasks table (see
  * task_custom_fields / task_custom_field_values in
- * supabase/migrations/0017_task_custom_fields.sql) — free-text only, one
- * value per (task, field). */
+ * supabase/migrations/0017_task_custom_fields.sql, typed in 0076) --
+ * text (free text), calendar (a date), or status (a closed,
+ * colour-coded option set, options included here so a table header
+ * never needs a second query to render its own dropdown/cells). */
 export async function getTaskCustomFields(projectId: string): Promise<TaskCustomFieldColumn[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data: fields } = await supabase
     .from("task_custom_fields")
-    .select("id, name, sort_order")
+    .select("id, name, field_type, sort_order")
     .eq("project_id", projectId)
     .order("sort_order");
-  return (data ?? []).map((f) => ({ id: f.id, name: f.name, sortOrder: f.sort_order }));
+  if (!fields || fields.length === 0) return [];
+
+  const fieldIds = fields.map((f) => f.id);
+  const { data: options } = await supabase
+    .from("task_custom_field_options")
+    .select("id, field_id, label, color_hex, sort_order")
+    .in("field_id", fieldIds)
+    .order("sort_order");
+  const optionsByField = new Map<string, TaskCustomFieldOption[]>();
+  for (const o of options ?? []) {
+    const list = optionsByField.get(o.field_id) ?? [];
+    list.push({ id: o.id, label: o.label, colorHex: o.color_hex, sortOrder: o.sort_order });
+    optionsByField.set(o.field_id, list);
+  }
+
+  return fields.map((f) => ({
+    id: f.id,
+    name: f.name,
+    fieldType: f.field_type,
+    sortOrder: f.sort_order,
+    options: optionsByField.get(f.id) ?? [],
+  }));
 }
 
 /** Every custom-field value for the given tasks, as taskId -> fieldId ->
- * value, so a table row can look up `values.get(task.id)?.get(field.id)`
- * without an extra query per cell. */
-export async function getTaskCustomFieldValues(taskIds: string[]): Promise<Map<string, Map<string, string>>> {
-  const result = new Map<string, Map<string, string>>();
+ * {value, optionId}, so a table row can look up
+ * `values.get(task.id)?.get(field.id)` without an extra query per cell. */
+export async function getTaskCustomFieldValues(taskIds: string[]): Promise<Map<string, Map<string, TaskCustomFieldValue>>> {
+  const result = new Map<string, Map<string, TaskCustomFieldValue>>();
   if (taskIds.length === 0) return result;
 
   const supabase = await createClient();
   const { data } = await supabase
     .from("task_custom_field_values")
-    .select("task_id, field_id, value")
+    .select("task_id, field_id, value, option_id")
     .in("task_id", taskIds);
 
   for (const row of data ?? []) {
-    if (row.value === null) continue;
-    const forTask = result.get(row.task_id) ?? new Map<string, string>();
-    forTask.set(row.field_id, row.value);
+    if (row.value === null && row.option_id === null) continue;
+    const forTask = result.get(row.task_id) ?? new Map<string, TaskCustomFieldValue>();
+    forTask.set(row.field_id, { value: row.value, optionId: row.option_id });
     result.set(row.task_id, forTask);
   }
   return result;

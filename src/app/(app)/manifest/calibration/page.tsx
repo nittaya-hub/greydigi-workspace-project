@@ -14,7 +14,7 @@ export default async function ManifestCalibrationPage() {
   const rows = workspaceId ? await listCalibration(workspaceId) : [];
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="px-4 py-5 sm:px-7 sm:py-8 flex flex-col gap-5 max-w-[1400px] mx-auto">
       <PageHeading
         size="md"
         title="Calibration"

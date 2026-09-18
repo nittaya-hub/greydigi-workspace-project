@@ -92,7 +92,15 @@ export default async function ProjectTasksPage({
               <span>DUE</span>
               <span>STATUS</span>
               {customFields.map((f) => (
-                <CustomFieldColumnHeader key={f.id} fieldId={f.id} name={f.name} projectId={project.id} projectRef={project.ref} />
+                <CustomFieldColumnHeader
+                  key={f.id}
+                  fieldId={f.id}
+                  name={f.name}
+                  fieldType={f.fieldType}
+                  options={f.options}
+                  projectId={project.id}
+                  projectRef={project.ref}
+                />
               ))}
               <AddColumnButton projectId={project.id} projectRef={project.ref} />
             </TableHead>
