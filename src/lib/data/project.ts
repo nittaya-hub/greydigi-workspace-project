@@ -149,6 +149,8 @@ export interface TaskRow {
   dueDate: string | null;
   assigneeName: string;
   assigneePersonId: string | null;
+  assigneeAvatarUrl: string | null;
+  assigneeInitials: string | null;
   phaseCode: string | null;
   phaseName: string | null;
   projectPhaseId: string | null;
@@ -179,14 +181,17 @@ export async function getProjectTasks(projectId: string): Promise<TaskRow[]> {
   const phaseIds = [...new Set(tasks.map((t) => t.project_phase_id).filter((x): x is string => !!x))];
 
   const [{ data: people }, { data: phases }] = await Promise.all([
-    personIds.length ? supabase.from("people").select("id, full_name").in("id", personIds) : Promise.resolve({ data: [] as { id: string; full_name: string }[] }),
+    personIds.length
+      ? supabase.from("people").select("id, full_name, avatar_url, avatar_initials").in("id", personIds)
+      : Promise.resolve({ data: [] as { id: string; full_name: string; avatar_url: string | null; avatar_initials: string }[] }),
     phaseIds.length ? supabase.from("project_phases").select("id, code, name").in("id", phaseIds) : Promise.resolve({ data: [] as { id: string; code: string; name: string }[] }),
   ]);
-  const personById = new Map((people ?? []).map((p) => [p.id, p.full_name]));
+  const personById = new Map((people ?? []).map((p) => [p.id, p]));
   const phaseById = new Map((phases ?? []).map((p) => [p.id, p]));
 
   return tasks.map((t) => {
     const phase = t.project_phase_id ? phaseById.get(t.project_phase_id) : undefined;
+    const assignee = t.assignee_person_id ? personById.get(t.assignee_person_id) : undefined;
     return {
       id: t.id,
       ref: t.ref,
@@ -195,8 +200,10 @@ export async function getProjectTasks(projectId: string): Promise<TaskRow[]> {
       isCriticalPath: t.is_critical_path,
       clientVisibleDate: t.client_visible_date,
       dueDate: t.due_date,
-      assigneeName: t.assignee_person_id ? (personById.get(t.assignee_person_id) ?? "—") : "—",
+      assigneeName: assignee?.full_name ?? "—",
       assigneePersonId: t.assignee_person_id,
+      assigneeAvatarUrl: assignee?.avatar_url ?? null,
+      assigneeInitials: assignee?.avatar_initials ?? null,
       phaseCode: phase?.code ?? null,
       phaseName: phase?.name ?? null,
       projectPhaseId: t.project_phase_id,
@@ -390,6 +397,7 @@ export interface WorkspacePersonOption {
   id: string;
   fullName: string;
   avatarInitials: string;
+  avatarUrl: string | null;
 }
 
 /** Internal workspace members for the drawer's assignee picker. */
@@ -397,11 +405,11 @@ export async function getWorkspaceInternalPeople(workspaceId: string): Promise<W
   const supabase = await createClient();
   const { data } = await supabase
     .from("people")
-    .select("id, full_name, avatar_initials")
+    .select("id, full_name, avatar_initials, avatar_url")
     .eq("workspace_id", workspaceId)
     .eq("kind", "internal")
     .order("full_name", { ascending: true });
-  return (data ?? []).map((p) => ({ id: p.id, fullName: p.full_name, avatarInitials: p.avatar_initials }));
+  return (data ?? []).map((p) => ({ id: p.id, fullName: p.full_name, avatarInitials: p.avatar_initials, avatarUrl: p.avatar_url }));
 }
 
 /** Every person in the workspace, internal staff and client contacts
@@ -417,10 +425,10 @@ export async function getWorkspacePeople(workspaceId: string): Promise<Workspace
   const supabase = await createClient();
   const { data } = await supabase
     .from("people")
-    .select("id, full_name, avatar_initials")
+    .select("id, full_name, avatar_initials, avatar_url")
     .eq("workspace_id", workspaceId)
     .order("full_name", { ascending: true });
-  return (data ?? []).map((p) => ({ id: p.id, fullName: p.full_name, avatarInitials: p.avatar_initials }));
+  return (data ?? []).map((p) => ({ id: p.id, fullName: p.full_name, avatarInitials: p.avatar_initials, avatarUrl: p.avatar_url }));
 }
 
 export async function getTaskByRef(projectId: string, taskRef: string) {

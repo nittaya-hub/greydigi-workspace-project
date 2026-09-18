@@ -16,6 +16,23 @@ import { InlineAddTaskRow } from "./InlineAddTaskRow";
 import { CustomFieldCell } from "./CustomFieldCell";
 
 const UNASSIGNED = "__unassigned__";
+
+/** A small owner avatar for the assignee picker -- a real photo when one
+ * exists, else the same initials circle the Sidebar's own account
+ * footer falls back to (people.avatar_initials). Plain <img>, not the
+ * shadcn Avatar primitive: at 16px this only ever needs an image-or-
+ * initials swap, not that component's loading-state machinery. */
+function OwnerAvatar({ avatarUrl, initials }: { avatarUrl: string | null; initials: string | null }) {
+  if (avatarUrl) {
+    // eslint-disable-next-line @next/next/no-img-element -- 16px icon inside a dropdown item, not worth next/image's overhead here
+    return <img src={avatarUrl} alt="" className="w-4 h-4 rounded-full object-cover flex-none" />;
+  }
+  return (
+    <span className="w-4 h-4 rounded-full bg-ink-soft text-white text-[7px] flex items-center justify-center flex-none leading-none">
+      {initials ?? ""}
+    </span>
+  );
+}
 const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
   { value: "idle", label: "Idle" },
   { value: "in_progress", label: "In progress" },
@@ -96,7 +113,11 @@ function TaskListRow({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const done = optimisticStatus === "done";
-  const ownerOptions = [{ value: UNASSIGNED, label: "Unassigned" }, ...people.map((p) => ({ value: p.id, label: p.fullName }))];
+  const ownerOptions = [
+    { value: UNASSIGNED, label: "Unassigned", avatarUrl: null as string | null, initials: null as string | null },
+    ...people.map((p) => ({ value: p.id, label: p.fullName, avatarUrl: p.avatarUrl, initials: p.avatarInitials })),
+  ];
+  const selectedOwner = ownerOptions.find((o) => o.value === assignee);
 
   function toggleComplete() {
     const next = done ? "idle" : "done";
@@ -225,14 +246,20 @@ function TaskListRow({
         <SelectTrigger
           size="sm"
           onClick={(e) => e.stopPropagation()}
-          className="w-full min-w-0 justify-start border-transparent bg-transparent px-1 text-[12px] text-muted hover:border-line focus-visible:ring-0"
+          className="w-full min-w-0 justify-start gap-1.5 border-transparent bg-transparent px-1 text-[12px] text-muted hover:border-line focus-visible:ring-0"
         >
+          {selectedOwner && selectedOwner.value !== UNASSIGNED ? (
+            <OwnerAvatar avatarUrl={selectedOwner.avatarUrl} initials={selectedOwner.initials} />
+          ) : null}
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
           {ownerOptions.map((o) => (
             <SelectItem key={o.value} value={o.value}>
-              {o.label}
+              <span className="flex items-center gap-1.5">
+                {o.value !== UNASSIGNED ? <OwnerAvatar avatarUrl={o.avatarUrl} initials={o.initials} /> : null}
+                {o.label}
+              </span>
             </SelectItem>
           ))}
         </SelectContent>

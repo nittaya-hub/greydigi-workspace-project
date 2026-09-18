@@ -180,6 +180,7 @@ export interface Database {
           email: string;
           kind: PersonKind;
           avatar_initials: string;
+          avatar_url: string | null;
           workspace_role: WorkspaceRole;
           is_active: boolean;
           created_at: Timestamptz;
@@ -192,6 +193,7 @@ export interface Database {
           email: string;
           kind: PersonKind;
           avatar_initials: string;
+          avatar_url?: string | null;
           workspace_role?: WorkspaceRole;
           is_active?: boolean;
           created_at?: Timestamptz;

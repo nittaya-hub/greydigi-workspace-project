@@ -17,6 +17,13 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/*": ["node_modules/@sparticuz/chromium/bin/**/*"],
   },
+  // Profile photos live in the public `avatars` Storage bucket, served
+  // straight from Supabase's own CDN domain -- next/image refuses any
+  // external host it doesn't know about, so this is the one config
+  // change a real avatar_url needs to actually render.
+  images: {
+    remotePatterns: [{ protocol: "https", hostname: "*.supabase.co", pathname: "/storage/v1/object/public/**" }],
+  },
   // "Delivery" -> "Missions" and "Product" -> "Hangar" (aironauts Decision
   // Pack, "Four cockpits and one brain"). Old bookmarks/links into either
   // space should keep working rather than 404 once the routes move.

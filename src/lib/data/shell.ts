@@ -5,6 +5,7 @@ import { getSelectedClientId } from "@/lib/data/client-scope";
 export interface ShellPerson {
   fullName: string;
   initials: string;
+  avatarUrl: string | null;
   roleLabel: string;
   isWorkspaceAdmin: boolean;
 }
@@ -100,7 +101,7 @@ export async function getShellData(): Promise<ShellData> {
 
     const { data: person } = await supabase
       .from("people")
-      .select("id, full_name, workspace_role, workspace_id")
+      .select("id, full_name, workspace_role, workspace_id, avatar_url")
       .eq("auth_user_id", user.id)
       .maybeSingle();
 
@@ -205,6 +206,7 @@ export async function getShellData(): Promise<ShellData> {
       person: {
         fullName: person.full_name,
         initials: initialsFrom(person.full_name),
+        avatarUrl: person.avatar_url,
         roleLabel: ROLE_LABEL[person.workspace_role] ?? person.workspace_role.toUpperCase(),
         isWorkspaceAdmin: person.workspace_role === "workspace_admin",
       },

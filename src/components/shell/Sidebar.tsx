@@ -302,13 +302,25 @@ export function Sidebar({ shell, onNavigate }: { shell: ShellData; onNavigate?: 
       <div className="mt-auto px-4 pt-3.5 pb-[18px] border-t border-white/8 flex items-center gap-[9px]">
         {shell.person ? (
           <>
-            <span className="w-[26px] h-[26px] rounded-full bg-ink-soft text-white text-[10px] flex items-center justify-center flex-none">
-              {shell.person.initials}
-            </span>
-            <span className="flex flex-col flex-1 min-w-0">
-              <span className="text-[11.5px] font-semibold truncate">{shell.person.fullName}</span>
-              <span className="font-mono text-[9px] text-muted-2">{shell.person.roleLabel}</span>
-            </span>
+            <Link href="/profile" className="flex items-center gap-[9px] flex-1 min-w-0" title="Profile settings">
+              {shell.person.avatarUrl ? (
+                <Image
+                  src={shell.person.avatarUrl}
+                  alt=""
+                  width={26}
+                  height={26}
+                  className="w-[26px] h-[26px] rounded-full object-cover flex-none"
+                />
+              ) : (
+                <span className="w-[26px] h-[26px] rounded-full bg-ink-soft text-white text-[10px] flex items-center justify-center flex-none">
+                  {shell.person.initials}
+                </span>
+              )}
+              <span className="flex flex-col flex-1 min-w-0">
+                <span className="text-[11.5px] font-semibold truncate">{shell.person.fullName}</span>
+                <span className="font-mono text-[9px] text-muted-2">{shell.person.roleLabel}</span>
+              </span>
+            </Link>
             <form action="/auth/sign-out" method="post">
               <button
                 type="submit"

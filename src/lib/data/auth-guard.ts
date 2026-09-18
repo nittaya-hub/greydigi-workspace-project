@@ -16,7 +16,7 @@ export async function requireWorkspaceAdmin() {
 
   const { data: person } = await supabase
     .from("people")
-    .select("id, workspace_id, workspace_role, full_name")
+    .select("id, workspace_id, workspace_role, full_name, email, avatar_initials, avatar_url")
     .eq("auth_user_id", user.id)
     .maybeSingle();
 
@@ -41,7 +41,7 @@ export async function getCurrentPerson() {
 
   const { data: person } = await supabase
     .from("people")
-    .select("id, workspace_id, workspace_role, full_name")
+    .select("id, workspace_id, workspace_role, full_name, email, avatar_initials, avatar_url")
     .eq("auth_user_id", user.id)
     .maybeSingle();
 
